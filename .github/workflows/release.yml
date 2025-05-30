@@ -21,7 +21,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        persist-credentials: false
+        token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
         
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -58,17 +58,23 @@ jobs:
         
         # Commit changes
         git add package.json package-lock.json
-        git commit -m "chore(release): ${NEW_VERSION} [skip ci]" || echo "No changes to commit"
-        git tag "v${NEW_VERSION}"
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+          echo "skip_push=true" >> $GITHUB_OUTPUT
+        else
+          git commit -m "chore(release): ${NEW_VERSION} [skip ci]"
+          git tag "v${NEW_VERSION}"
+          echo "skip_push=false" >> $GITHUB_OUTPUT
+        fi
       
     - name: Publish to npm
       run: npm publish
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      if: ${{ secrets.NPM_TOKEN != '' }}
         
     - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GH_PAT }}
-        branch: ${{ github.ref }}
-        tags: true
+      run: |
+        git push origin main
+        git push origin --tags
+      if: steps.version.outputs.skip_push != 'true'
