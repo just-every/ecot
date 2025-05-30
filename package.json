@@ -1,20 +1,41 @@
 {
-  "name": "@magi-system/mech",
+  "name": "@just-every/ecot",
   "version": "1.0.0",
-  "description": "Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) for MAGI System",
+  "description": "Ensemble Chain-of-Thought (ECOT) - Advanced LLM orchestration with meta-cognition",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/just-every/ecot.git"
+  },
+  "keywords": [
+    "llm",
+    "ai",
+    "ecot",
+    "ensemble",
+    "chain-of-thought",
+    "meta-cognition",
+    "orchestration",
+    "magi"
+  ],
+  "author": "just-every",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/just-every/ecot/issues"
+  },
+  "homepage": "https://github.com/just-every/ecot#readme",
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
     "watch": "tsc --watch",
     "test": "vitest",
+    "prepare": "npm run build",
     "example": "npm run build && node --experimental-vm-modules dist/example.js"
   },
   "dependencies": {
-    "@magi-system/ensemble": "file:../ensemble"
+    "@just-every/ensemble": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
@@ -28,7 +49,10 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
-  "license": "MIT"
+  "publishConfig": {
+    "access": "public"
+  }
 }

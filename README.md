@@ -1,13 +1,15 @@
-# @magi-system/mech
+# @just-every/ecot
 
-Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) for MAGI System
+Ensemble Chain-of-Thought (ECOT) - Advanced LLM orchestration with meta-cognition
 
 ## Overview
 
-MECH is an advanced orchestration system for LLM agents that combines four key capabilities:
+ECOT is an advanced orchestration system for LLM agents that combines key capabilities:
 
-- **Meta-cognition**: The system periodically "thinks about its own thinking," analyzing recent reasoning history and adjusting its approach if needed.
 - **Ensemble**: Multiple models are used in parallel or sequence, with their outputs compared, judged, or merged for higher reliability.
+- **Chain-of-thought**: The agent maintains a connected thread of thoughts, allowing for multi-step reasoning and context-aware problem solving.
+- **Meta-cognition**: The system periodically "thinks about its own thinking," analyzing recent reasoning history and adjusting its approach if needed.
+- **Hierarchy**: Model selection is weighted by dynamic scores, so more capable models are chosen more often, but all models can participate.
 - **Chain-of-thought**: The agent maintains a connected thread of thoughts, allowing for multi-step reasoning and context-aware problem solving.
 - **Hierarchy**: Model selection is weighted by a dynamic score, so more capable models are chosen more often, but all models can participate.
 
