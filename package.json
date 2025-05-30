@@ -42,8 +42,8 @@
     "@just-every/ensemble": "^0.1.6"
   },
   "devDependencies": {
-    "@types/node": "^20.17.57",
-    "typescript": "^5.3.3",
+    "@types/node": "^22.15.29",
+    "typescript": "^5.8.3",
     "vitest": "^3.1.4"
   },
   "exports": {
