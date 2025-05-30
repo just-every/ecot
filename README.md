@@ -92,7 +92,7 @@ const result = await runMECHWithMemory({
 ### Cost Tracking
 
 ```typescript
-import { getTotalCost, resetCostTracker } from '@magi-system/mech';
+import { getTotalCost, resetCostTracker } from '@just-every/ecot';
 
 // Run your MECH operations...
 
@@ -109,7 +109,7 @@ resetCostTracker();
 For users who need more control, MECH provides the full API with all configuration options:
 
 ```typescript
-import { runMECHAdvanced, mechState, set_thought_delay } from '@magi-system/mech';
+import { runMECHAdvanced, mechState, set_thought_delay } from '@just-every/ecot';
 
 // Adjust MECH behavior
 mechState.metaFrequency = '10';  // Meta-cognition every 10 requests
@@ -129,7 +129,7 @@ const result = await runMECHAdvanced(agent, task, context, true);
 MECH automatically rotates between models based on their performance scores:
 
 ```typescript
-import { rotateModel } from '@magi-system/mech';
+import { rotateModel } from '@just-every/ecot';
 
 const nextModel = rotateModel(agent, 'reasoning');
 ```
@@ -145,7 +145,7 @@ The system periodically analyzes its own performance and can:
 Control the pacing of agent thoughts:
 
 ```typescript
-import { set_thought_delay, getThoughtDelay } from '@magi-system/mech';
+import { set_thought_delay, getThoughtDelay } from '@just-every/ecot';
 
 // Set delay to 8 seconds
 set_thought_delay('8');
@@ -158,7 +158,7 @@ const currentDelay = getThoughtDelay();
 Access and modify MECH state:
 
 ```typescript
-import { mechState, set_model_score, disable_model } from '@magi-system/mech';
+import { mechState, set_model_score, disable_model } from '@just-every/ecot';
 
 // Set a model's score
 set_model_score('gpt-4-turbo-preview', 85);
@@ -176,7 +176,7 @@ console.log(mechState.disabledModels); // Set { 'claude-2.1' }
 When you use MECH, you automatically get:
 
 1. **Intelligent Model Rotation** - MECH rotates between different models based on performance scores
-2. **Cost Tracking** - Built-in cost tracking from @magi-system/ensemble
+2. **Cost Tracking** - Built-in cost tracking from @just-every/ensemble
 3. **Meta-cognition** - Periodic self-reflection to improve performance
 4. **Thought Management** - Pacing and delay controls for better reasoning
 5. **History Management** - Automatic conversation history tracking
@@ -257,7 +257,7 @@ const result = await runMECH({
 
 The simple API:
 1. **Provides sensible defaults** for all required MechContext fields
-2. **Imports CostTracker** from @magi-system/ensemble automatically
+2. **Imports CostTracker** from @just-every/ensemble automatically
 3. **Manages history** internally if you don't provide your own
 4. **Routes status messages** to your callbacks or console
 5. **Converts simple agents** to full MechAgent interface
