@@ -4,8 +4,8 @@
  * These utilities are moved from magi to make MECH more self-contained
  */
 
-import type { ResponseInput, ResponseInputItem } from '@magi-system/ensemble';
-import { CostTracker } from '@magi-system/ensemble';
+import type { ResponseInput, ResponseInputItem } from '@just-every/ensemble';
+import { CostTracker } from '@just-every/ensemble';
 import type { 
     MechContext, 
     SimpleMechOptions,
@@ -15,7 +15,7 @@ import type {
     CommunicationManager,
     MemoryItem
 } from '../types.js';
-import type { ToolParameter } from '@magi-system/ensemble';
+import type { ToolParameter } from '@just-every/ensemble';
 
 // Internal state for history management
 let internalHistory: ResponseInput = [];

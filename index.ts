@@ -1,9 +1,9 @@
 /**
- * @magi-system/mech
+ * @just-every/ecot
  * 
- * Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) for MAGI System
+ * Ensemble Chain-of-Thought (ECOT) - Advanced LLM orchestration with meta-cognition
  * 
- * This module provides the MECH system which includes:
+ * This module provides the ECOT system which includes:
  * - Hierarchical model selection based on performance scores
  * - Meta-cognition for self-reflection and strategy adjustment
  * - Thought delay management for pacing

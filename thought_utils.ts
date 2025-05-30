@@ -1,7 +1,7 @@
 /**
  * Helper for thought delay processing
  */
-import { ToolFunction } from '@magi-system/ensemble';
+import { ToolFunction } from '@just-every/ensemble';
 import type { MechContext } from './types.js';
 
 // Thought utilities for managing thought delay and related tools

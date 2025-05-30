@@ -4,7 +4,7 @@
  * This module handles the weighted model selection based on MECH scores.
  */
 
-import { MODEL_CLASSES, ModelClassID, getModelFromClass } from '@magi-system/ensemble';
+import { MODEL_CLASSES, ModelClassID, getModelFromClass } from '@just-every/ensemble';
 import { mechState, getModelScore } from './mech_state.js';
 import type { MechAgent } from './types.js';
 

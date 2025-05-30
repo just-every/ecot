@@ -14,7 +14,7 @@ import {
     listModelScores,
 } from './mech_state.js';
 import { getThoughtDelay, getThoughtTools } from './thought_utils.js';
-import { ResponseInput, getModelFromClass } from '@magi-system/ensemble';
+import { ResponseInput, getModelFromClass } from '@just-every/ensemble';
 
 /**
  * Spawns a metacognition process that analyzes recent history and can

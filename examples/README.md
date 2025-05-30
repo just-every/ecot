@@ -54,7 +54,7 @@ Demonstrates thought delays and interruption handling.
 
 ### Simple API
 ```typescript
-import { runSimpleMECH } from '@magi-system/mech';
+import { runSimpleMECH } from '@just-every/ecot';
 
 const result = await runSimpleMECH({
     agent: { name: 'MyBot' },
@@ -65,7 +65,7 @@ const result = await runSimpleMECH({
 
 ### Advanced API
 ```typescript
-import { runMECHAdvanced } from '@magi-system/mech';
+import { runMECHAdvanced } from '@just-every/ecot';
 
 const context: MechContext = {
     // Required functions
@@ -79,7 +79,7 @@ const result = await runMECHAdvanced(agent, task, context);
 
 ### Meta-cognition Control
 ```typescript
-import { set_meta_frequency, mechState } from '@magi-system/mech';
+import { set_meta_frequency, mechState } from '@just-every/ecot';
 
 // Run meta-cognition every 10 LLM calls
 set_meta_frequency('10');
@@ -91,7 +91,7 @@ console.log(mechState.llmRequestCount);
 
 ### Thought Delays
 ```typescript
-import { set_thought_delay, getThoughtDelay } from '@magi-system/mech';
+import { set_thought_delay, getThoughtDelay } from '@just-every/ecot';
 
 // Set 4-second delay between thoughts
 set_thought_delay('4');

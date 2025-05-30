@@ -13,7 +13,7 @@
 import { randomUUID } from 'crypto';
 import type { MechAgent, MechContext, MechResult } from './types.js';
 import { runMECH } from './mech_tools.js';
-import { ResponseInput } from '@magi-system/ensemble';
+import { ResponseInput } from '@just-every/ensemble';
 
 /**
  * Runs the Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) with memory

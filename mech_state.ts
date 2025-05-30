@@ -6,7 +6,7 @@
  */
 
 import type { MECHState, MetaFrequency, MechContext } from './types.js';
-import { ToolFunction, MODEL_CLASSES, findModel, ModelClassID } from '@magi-system/ensemble';
+import { ToolFunction, MODEL_CLASSES, findModel, ModelClassID } from '@just-every/ensemble';
 
 export const validFrequencies: string[] = ['5', '10', '20', '40'];
 

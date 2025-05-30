@@ -11,7 +11,7 @@ import { mechState, incrementLLMRequestCount } from './mech_state.js';
 import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
 import { rotateModel } from './model_rotation.js';
-import { ToolFunction } from '@magi-system/ensemble';
+import { ToolFunction } from '@just-every/ensemble';
 
 // Shared state for MECH execution
 let mechComplete = false;

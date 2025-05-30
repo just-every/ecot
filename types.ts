@@ -9,7 +9,7 @@ import type {
     ResponseInput, 
     ResponseInputItem,
     ToolFunction
-} from '@magi-system/ensemble';
+} from '@just-every/ensemble';
 
 // ============================================================================
 // Core Types
@@ -77,7 +77,7 @@ export interface MECHState {
 /**
  * Re-export tool types from ensemble for consistency
  */
-export type { ToolFunction } from '@magi-system/ensemble';
+export type { ToolFunction } from '@just-every/ensemble';
 
 /**
  * Simple tool definition for the simple API

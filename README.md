@@ -16,7 +16,7 @@ ECOT is an advanced orchestration system for LLM agents that combines key capabi
 ## Installation
 
 ```bash
-npm install @magi-system/mech @magi-system/ensemble
+npm install @just-every/ecot @just-every/ensemble
 ```
 
 ## Quick Start - Simple API
@@ -24,7 +24,7 @@ npm install @magi-system/mech @magi-system/ensemble
 The simple API requires minimal setup - just provide your agent and a function to run it:
 
 ```typescript
-import { runMECH, runMECHWithMemory } from '@magi-system/mech';
+import { runMECH, runMECHWithMemory } from '@just-every/ecot';
 
 // Basic usage - only requires agent name and runAgent function
 const result = await runMECH({
