@@ -32,7 +32,11 @@
     "watch": "tsc --watch",
     "test": "vitest",
     "prepare": "npm run build",
-    "example": "npm run build && node --experimental-vm-modules dist/example.js"
+    "example": "npm run build && node --experimental-vm-modules dist/example.js",
+    "release": "./scripts/release.sh",
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major"
   },
   "dependencies": {
     "@just-every/ensemble": "^1.0.0"
