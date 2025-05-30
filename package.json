@@ -1,6 +1,6 @@
 {
   "name": "@just-every/ecot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Ensemble Chain-of-Thought (ECOT) - Advanced LLM orchestration with meta-cognition",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
