@@ -6,7 +6,7 @@
  */
 
 import { runMECHAdvanced } from '../index.js';
-import { set_thought_delay, getThoughtDelay, setDelayInterrupted } from '../thought_utils.js';
+import { setThoughtDelay, getThoughtDelay, setDelayInterrupted } from '../thought_utils.js';
 import type { MechAgent, MechContext } from '../types.js';
 
 async function simulateThoughtProcess() {
@@ -88,7 +88,7 @@ async function simulateThoughtProcess() {
             console.log(`Testing with thought delay: ${delay} seconds`);
             console.log('='.repeat(60));
             
-            set_thought_delay(delay);
+            setThoughtDelay(delay);
             
             const startTime = Date.now();
             const result = await runMECHAdvanced(
@@ -108,7 +108,7 @@ async function simulateThoughtProcess() {
         console.log('Testing thought interruption');
         console.log('='.repeat(60));
         
-        set_thought_delay('8'); // Set a long delay
+        setThoughtDelay('8'); // Set a long delay
         
         // Start a task
         const interruptPromise = runMECHAdvanced(

@@ -35,8 +35,6 @@ export type {
     
     // Configuration
     MechConfig,
-    MetaFrequency,
-    ThoughtDelay,
     
     // Agent types
     MechAgent,
@@ -59,14 +57,16 @@ export {
     mechState,
     
     // State modification functions
-    set_meta_frequency,
-    set_model_score,
-    disable_model,
+    setMetaFrequency,
+    getMetaFrequency,
+    setModelScore,
+    disableModel,
     enableModel,
     listDisabledModels,
     listModelScores,
     getModelScore,
     incrementLLMRequestCount,
+    resetLLMRequestCount,
 } from './mech_state.js';
 
 // ============================================================================
@@ -74,7 +74,7 @@ export {
 // ============================================================================
 export {
     getThoughtDelay,
-    set_thought_delay,
+    setThoughtDelay,
     runThoughtDelay,
     setDelayInterrupted,
     isDelayInterrupted,
@@ -87,8 +87,8 @@ export {
     // Advanced MECH functions
     runMECH as runMECHAdvanced,
     getMECHTools,
-    task_complete,
-    task_fatal_error,
+    taskComplete,
+    taskFatalError,
 } from './mech_tools.js';
 
 export {
@@ -119,4 +119,20 @@ export {
 } from './thought_utils.js';
 
 // Export state type for TypeScript users
-export type { MECHState } from './types.js';
+export type { MECHState, MetaFrequency, ThoughtDelay } from './types.js';
+
+// ============================================================================
+// Constants
+// ============================================================================
+export {
+    VALID_FREQUENCIES,
+    VALID_THOUGHT_DELAYS,
+    DEFAULT_META_FREQUENCY,
+    DEFAULT_THOUGHT_DELAY,
+    DEFAULT_MODEL_SCORE,
+    MAX_MODEL_SCORE,
+    MIN_MODEL_SCORE,
+    TASK_STATUS,
+    MESSAGE_TYPES,
+    AGENT_STATUS
+} from './constants.js';

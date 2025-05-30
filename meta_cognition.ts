@@ -30,6 +30,19 @@ export async function spawnMetaThought(
     context: MechContext,
     startTime: Date
 ): Promise<void> {
+    // Validate inputs
+    if (!agent || typeof agent !== 'object') {
+        throw new TypeError('[MECH] Invalid agent for metacognition');
+    }
+    
+    if (!context || typeof context !== 'object') {
+        throw new TypeError('[MECH] Invalid context for metacognition');
+    }
+    
+    if (!startTime || !(startTime instanceof Date)) {
+        throw new TypeError('[MECH] Invalid startTime for metacognition');
+    }
+    
     console.log('[MECH] Spawning metacognition process');
 
     try {
@@ -62,11 +75,11 @@ ${context.MAGI_CONTEXT || ''}
 - Are errors frequent or avoidable?
 3. Choose the primary issue or success observed (e.g., "Inefficient: Agent repeatedly tried failed API call X," "Effective: Reasoning path consistently leads to correct solution quickly," "Failing: Hallucinating incorrect file paths").
 4. Based on the diagnosis, determine which tools to use. Consider:
-- inject_thought: Guide the agent away from pitfalls or towards better strategies?
-- set_thought_delay: If the agent is looping with nothing to do, slowing down will give it's tasks or tools more time to complete. Alternatively if there's a lot of work to do, speeding up will help the agent work on the problem faster.
-- set_meta_frequency: How often do you need to monitor the agent and "think about thinking"? Do this more often if things are not going well.
-- set_model_score: Adjust the scores of models based on their recent performance. The scores set the probability of using a model in the next round. A higher score means more likely to be used.
-- disable_model: Disable a model based on performance? If a model is not well suited to a task, it may be better to disable it.
+- injectThought: Guide the agent away from pitfalls or towards better strategies?
+- setThoughtDelay: If the agent is looping with nothing to do, slowing down will give it's tasks or tools more time to complete. Alternatively if there's a lot of work to do, speeding up will help the agent work on the problem faster.
+- setMetaFrequency: How often do you need to monitor the agent and "think about thinking"? Do this more often if things are not going well.
+- setModelScore: Adjust the scores of models based on their recent performance. The scores set the probability of using a model in the next round. A higher score means more likely to be used.
+- disableModel: Disable a model based on performance? If a model is not well suited to a task, it may be better to disable it.
 5. Self-critique: Does this change directly address the diagnosed issue? Is it justified by the evidence? What are potential side effects? Is there a simpler alternative? (Meta-CoT: Think, Check, Act).
 
 ## Final Tool Use
@@ -86,7 +99,18 @@ ${context.MAGI_CONTEXT || ''}
         };
 
         // Use a high-quality reasoning model
-        metaAgent.model = await getModelFromClass('metacognition');
+        try {
+            metaAgent.model = await getModelFromClass('metacognition');
+        } catch (modelError) {
+            console.error('[MECH] Failed to get metacognition model:', modelError);
+            // Fall back to a default model if metacognition model fails
+            try {
+                metaAgent.model = await getModelFromClass('reasoning');
+            } catch (fallbackError) {
+                console.error('[MECH] Failed to get fallback model:', fallbackError);
+                throw new Error('No model available for metacognition');
+            }
+        }
 
         let messages: ResponseInput = [];
 
@@ -102,7 +126,7 @@ ${context.MAGI_CONTEXT || ''}
 
 Current Time: ${currentTime}
 ${agent.name} Running Time: ${runningTime}
-${agent.name} Thought Delay: ${getThoughtDelay()} seconds [delay between ${agent.name} LLM requests - change with set_thought_delay(delay)]
+${agent.name} Thought Delay: ${getThoughtDelay()} seconds [delay between ${agent.name} LLM requests - change with setThoughtDelay(delay)]
 
 ${agent.name} Projects:
 ${context.listActiveProjects ? await context.listActiveProjects() : 'N/A'}
@@ -113,15 +137,15 @@ ${context.runningToolTracker ? context.runningToolTracker.listActive() : 'N/A'}
 
 === Metacognition Status ===
 
-Meta Frequency: ${mechState.metaFrequency} [LLM requests between Metacognition runs - change with set_meta_frequency(frequency)]
+Meta Frequency: ${mechState.metaFrequency} [LLM requests between Metacognition runs - change with setMetaFrequency(frequency)]
 
 Disabled Models:
 ${listDisabledModels()}
-[change with disable_model(modelId)]
+[change with disableModel(modelId)]
 
 Model Scores:
 ${listModelScores(agent.modelClass as any)}
-[change with set_model_score(modelId, score)]`,
+[change with setModelScore(modelId, score)]`,
         });
 
         const showCount = 10 + parseInt(mechState.metaFrequency) * 3;
@@ -136,5 +160,10 @@ ${listModelScores(agent.modelClass as any)}
         
     } catch (error) {
         console.error('[MECH] Error in metacognition process:', error);
+        // Re-throw critical errors
+        if (error instanceof TypeError) {
+            throw error;
+        }
+        // Log and continue for other errors
     }
 }

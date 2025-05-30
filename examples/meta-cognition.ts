@@ -6,7 +6,7 @@
  */
 
 import { runMECHAdvanced } from '../index.js';
-import { mechState, set_meta_frequency, getModelScore } from '../mech_state.js';
+import { mechState, setMetaFrequency, getModelScore } from '../mech_state.js';
 import type { MechAgent, MechContext } from '../types.js';
 
 async function main() {
@@ -94,7 +94,7 @@ async function main() {
     try {
         // Set meta-cognition to trigger frequently for demo
         console.log('Setting meta-cognition frequency to 5 (every 5 LLM calls)\n');
-        set_meta_frequency('5');
+        setMetaFrequency('5');
         
         // Run multiple tasks to trigger meta-cognition
         const tasks = [

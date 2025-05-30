@@ -145,10 +145,10 @@ The system periodically analyzes its own performance and can:
 Control the pacing of agent thoughts:
 
 ```typescript
-import { set_thought_delay, getThoughtDelay } from '@just-every/ecot';
+import { setThoughtDelay, getThoughtDelay } from '@just-every/ecot';
 
 // Set delay to 8 seconds
-set_thought_delay('8');
+setThoughtDelay('8');
 
 // Get current delay
 const currentDelay = getThoughtDelay();
@@ -158,13 +158,13 @@ const currentDelay = getThoughtDelay();
 Access and modify MECH state:
 
 ```typescript
-import { mechState, set_model_score, disable_model } from '@just-every/ecot';
+import { mechState, setModelScore, disableModel } from '@just-every/ecot';
 
 // Set a model's score
-set_model_score('gpt-4-turbo-preview', 85);
+setModelScore('gpt-4-turbo-preview', '85');
 
 // Disable a model temporarily
-disable_model('claude-2.1');
+disableModel('claude-2.1');
 
 // Check state
 console.log(mechState.metaFrequency); // '5'
@@ -212,21 +212,21 @@ When you use MECH, you automatically get:
 ### State Management
 
 - `mechState` - Global MECH state object
-- `set_meta_frequency(frequency)` - Set meta-cognition frequency (5, 10, 20, or 40)
-- `set_model_score(modelId, score)` - Set a model's performance score (0-100)
-- `disable_model(modelId)` - Temporarily disable a model
+- `setMetaFrequency(frequency)` - Set meta-cognition frequency (5, 10, 20, or 40)
+- `setModelScore(modelId, score)` - Set a model's performance score (0-100)
+- `disableModel(modelId)` - Temporarily disable a model
 - `enableModel(modelId)` - Re-enable a disabled model
 
 ### Thought Management
 
 - `getThoughtDelay()` - Get current thought delay
-- `set_thought_delay(delay)` - Set thought delay (0, 2, 4, 8, 16, 32, 64, or 128 seconds)
+- `setThoughtDelay(delay)` - Set thought delay (0, 2, 4, 8, 16, 32, 64, or 128 seconds)
 - `runThoughtDelay()` - Execute the thought delay
 - `setDelayInterrupted(interrupted)` - Interrupt/resume thought delay
 
 ### Tools
 
-- `getMECHTools(context)` - Get MECH-specific tools (task_complete, task_fatal_error)
+- `getMECHTools(context)` - Get MECH-specific tools (taskComplete, taskFatalError)
 - `getThoughtTools(context)` - Get thought management tools
 - `getMetaCognitionTools(context)` - Get meta-cognition tools
 

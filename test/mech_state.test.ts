@@ -127,7 +127,7 @@ describe('MECH State Management', () => {
         it('should disable and enable models', () => {
             expect(mechState.disabledModels.has('gpt-4')).toBe(false);
             
-            disable_model('gpt-4');
+            disableModel('gpt-4');
             expect(mechState.disabledModels.has('gpt-4')).toBe(true);
             
             enableModel('gpt-4');
@@ -135,9 +135,9 @@ describe('MECH State Management', () => {
         });
 
         it('should handle multiple models', () => {
-            disable_model('gpt-4');
-            disable_model('claude-3');
-            disable_model('gemini');
+            disableModel('gpt-4');
+            disableModel('claude-3');
+            disableModel('gemini');
             
             expect(mechState.disabledModels.size).toBe(3);
             expect(mechState.disabledModels.has('gpt-4')).toBe(true);
@@ -150,8 +150,8 @@ describe('MECH State Management', () => {
         });
 
         it('should list disabled models', () => {
-            disable_model('model1');
-            disable_model('model2');
+            disableModel('model1');
+            disableModel('model2');
             
             const list = listDisabledModels();
             expect(list).toContain('model1');
@@ -165,8 +165,8 @@ describe('MECH State Management', () => {
         });
 
         it('should handle duplicate operations gracefully', () => {
-            disable_model('gpt-4');
-            disable_model('gpt-4'); // Duplicate
+            disableModel('gpt-4');
+            disableModel('gpt-4'); // Duplicate
             expect(mechState.disabledModels.size).toBe(1);
             
             enableModel('gpt-4');

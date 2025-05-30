@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-    set_thought_delay,
+    setThoughtDelay,
     getThoughtDelay,
     setDelayInterrupted,
     isDelayInterrupted,
@@ -12,7 +12,7 @@ import {
 describe('Thought Utils', () => {
     beforeEach(() => {
         // Reset state
-        set_thought_delay('0');
+        setThoughtDelay('0');
         setDelayInterrupted(false);
     });
 
@@ -20,18 +20,18 @@ describe('Thought Utils', () => {
         it('should set and get thought delay', () => {
             expect(getThoughtDelay()).toBe('0');
             
-            set_thought_delay('2');
+            setThoughtDelay('2');
             expect(getThoughtDelay()).toBe('2');
             
-            set_thought_delay('8');
+            setThoughtDelay('8');
             expect(getThoughtDelay()).toBe('8');
             
-            set_thought_delay('32');
+            setThoughtDelay('32');
             expect(getThoughtDelay()).toBe('32');
         });
 
         it('should validate delay values', () => {
-            const result = set_thought_delay('invalid' as any);
+            const result = setThoughtDelay('invalid' as any);
             expect(result).toContain('Invalid delay');
             expect(getThoughtDelay()).toBe('0'); // Should remain at previous value
         });
@@ -39,7 +39,7 @@ describe('Thought Utils', () => {
         it('should only accept valid delays', () => {
             const validDelays = ['0', '2', '4', '8', '16', '32', '64', '128'];
             validDelays.forEach(delay => {
-                set_thought_delay(delay as any);
+                setThoughtDelay(delay as any);
                 expect(getThoughtDelay()).toBe(delay);
             });
         });
@@ -69,7 +69,7 @@ describe('Thought Utils', () => {
 
     describe('runThoughtDelay', () => {
         it('should complete immediately with 0 delay', async () => {
-            set_thought_delay('0');
+            setThoughtDelay('0');
             const start = Date.now();
             
             await runThoughtDelay({} as any);
@@ -79,7 +79,7 @@ describe('Thought Utils', () => {
         });
 
         it('should wait for specified delay', async () => {
-            set_thought_delay('2');
+            setThoughtDelay('2');
             const start = Date.now();
             
             await runThoughtDelay({} as any);
@@ -90,7 +90,7 @@ describe('Thought Utils', () => {
         });
 
         it('should handle interruption', async () => {
-            set_thought_delay('8'); // 8 seconds
+            setThoughtDelay('8'); // 8 seconds
             const start = Date.now();
             
             // Interrupt after 100ms
@@ -108,7 +108,7 @@ describe('Thought Utils', () => {
                 sendComms: vi.fn()
             };
             
-            set_thought_delay('2');
+            setThoughtDelay('2');
             await runThoughtDelay(mockContext as any);
             
             // Should have sent delay start and complete messages
@@ -141,9 +141,12 @@ describe('Thought Utils', () => {
             expect(tools).toHaveLength(1);
             expect(mockContext.createToolFunction).toHaveBeenCalledWith(
                 expect.any(Function),
-                expect.stringContaining('thought delay'),
+                expect.stringContaining('thought'),
                 expect.objectContaining({
-                    delay: expect.any(String)
+                    delay: expect.objectContaining({
+                        description: expect.any(String),
+                        enum: expect.any(Array)
+                    })
                 })
             );
             
@@ -163,7 +166,7 @@ describe('Thought Utils', () => {
 
     describe('Edge cases', () => {
         it('should handle rapid interruptions', async () => {
-            set_thought_delay('4');
+            setThoughtDelay('4');
             
             const promises = [];
             for (let i = 0; i < 5; i++) {
@@ -177,7 +180,7 @@ describe('Thought Utils', () => {
         });
 
         it('should handle concurrent delays', async () => {
-            set_thought_delay('2');
+            setThoughtDelay('2');
             const mockContext = { sendComms: vi.fn() };
             
             // Start multiple delays

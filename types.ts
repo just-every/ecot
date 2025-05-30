@@ -36,15 +36,9 @@ export interface MechResult {
     totalCost: number;
 }
 
-/**
- * Meta-cognition frequency options
- */
-export type MetaFrequency = '5' | '10' | '20' | '40';
-
-/**
- * Valid thought delay values in seconds
- */
-export type ThoughtDelay = '0' | '2' | '4' | '8' | '16' | '32' | '64' | '128';
+// Import and re-export types from constants
+import type { MetaFrequency, ThoughtDelay } from './constants.js';
+export type { MetaFrequency, ThoughtDelay };
 
 // ============================================================================
 // State Management
@@ -64,7 +58,7 @@ export interface MECHState {
     disabledModels: Set<string>;
 
     /** Model effectiveness scores (0-100) - higher scores mean the model is selected more often */
-    modelScores: Record<string, number>;
+    modelScores: Record<string, number | Record<string, number>>;
 
     /** Last model used, to ensure rotation */
     lastModelUsed?: string;
@@ -100,8 +94,8 @@ export interface MechAgent {
     tools?: ToolFunction[];
     instructions?: string;
     historyThread?: ResponseInputItem[];
-    args?: Record<string, unknown>;
-    export(): Record<string, unknown>;
+    args?: Record<string, any>;
+    export(): Record<string, any>;
     getTools(): Promise<ToolFunction[]>;
 }
 
@@ -141,16 +135,16 @@ export interface MemoryParams {
  */
 export interface MemoryItem {
     text: string;
-    metadata?: Record<string, unknown>;
+    metadata?: Record<string, any>;
 }
 
 /**
  * Tool function creator
  */
 export type CreateToolFunction = (
-    fn: (...args: unknown[]) => unknown,
+    fn: (...args: any[]) => any,
     description: string,
-    params?: Record<string, unknown>,
+    params?: Record<string, any>,
     returnDescription?: string
 ) => ToolFunction;
 
@@ -161,7 +155,7 @@ export interface LLMResponse {
     response: string;
     tool_calls?: Array<{
         name: string;
-        arguments: Record<string, unknown>;
+        arguments: Record<string, any>;
     }>;
 }
 

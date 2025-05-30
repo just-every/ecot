@@ -61,13 +61,13 @@ export function defaultReadableTime(ms: number): string {
  * Default tool function creator
  */
 export const defaultCreateToolFunction: CreateToolFunction = (
-    fn: (...args: unknown[]) => unknown,
+    fn: (...args: any[]) => any,
     description: string,
-    params?: Record<string, unknown>,
+    params?: Record<string, any>,
     _returnDescription?: string
 ): ToolFunction => {
     // Wrap the function to ensure it returns a string
-    const executableFn = async (...args: unknown[]) => {
+    const executableFn = async (...args: any[]) => {
         const result = await fn(...args);
         return typeof result === 'string' ? result : JSON.stringify(result);
     };
@@ -109,7 +109,7 @@ export const defaultCreateToolFunction: CreateToolFunction = (
 export function createDefaultCommunicationManager(): CommunicationManager {
     let closed = false;
     return {
-        send: (message: unknown) => console.log('[MECH]', message),
+        send: (message: any) => console.log('[MECH]', message),
         isClosed: () => closed,
         close: () => { closed = true; }
     };
@@ -160,7 +160,7 @@ export function createFullContext(options: SimpleMechOptions): MechContext {
         sendComms: (msg) => {
             console.log('[MECH Status]', msg);
             if (typeof msg === 'object' && msg !== null && 'type' in msg) {
-                options.onStatus?.(msg as { type: string; [key: string]: unknown });
+                options.onStatus?.(msg as { type: string; [key: string]: any });
             }
         },
         getCommunicationManager: () => commManager,

@@ -19,6 +19,10 @@ export async function rotateModel(
     agent: MechAgent,
     modelClass?: ModelClassID
 ): Promise<string | undefined> {
+    // Validate agent
+    if (!agent || typeof agent !== 'object') {
+        throw new TypeError('Invalid agent: must be a valid MechAgent object');
+    }
     // Store last model used to ensure rotation
     const lastModel = agent.model;
     mechState.lastModelUsed = lastModel;
@@ -59,8 +63,11 @@ export async function rotateModel(
                 // Use weighted selection based on model scores
                 // Pass the model class to getModelScore to get class-specific scores
                 const totalScore = models.reduce(
-                    (sum, modelId) =>
-                        sum + getModelScore(modelId, modelClassStr),
+                    (sum, modelId) => {
+                        const score = getModelScore(modelId, modelClassStr);
+                        // Ensure score is valid
+                        return sum + (isNaN(score) || score < 0 ? 0 : score);
+                    },
                     0
                 );
 
@@ -69,7 +76,8 @@ export async function rotateModel(
                     let rand = Math.random() * totalScore;
                     for (const modelId of models) {
                         // Use class-specific score for weighting
-                        rand -= getModelScore(modelId, modelClassStr);
+                        const score = getModelScore(modelId, modelClassStr);
+                        rand -= (isNaN(score) || score < 0 ? 0 : score);
                         if (rand <= 0) {
                             model = modelId;
                             break;
@@ -82,8 +90,8 @@ export async function rotateModel(
                     }
                 } else {
                     // If all scores are 0 for some reason, pick a random model
-                    models = models.sort(() => Math.random() - 0.5);
-                    model = models[0];
+                    const randomIndex = Math.floor(Math.random() * models.length);
+                    model = models[randomIndex];
                 }
             }
         } else {
@@ -100,6 +108,11 @@ export async function rotateModel(
                 }
             }
         }
+    }
+    
+    // Final validation
+    if (!model) {
+        console.warn('[MECH] No model could be selected through rotation');
     }
 
     return model;

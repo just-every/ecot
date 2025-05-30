@@ -115,5 +115,5 @@ export type {
     RunMechOptions 
 } from './types.js';
 
-export { mechState, set_meta_frequency } from './mech_state.js';
-export { set_thought_delay } from './thought_utils.js';
+export { mechState, setMetaFrequency } from './mech_state.js';
+export { setThoughtDelay } from './thought_utils.js';
