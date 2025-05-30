@@ -123,8 +123,9 @@ export function defaultDescribeHistory(
     messages: ResponseInput,
     showCount: number
 ): ResponseInput {
-    const history = internalHistory.slice(-showCount);
-    return [...messages, ...history];
+    // For the default implementation, we just return the messages as-is
+    // This function is typically overridden by the context provider
+    return messages.slice(-showCount);
 }
 
 /**
@@ -214,7 +215,7 @@ export function createFullContext(options: SimpleMechOptions): MechContext {
                     const taskErrorTool = agent.tools[taskErrorToolIndex];
                     try {
                         // Call task_fatal_error with the error message
-                        await taskErrorTool.function(error?.message || String(error));
+                        await taskErrorTool.function((error as any)?.message || String(error));
                     } catch (toolError) {
                         console.error('Error calling task_fatal_error tool:', toolError);
                     }
