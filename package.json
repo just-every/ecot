@@ -39,12 +39,12 @@
     "release:major": "./scripts/release.sh major"
   },
   "dependencies": {
-    "@just-every/ensemble": "^0.1.1"
+    "@just-every/ensemble": "^0.1.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
     "typescript": "^5.3.3",
-    "vitest": "^2.0.5"
+    "vitest": "^3.1.4"
   },
   "exports": {
     ".": {

@@ -6,7 +6,16 @@ import type { MechAgent, MechContext } from '../types.js';
 // Mock ensemble imports
 vi.mock('@just-every/ensemble', () => ({
     getModelFromClass: vi.fn().mockResolvedValue('gpt-4-turbo'),
-    ResponseInput: Array
+    ResponseInput: Array,
+    MODEL_CLASSES: {
+        reasoning: {
+            models: ['gpt-4-turbo', 'claude-3', 'gemini-pro']
+        },
+        standard: {
+            models: ['gpt-3.5-turbo', 'claude-instant']
+        }
+    },
+    findModel: vi.fn().mockReturnValue({ id: 'gpt-4-turbo', name: 'GPT-4 Turbo' })
 }));
 
 describe('Meta-cognition', () => {
@@ -97,7 +106,6 @@ describe('Meta-cognition', () => {
             mockContext.runningToolTracker = { listActive: () => 'Tool1, Tool2' };
             
             await spawnMetaThought(mockAgent, mockContext, startTime);
-            
             
             // Check that history was added with status information
             const historyCall = (mockContext.addHistory as any).mock.calls.find(

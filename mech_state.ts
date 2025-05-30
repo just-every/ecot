@@ -162,8 +162,8 @@ export function getModelScore(modelId: string, modelClass?: string): number {
     
     if (scoreData !== undefined) {
         if (typeof scoreData === 'number') {
-            // Simple numeric score
-            return modelClass ? 50 : scoreData; // Return default if class requested but only overall exists
+            // Simple numeric score - return it regardless of whether modelClass is specified
+            return scoreData;
         } else if (typeof scoreData === 'object') {
             // Class-specific scores
             if (modelClass && modelClass in scoreData) {

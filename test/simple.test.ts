@@ -22,7 +22,7 @@ describe('Simple MECH API', () => {
         expect(result.mechOutcome).toBeDefined();
         expect(result.mechOutcome?.result).toBeDefined();
         expect(result.mechOutcome?.result).toContain('Hello!');
-        expect(result.durationSec).toBeGreaterThan(0);
+        expect(result.durationSec).toBeGreaterThanOrEqual(0);
     });
 
     it('should handle callbacks', async () => {

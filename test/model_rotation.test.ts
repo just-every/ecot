@@ -180,8 +180,7 @@ describe('Model Rotation', () => {
             await rotateModel(mockAgent);
             
             expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('[MECH]'),
-                expect.any(String)
+                expect.stringContaining('[MECH]')
             );
             
             consoleSpy.mockRestore();

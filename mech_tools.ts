@@ -175,6 +175,13 @@ export async function runMECH(
                 `Error running agent command: ${error?.message || String(error)}`
             );
             comm.send({ type: MESSAGE_TYPES.ERROR, error });
+            
+            // Set fatal error status in mechOutcome
+            taskFatalError(
+                `Agent execution failed: ${error?.message || String(error)}`,
+                context
+            );
+            break; // Exit the loop immediately on error
         }
     } while (!mechComplete && loop && !comm.isClosed());
 
@@ -292,14 +299,14 @@ export function getMECHTools(context: MechContext): ToolFunction[] {
     
     return [
         context.createToolFunction(
-            (result: string) => taskComplete(result, context),
+            function task_complete(result: string) { return taskComplete(result, context); },
             'Report that the task has completed successfully',
             {
                 result: 'A few paragraphs describing the result of the task. Include any assumptions you made, problems overcome and what the final outcome was.',
             }
         ),
         context.createToolFunction(
-            (error: string) => taskFatalError(error, context),
+            function task_fatal_error(error: string) { return taskFatalError(error, context); },
             'Report that you were not able to complete the task',
             { error: 'Describe the error that occurred in a few sentences' }
         ),
