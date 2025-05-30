@@ -1,4 +1,4 @@
-# ECOT Codebase Improvement Suggestions
+# MECH Codebase Improvement Suggestions
 
 ## Priority 1: Critical Fixes (Address Immediately)
 

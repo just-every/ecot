@@ -1,5 +1,5 @@
 /**
- * Shared constants for the ECOT system
+ * Shared constants for the MECH system
  */
 
 /**

@@ -31,7 +31,7 @@ npm run build && node dist/examples/simple-mech.js
 
 ## Architecture Overview
 
-ECOT (Ensemble Chain-of-Thought) is an advanced LLM orchestration system built on top of `@just-every/ensemble`. The architecture consists of several key components:
+MECH is an advanced LLM orchestration system built on top of `@just-every/ensemble`. The architecture consists of several key components:
 
 ### Core Flow
 1. **Simple API** (`simple.ts`) - Provides minimal setup interface for most users

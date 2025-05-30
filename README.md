@@ -1,10 +1,10 @@
-# @just-every/ecot
+# @just-every/mech
 
-Ensemble Chain-of-Thought (ECOT) - Advanced LLM orchestration with meta-cognition
+MECH - Advanced LLM orchestration with meta-cognition
 
 ## Overview
 
-ECOT is an advanced orchestration system for LLM agents that combines key capabilities:
+MECH is an advanced orchestration system for LLM agents that combines key capabilities:
 
 - **Ensemble**: Multiple models are used in parallel or sequence, with their outputs compared, judged, or merged for higher reliability.
 - **Chain-of-thought**: The agent maintains a connected thread of thoughts, allowing for multi-step reasoning and context-aware problem solving.
@@ -16,7 +16,7 @@ ECOT is an advanced orchestration system for LLM agents that combines key capabi
 ## Installation
 
 ```bash
-npm install @just-every/ecot @just-every/ensemble
+npm install @just-every/mech
 ```
 
 ## Quick Start - Simple API
@@ -24,7 +24,7 @@ npm install @just-every/ecot @just-every/ensemble
 The simple API requires minimal setup - just provide your agent and a function to run it:
 
 ```typescript
-import { runMECH, runMECHWithMemory } from '@just-every/ecot';
+import { runMECH, runMECHWithMemory } from '@just-every/mech';
 
 // Basic usage - only requires agent name and runAgent function
 const result = await runMECH({
@@ -92,7 +92,7 @@ const result = await runMECHWithMemory({
 ### Cost Tracking
 
 ```typescript
-import { getTotalCost, resetCostTracker } from '@just-every/ecot';
+import { getTotalCost, resetCostTracker } from '@just-every/mech';
 
 // Run your MECH operations...
 
@@ -109,7 +109,7 @@ resetCostTracker();
 For users who need more control, MECH provides the full API with all configuration options:
 
 ```typescript
-import { runMECHAdvanced, mechState, set_thought_delay } from '@just-every/ecot';
+import { runMECHAdvanced, mechState, set_thought_delay } from '@just-every/mech';
 
 // Adjust MECH behavior
 mechState.metaFrequency = '10';  // Meta-cognition every 10 requests
@@ -129,7 +129,7 @@ const result = await runMECHAdvanced(agent, task, context, true);
 MECH automatically rotates between models based on their performance scores:
 
 ```typescript
-import { rotateModel } from '@just-every/ecot';
+import { rotateModel } from '@just-every/mech';
 
 const nextModel = rotateModel(agent, 'reasoning');
 ```
@@ -145,7 +145,7 @@ The system periodically analyzes its own performance and can:
 Control the pacing of agent thoughts:
 
 ```typescript
-import { setThoughtDelay, getThoughtDelay } from '@just-every/ecot';
+import { setThoughtDelay, getThoughtDelay } from '@just-every/mech';
 
 // Set delay to 8 seconds
 setThoughtDelay('8');
@@ -158,7 +158,7 @@ const currentDelay = getThoughtDelay();
 Access and modify MECH state:
 
 ```typescript
-import { mechState, setModelScore, disableModel } from '@just-every/ecot';
+import { mechState, setModelScore, disableModel } from '@just-every/mech';
 
 // Set a model's score
 setModelScore('gpt-4-turbo-preview', '85');

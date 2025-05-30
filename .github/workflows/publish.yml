@@ -54,4 +54,4 @@ jobs:
         with:
           issue-number: ${{ github.event.release.id }}
           body: |
-            📦 Published to npm: [@just-every/ecot@${{ env.VERSION }}](https://www.npmjs.com/package/@just-every/ecot/v/${{ env.VERSION }})
+            📦 Published to npm: [@just-every/mech@${{ env.VERSION }}](https://www.npmjs.com/package/@just-every/mech/v/${{ env.VERSION }})

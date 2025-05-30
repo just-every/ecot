@@ -1,19 +1,19 @@
 {
-  "name": "@just-every/ecot",
-  "version": "1.0.1",
-  "description": "Ensemble Chain-of-Thought (ECOT) - Advanced LLM orchestration with meta-cognition",
+  "name": "@just-every/mech",
+  "version": "0.1.0",
+  "description": "MECH - Advanced LLM orchestration with meta-cognition",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/just-every/ecot.git"
+    "url": "git+https://github.com/just-every/MECH.git"
   },
   "keywords": [
     "llm",
     "ai",
-    "ecot",
+    "mech",
     "ensemble",
     "chain-of-thought",
     "meta-cognition",
@@ -23,9 +23,9 @@
   "author": "just-every",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/just-every/ecot/issues"
+    "url": "https://github.com/just-every/MECH/issues"
   },
-  "homepage": "https://github.com/just-every/ecot#readme",
+  "homepage": "https://github.com/just-every/MECH#readme",
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",

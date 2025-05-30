@@ -1,9 +1,9 @@
 /**
- * @just-every/ecot
+ * @just-every/mech
  * 
- * Ensemble Chain-of-Thought (ECOT) - Advanced LLM orchestration with meta-cognition
+ * MECH - Advanced LLM orchestration with meta-cognition
  * 
- * This module provides the ECOT system which includes:
+ * This module provides the MECH system which includes:
  * - Hierarchical model selection based on performance scores
  * - Meta-cognition for self-reflection and strategy adjustment
  * - Thought delay management for pacing

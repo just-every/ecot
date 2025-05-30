@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Quick release script for @just-every/ecot (skips tests)
+# Quick release script for @just-every/mech (skips tests)
 # Usage: ./scripts/release-quick.sh [patch|minor|major|version]
 
 set -e
@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 # Get the version bump type (default to patch)
 VERSION_TYPE=${1:-patch}
 
-echo -e "${YELLOW}🚀 Starting release process for @just-every/ecot${NC}"
+echo -e "${YELLOW}🚀 Starting release process for @just-every/mech${NC}"
 
 # Ensure we're on main branch
 CURRENT_BRANCH=$(git branch --show-current)
@@ -63,7 +63,7 @@ git push origin "${NEW_VERSION}"
 
 echo -e "${GREEN}✅ Release process complete!${NC}"
 echo -e "${YELLOW}Next steps:${NC}"
-echo -e "1. Go to https://github.com/just-every/ecot/releases/new"
+echo -e "1. Go to https://github.com/just-every/MECH/releases/new"
 echo -e "2. Select tag: ${NEW_VERSION}"
 echo -e "3. Set release title: ${NEW_VERSION}"
 echo -e "4. Add release notes"
