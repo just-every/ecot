@@ -70,11 +70,11 @@ describe('Internal Utils', () => {
 
     describe('Tool function creation', () => {
         it('should create a valid tool function', async () => {
-            const mockFn = (x: number, y: number) => x + y;
-            mockFn.name = 'add'; // Set function name
+            // Create a named function instead of trying to assign name
+            function add(x: number, y: number) { return x + y; }
             
             const tool = defaultCreateToolFunction(
-                mockFn,
+                add,
                 'Add two numbers',
                 { x: 'First number', y: 'Second number' }
             );

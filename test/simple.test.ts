@@ -19,6 +19,8 @@ describe('Simple MECH API', () => {
         });
 
         expect(result.status).toBe('complete');
+        expect(result.mechOutcome).toBeDefined();
+        expect(result.mechOutcome?.result).toBeDefined();
         expect(result.mechOutcome?.result).toContain('Hello!');
         expect(result.durationSec).toBeGreaterThan(0);
     });
@@ -67,6 +69,8 @@ describe('Simple MECH API', () => {
         });
 
         expect(result.status).toBe('fatal_error');
+        expect(result.mechOutcome).toBeDefined();
+        expect(result.mechOutcome?.error).toBeDefined(); 
         expect(result.mechOutcome?.error).toContain('Test error');
     });
 });

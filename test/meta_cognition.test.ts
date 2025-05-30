@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawnMetaThought } from '../meta_cognition.js';
 import { mechState } from '../mech_state.js';
 import type { MechAgent, MechContext } from '../types.js';
@@ -23,6 +23,7 @@ describe('Meta-cognition', () => {
         Object.keys(mechState.modelScores).forEach(key => {
             delete mechState.modelScores[key];
         });
+
 
         // Spy on console
         consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -56,7 +57,13 @@ describe('Meta-cognition', () => {
             MAGI_CONTEXT: 'Test Context',
             createToolFunction: vi.fn((fn, desc) => ({
                 function: fn,
-                definition: { type: 'function', function: { name: fn.name, description: desc } }
+                definition: { 
+                    type: 'function', 
+                    function: { 
+                        name: fn.name || 'mockFunction', 
+                        description: desc 
+                    } 
+                }
             }))
         };
     });
@@ -80,8 +87,8 @@ describe('Meta-cognition', () => {
             
             await spawnMetaThought(mockAgent, mockContext, startTime);
             
-            // Should log about running metacognition agent
-            expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Running metacognition agent with tools');
+            // Should log about spawning metacognition process
+            expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Spawning metacognition process');
         });
 
         it('should include status information in context', async () => {
@@ -90,6 +97,7 @@ describe('Meta-cognition', () => {
             mockContext.runningToolTracker = { listActive: () => 'Tool1, Tool2' };
             
             await spawnMetaThought(mockAgent, mockContext, startTime);
+            
             
             // Check that history was added with status information
             const historyCall = (mockContext.addHistory as any).mock.calls.find(
@@ -154,14 +162,22 @@ describe('Meta-cognition', () => {
 
         it('should throw if no model is available', async () => {
             const { getModelFromClass } = await import('@just-every/ensemble');
+            
+            // Temporarily make the mock fail for both metacognition and reasoning calls
             (getModelFromClass as any).mockRejectedValue(new Error('No models available'));
             
             const startTime = new Date();
             await expect(spawnMetaThought(mockAgent, mockContext, startTime))
                 .rejects.toThrow('No model available for metacognition');
+                
+            // Restore the mock for subsequent tests
+            (getModelFromClass as any).mockResolvedValue('gpt-4-turbo');
         });
 
         it('should catch and log non-critical errors', async () => {
+            // Store original function
+            const originalDescribeHistory = mockContext.describeHistory;
+            
             // Mock describeHistory to throw
             mockContext.describeHistory = () => {
                 throw new Error('History error');
@@ -174,6 +190,9 @@ describe('Meta-cognition', () => {
                 '[MECH] Error in metacognition process:',
                 expect.any(Error)
             );
+            
+            // Restore original function
+            mockContext.describeHistory = originalDescribeHistory;
         });
     });
 
@@ -197,10 +216,10 @@ describe('Meta-cognition', () => {
             
             // Check for specific tools
             const toolNames = tools.map(t => t.definition.function.name);
-            expect(toolNames).toContain('injectThought');
-            expect(toolNames).toContain('setMetaFrequency');
-            expect(toolNames).toContain('setModelScore');
-            expect(toolNames).toContain('disableModel');
+            expect(toolNames).toContain('injectThoughtTool');
+            expect(toolNames).toContain('setMetaFrequencyTool');
+            expect(toolNames).toContain('setModelScoreTool');
+            expect(toolNames).toContain('disableModelTool');
         });
     });
 

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
     mechState,
-    set_meta_frequency,
-    get_meta_frequency,
-    set_model_score,
+    setMetaFrequency,
+    getMetaFrequency,
+    setModelScore,
     getModelScore,
-    disable_model,
+    disableModel,
     enableModel,
     listDisabledModels,
     listModelScores,
@@ -17,7 +17,7 @@ describe('MECH State Management', () => {
     beforeEach(() => {
         // Reset state before each test
         resetLLMRequestCount();
-        set_meta_frequency('5');
+        setMetaFrequency('5');
         mechState.disabledModels.clear();
         // Clear model scores
         Object.keys(mechState.modelScores).forEach(key => {
@@ -27,19 +27,19 @@ describe('MECH State Management', () => {
 
     describe('Meta-cognition frequency', () => {
         it('should set and get meta frequency', () => {
-            set_meta_frequency('10');
-            expect(get_meta_frequency()).toBe('10');
+            setMetaFrequency('10');
+            expect(getMetaFrequency()).toBe('10');
             expect(mechState.metaFrequency).toBe('10');
 
-            set_meta_frequency('20');
-            expect(get_meta_frequency()).toBe('20');
+            setMetaFrequency('20');
+            expect(getMetaFrequency()).toBe('20');
 
-            set_meta_frequency('40');
-            expect(get_meta_frequency()).toBe('40');
+            setMetaFrequency('40');
+            expect(getMetaFrequency()).toBe('40');
         });
 
         it('should handle invalid frequency values', () => {
-            const result = set_meta_frequency('invalid' as any);
+            const result = setMetaFrequency('invalid' as any);
             expect(result).toContain('Invalid frequency');
             expect(mechState.metaFrequency).toBe('5'); // Should remain at default
         });
@@ -47,7 +47,7 @@ describe('MECH State Management', () => {
         it('should only accept valid frequencies', () => {
             const validFreqs = ['5', '10', '20', '40'];
             validFreqs.forEach(freq => {
-                set_meta_frequency(freq as any);
+                setMetaFrequency(freq as any);
                 expect(mechState.metaFrequency).toBe(freq);
             });
         });
@@ -77,16 +77,16 @@ describe('MECH State Management', () => {
 
     describe('Model scoring', () => {
         it('should set and get model scores', () => {
-            set_model_score('gpt-4', '85');
+            setModelScore('gpt-4', '85');
             expect(getModelScore('gpt-4')).toBe(85);
             
-            set_model_score('claude-3', '90');
+            setModelScore('claude-3', '90');
             expect(getModelScore('claude-3')).toBe(90);
         });
 
         it('should handle class-specific scores', () => {
-            set_model_score('gpt-4', '80', 'code');
-            set_model_score('gpt-4', '85', 'reasoning');
+            setModelScore('gpt-4', '80', 'code');
+            setModelScore('gpt-4', '85', 'reasoning');
             
             expect(getModelScore('gpt-4', 'code')).toBe(80);
             expect(getModelScore('gpt-4', 'reasoning')).toBe(85);
@@ -99,20 +99,20 @@ describe('MECH State Management', () => {
         });
 
         it('should validate score range', () => {
-            const result1 = set_model_score('gpt-4', '150');
+            const result1 = setModelScore('gpt-4', '150');
             expect(result1).toContain('Invalid score');
             
-            const result2 = set_model_score('gpt-4', '-10');
+            const result2 = setModelScore('gpt-4', '-10');
             expect(result2).toContain('Invalid score');
             
-            const result3 = set_model_score('gpt-4', 'abc');
+            const result3 = setModelScore('gpt-4', 'abc');
             expect(result3).toContain('Invalid score');
         });
 
         it('should list all model scores', () => {
-            set_model_score('gpt-4', '80');
-            set_model_score('claude-3', '85');
-            set_model_score('gpt-4', '75', 'code');
+            setModelScore('gpt-4', '80');
+            setModelScore('claude-3', '85');
+            setModelScore('gpt-4', '75', 'code');
             
             const scores = listModelScores();
             expect(scores).toContain('gpt-4');

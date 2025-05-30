@@ -17,6 +17,7 @@ vi.mock('@just-every/ensemble', () => ({
         }
     },
     getModelFromClass: vi.fn().mockRejectedValue(new Error('Mock: No override')),
+    findModel: vi.fn().mockReturnValue({ id: 'gpt-4', name: 'GPT-4' }),
     ModelClassID: {}
 }));
 

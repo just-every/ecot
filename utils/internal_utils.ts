@@ -17,20 +17,20 @@ import type {
 } from '../types.js';
 import type { ToolParameter } from '@just-every/ensemble';
 
-// Internal state for history management
-let internalHistory: ResponseInput = [];
-
 /**
  * Default history management implementation
  */
 export function createDefaultHistory() {
+    // Create a new history array for each instance to avoid shared state
+    let history: ResponseInput = [];
+    
     return {
         addHistory: (item: ResponseInputItem) => {
-            internalHistory.push(item);
+            history.push(item);
         },
-        getHistory: () => internalHistory,
+        getHistory: () => history,
         clearHistory: () => {
-            internalHistory = [];
+            history = [];
         }
     };
 }

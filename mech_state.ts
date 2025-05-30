@@ -266,9 +266,15 @@ export function getMetaCognitionTools(context: MechContext): ToolFunction[] {
     const tools: ToolFunction[] = [];
     
     if (context.createToolFunction) {
+        // Create named functions for better debugging and testing
+        function injectThoughtTool(content: string) { return injectThought(content, context); }
+        function setMetaFrequencyTool(frequency: string) { return setMetaFrequency(frequency); }
+        function setModelScoreTool(modelId: string, score: string) { return setModelScore(modelId, score); }
+        function disableModelTool(modelId: string, disabled?: boolean) { return disableModel(modelId, disabled); }
+        
         tools.push(
             context.createToolFunction(
-                (content: string) => injectThought(content, context),
+                injectThoughtTool,
                 'Your core tool for altering the thought process of the agent. Injects a thought with high priority into the next loop for the agent. The agent will see this before choosing their next thought or action.',
                 {
                     content:
@@ -276,7 +282,7 @@ export function getMetaCognitionTools(context: MechContext): ToolFunction[] {
                 }
             ),
             context.createToolFunction(
-                (frequency: string) => setMetaFrequency(frequency),
+                setMetaFrequencyTool,
                 'Change how often metacognition should run (every N LLM requests)',
                 {
                     frequency: {
@@ -290,7 +296,7 @@ export function getMetaCognitionTools(context: MechContext): ToolFunction[] {
                 'Confirmation message' // Added return description
             ),
             context.createToolFunction(
-                (modelId: string, score: string) => setModelScore(modelId, score),
+                setModelScoreTool,
                 'Set a score for a specific model (affects selection frequency)',
                 {
                     modelId: 'The model ID to score',
@@ -299,7 +305,7 @@ export function getMetaCognitionTools(context: MechContext): ToolFunction[] {
                 'The new score for the model' // Added return description
             ),
             context.createToolFunction(
-                (modelId: string, disabled?: boolean) => disableModel(modelId, disabled),
+                disableModelTool,
                 'Temporarily disable a model from being selected. Pass disabled=false to enable it again.',
                 {
                     modelId: 'The model ID to change',

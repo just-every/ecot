@@ -118,6 +118,15 @@ ${context.MAGI_CONTEXT || ''}
         const runningTime = context.readableTime 
             ? context.readableTime(new Date().getTime() - startTime.getTime())
             : `${Math.round((new Date().getTime() - startTime.getTime()) / 1000)}s`;
+            
+        // Handle async project listing separately to avoid template literal issues
+        const projectsInfo = context.listActiveProjects 
+            ? await context.listActiveProjects().catch(() => 'Error loading projects')
+            : 'N/A';
+            
+        const activeToolsInfo = context.runningToolTracker 
+            ? context.runningToolTracker.listActive() 
+            : 'N/A';
         
         messages.push({
             type: 'message',
@@ -129,10 +138,10 @@ ${agent.name} Running Time: ${runningTime}
 ${agent.name} Thought Delay: ${getThoughtDelay()} seconds [delay between ${agent.name} LLM requests - change with setThoughtDelay(delay)]
 
 ${agent.name} Projects:
-${context.listActiveProjects ? await context.listActiveProjects() : 'N/A'}
+${projectsInfo}
 
 ${agent.name} Active Tools:
-${context.runningToolTracker ? context.runningToolTracker.listActive() : 'N/A'}
+${activeToolsInfo}
 
 
 === Metacognition Status ===
@@ -148,8 +157,16 @@ ${listModelScores(agent.modelClass as any)}
 [change with setModelScore(modelId, score)]`,
         });
 
+        // Add the status message we just created to history first
+        context.addHistory(messages[0]);
+
         const showCount = 10 + parseInt(mechState.metaFrequency) * 3;
         messages = context.describeHistory(agent, messages, showCount);
+
+        // Add any additional messages from describeHistory
+        for (let i = 1; i < messages.length; i++) {
+            context.addHistory(messages[i]);
+        }
 
         // Run the metacognition agent with provided Runner
         // This is where the actual execution happens via the context's runner
@@ -161,7 +178,8 @@ ${listModelScores(agent.modelClass as any)}
     } catch (error) {
         console.error('[MECH] Error in metacognition process:', error);
         // Re-throw critical errors
-        if (error instanceof TypeError) {
+        if (error instanceof TypeError || 
+            (error instanceof Error && error.message.includes('No model available'))) {
             throw error;
         }
         // Log and continue for other errors

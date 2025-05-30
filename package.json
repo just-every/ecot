@@ -39,7 +39,7 @@
     "release:major": "./scripts/release.sh major"
   },
   "dependencies": {
-    "@just-every/ensemble": "^1.0.0"
+    "@just-every/ensemble": "^0.1.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
