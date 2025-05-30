@@ -1,5 +1,8 @@
 # @just-every/mech
 
+[![npm version](https://badge.fury.io/js/@just-every%2Fmech.svg)](https://www.npmjs.com/package/@just-every/mech)
+[![GitHub Actions](https://github.com/just-every/MECH/workflows/Release/badge.svg)](https://github.com/just-every/MECH/actions)
+
 MECH - Advanced LLM orchestration with meta-cognition
 
 ## Overview
