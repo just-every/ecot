@@ -17,6 +17,14 @@ npm test          # Run all tests with Vitest
 npm test <file>   # Run specific test file (e.g., npm test mech_state.test.ts)
 ```
 
+### Pre-Commit Workflow
+**IMPORTANT**: Always run these commands before committing and pushing:
+```bash
+npm test          # Ensure all tests pass (118 tests expected)
+npm run build     # Ensure TypeScript compiles without errors
+```
+Only commit and push if both commands succeed without errors.
+
 ### Release
 ```bash
 npm run release:patch  # Patch version bump (1.0.1 -> 1.0.2)
@@ -35,8 +43,8 @@ MECH is an advanced LLM orchestration system built on top of `@just-every/ensemb
 
 ### Core Flow
 1. **Simple API** (`simple.ts`) - Provides minimal setup interface for most users
-   - `runMECH()` - Basic execution without memory
-   - `runMECHWithMemory()` - Execution with memory features
+   - `runMECH()` - Unified function for both basic execution and memory features
+   - Memory features automatically enabled when `embed` function is provided
    - Automatically creates full `MechContext` from minimal options
 
 2. **MECH Tools** (`mech_tools.ts`) - Core execution engine
@@ -68,7 +76,7 @@ MECH is an advanced LLM orchestration system built on top of `@just-every/ensemb
 
 - **MechAgent**: Minimal agent interface requiring only name, agent_id, and basic methods
 - **MechContext**: Full context with all required functions (most provided by internal utils)
-- **SimpleMechOptions**: Minimal options for simple API - just `runAgent` function required
+- **RunMechOptions**: Unified options for simple API - includes optional memory parameters
 
 ### Integration Pattern
 
