@@ -78,7 +78,6 @@ export const runMECH = withErrorHandling(
         const context: SimpleMechOptions = {
             onHistory: options.onHistory,
             onStatus: options.onStatus,
-            embed: options.embed,
             lookupMemories: options.lookupMemories,
             saveMemory: options.saveMemory
         };
@@ -86,7 +85,7 @@ export const runMECH = withErrorHandling(
         const fullContext = createFullContext(context);
         
         // Use memory wrapper if memory functions are provided
-        if (options.embed) {
+        if (options.lookupMemories && options.saveMemory) {
             return internalRunMECHWithMemory(mechAgent, sanitizedTask, fullContext, options.loop);
         } else {
             return internalRunMECH(mechAgent, sanitizedTask, fullContext, options.loop);
