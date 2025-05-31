@@ -27,7 +27,7 @@ npm install @just-every/mech
 The simple API requires minimal setup - just provide your agent and a function to run it:
 
 ```typescript
-import { runMECH, runMECHWithMemory } from '@just-every/mech';
+import { runMECH } from '@just-every/mech';
 
 // Basic usage - only requires agent name and runAgent function
 const result = await runMECH({
@@ -69,7 +69,7 @@ const result = await runMECH({
 ### With Memory Features
 
 ```typescript
-const result = await runMECHWithMemory({
+const result = await runMECH({
     agent: { name: 'ProjectBuilder' },
     task: 'Create a React dashboard with user authentication',
     runAgent: async (agent, input, history) => {
@@ -195,14 +195,11 @@ When you use MECH, you automatically get:
   - `options.runAgent` - Your LLM function
   - `options.loop?` - Enable multi-turn (default: false)
   - `options.model?` - Override model selection
-  - `options.onHistory?` - History callback
-  - `options.onStatus?` - Status update callback
-
-- `runMECHWithMemory(options)` - Run MECH with memory features
-  - All options from `runMECH`, plus:
-  - `options.embed?` - Text embedding function
+  - `options.embed?` - Text embedding function (enables memory features)
   - `options.lookupMemories?` - Vector similarity search
   - `options.saveMemory?` - Memory persistence
+  - `options.onHistory?` - History callback
+  - `options.onStatus?` - Status update callback
 
 - `getTotalCost()` - Get total cost across all MECH operations
 - `resetCostTracker()` - Reset the cost tracker
