@@ -124,7 +124,7 @@ const currentDelay = getThoughtDelay(); // Returns '4'
 ```typescript
 const options = {
     // ... other options
-    embed: async (text) => generateEmbedding(text),
+    // Embedding is handled automatically by @just-every/ensemble
     lookupMemories: async (embedding) => searchMemories(embedding),
     saveMemory: async (taskId, memories) => storeMemories(taskId, memories)
 };

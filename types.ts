@@ -297,10 +297,6 @@ export interface MechContext {
      */
     insertMemories?: (taskId: string, memories: MemoryItem[]) => Promise<void>;
     
-    /**
-     * Create embeddings for text
-     */
-    embed?: (text: string) => Promise<number[]>;
     
     /**
      * Register relevant custom tools based on embedding
@@ -340,7 +336,6 @@ export interface SimpleMechOptions {
     /**
      * Optional memory functions
      */
-    embed?: (text: string) => Promise<number[]>;
     lookupMemories?: (embedding: number[]) => Promise<MemoryItem[]>;
     saveMemory?: (taskId: string, memories: MemoryItem[]) => Promise<void>;
 }
@@ -364,9 +359,6 @@ export interface RunMechOptions extends SimpleMechOptions {
     agent: SimpleAgent;
     task: string;
     loop?: boolean;                   // Default: true (enable multi-turn conversation)
-    
-    /** Optional: Function to generate embeddings from text for memory features */
-    embed?: (text: string) => Promise<number[]>;
     
     /** Optional: Function to lookup memories by embedding */
     lookupMemories?: (embedding: number[]) => Promise<MemoryItem[]>;

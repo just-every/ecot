@@ -55,7 +55,6 @@ interface RunMechOptions {
   runAgent: (agent, input, history) => Promise<LLMResponse>;
   
   // Optional memory features
-  embed?: (text: string) => Promise<number[]>;
   lookupMemories?: (embedding: number[]) => Promise<MemoryItem[]>;
   saveMemory?: (taskId: string, memories: MemoryItem[]) => Promise<void>;
   

@@ -161,14 +161,9 @@ describe('MECH Integration Tests', () => {
 
     describe('Memory Integration', () => {
         it('should run MECH with memory successfully', async () => {
-            const mockEmbed = async (text: string) => {
-                return Array(1536).fill(0).map(() => Math.random());
-            };
-
             const options: RunMechOptions = {
                 agent: mockAgent,
-                task: 'Remember this task',
-                embed: mockEmbed
+                task: 'Remember this task'
             };
 
             const result = await runMECH(options);
@@ -190,14 +185,9 @@ describe('MECH Integration Tests', () => {
                 );
             });
 
-            const mockEmbed = async (text: string) => {
-                return Array(1536).fill(0).map(() => Math.random());
-            };
-
             const options: RunMechOptions = {
                 agent: mockAgent,
-                task: 'Use memory for this task',
-                embed: mockEmbed
+                task: 'Use memory for this task'
             };
 
             await runMECH(options);

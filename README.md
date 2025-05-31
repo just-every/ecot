@@ -191,15 +191,7 @@ const result = await runMECH({
     },
     task: 'Research the latest developments in quantum computing and compare with our previous discussion',
     
-    // Memory features (optional)
-    embed: async (text) => {
-        // Generate embeddings for memory storage
-        const response = await openai.embeddings.create({
-            model: 'text-embedding-3-small',
-            input: text
-        });
-        return response.data[0].embedding;
-    },
+    // Memory features (optional) - embedding is handled automatically by MECH using @just-every/ensemble
     
     lookupMemories: async (embedding) => {
         // Search your vector database
@@ -390,8 +382,7 @@ interface RunMechOptions {
     onStatus?: StatusCallback;    // Called for status updates
     
     // Optional Memory Features
-    embed?: EmbedFunction;        // Enable memory with embedding function
-    lookupMemories?: LookupFn;    // Vector similarity search
+    lookupMemories?: LookupFn;    // Vector similarity search (embedding handled automatically)
     saveMemory?: SaveMemoryFn;    // Memory persistence
 }
 
@@ -506,10 +497,8 @@ if (cost > 1.0) {
 const result = await runMECH({
     agent: { name: 'Agent' },
     task: 'Remember this',
-    embed: async (text) => {
-        // This enables memory features
-        return await generateEmbedding(text);
-    }
+    // Memory features are enabled when lookupMemories and saveMemory are provided
+    // Embedding is handled automatically by @just-every/ensemble
 });
 ```
 

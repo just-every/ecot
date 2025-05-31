@@ -185,7 +185,6 @@ export function createFullContext(options: SimpleMechOptions): MechContext {
         // ========================================================================
         // Memory Features (only if provided)
         // ========================================================================
-        ...(options.embed && { embed: options.embed }),
         ...(options.lookupMemories && { 
             lookupMemoriesEmbedding: options.lookupMemories 
         }),

@@ -13,7 +13,7 @@
 import { randomUUID } from 'crypto';
 import type { MechAgent, MechContext, MechResult } from './types.js';
 import { runMECH } from './mech_tools.js';
-import { ResponseInput } from '@just-every/ensemble';
+import { ResponseInput, embed } from '@just-every/ensemble';
 
 /**
  * Runs the Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) with memory
@@ -36,10 +36,10 @@ export async function runMECHWithMemory(
         `Running MECH with memory for task: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`
     );
 
-    // Check if memory features are available
+    // Check if memory features are available (based on lookupMemories and saveMemory existence)
     const hasMemoryFeatures = context.recordTaskStart && 
-                            context.embed && 
                             context.lookupMemoriesEmbedding &&
+                            context.insertMemories &&
                             context.formatMemories;
 
     // Record the task start time and get a task ID
@@ -64,9 +64,9 @@ export async function runMECHWithMemory(
         }
 
         try {
-            // Generate embedding for the prompt
+            // Generate embedding for the prompt using ensemble
             console.log('Generating embedding for prompt...');
-            embedding = await context.embed!(content);
+            embedding = await embed(content);
 
             // Search for similar memories
             console.log('Searching for relevant memories...');
@@ -361,7 +361,7 @@ ${context.formatMemories(memories)}`
                 return {
                     text,
                     embedding:
-                        embedding === null ? await context.embed!(text) : embedding,
+                        embedding === null ? await embed(text) : embedding,
                     // Score successful tasks higher than failed ones
                     score: status === 'complete' ? 1.0 : 0.5,
                     metadata: {

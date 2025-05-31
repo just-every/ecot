@@ -164,16 +164,12 @@ describe('Internal Utils', () => {
 
     describe('createFullContext', () => {
         it('should create a complete context from simple options', () => {
-            const mockLLM = async () => ({ response: 'test', tool_calls: [] });
-            const mockEmbed = async (text: string) => [1, 2, 3];
             const mockLookup = async () => [{ text: 'memory' }];
             const mockSave = async () => {};
             
             const context = createFullContext({
-                runAgent: mockLLM,
                 onHistory: () => {},
                 onStatus: () => {},
-                embed: mockEmbed,
                 lookupMemories: mockLookup,
                 saveMemory: mockSave
             });
@@ -186,7 +182,6 @@ describe('Internal Utils', () => {
             expect(context.processPendingHistoryThreads).toBeDefined();
             expect(context.describeHistory).toBeDefined();
             expect(context.costTracker).toBeDefined();
-            expect(context.runStreamedWithTools).toBeDefined();
             
             // Check optional functions
             expect(context.createToolFunction).toBeDefined();
@@ -195,23 +190,18 @@ describe('Internal Utils', () => {
             expect(context.MAGI_CONTEXT).toBe('MECH System Context');
             
             // Check memory functions
-            expect(context.embed).toBe(mockEmbed);
             expect(context.lookupMemoriesEmbedding).toBe(mockLookup);
             expect(context.insertMemories).toBe(mockSave);
             expect(context.formatMemories).toBeDefined();
         });
 
         it('should work with minimal options', () => {
-            const context = createFullContext({
-                runAgent: async () => ({ response: 'test', tool_calls: [] })
-            });
+            const context = createFullContext({});
             
             // Should have all required functions
             expect(context.sendComms).toBeDefined();
-            expect(context.runStreamedWithTools).toBeDefined();
             
             // Memory functions should be undefined
-            expect(context.embed).toBeUndefined();
             expect(context.lookupMemoriesEmbedding).toBeUndefined();
             expect(context.insertMemories).toBeUndefined();
         });
@@ -221,7 +211,6 @@ describe('Internal Utils', () => {
             let statusCallbackCalled = false;
             
             const context = createFullContext({
-                runAgent: async () => ({ response: 'test', tool_calls: [] }),
                 onHistory: () => { historyCallbackCalled = true; },
                 onStatus: () => { statusCallbackCalled = true; }
             });

@@ -186,15 +186,9 @@ describe('MECH End-to-End Tests', () => {
                 );
             });
 
-            const mockEmbed = async (text: string) => {
-                // Simple mock embedding
-                return Array(1536).fill(0).map(() => Math.random());
-            };
-
             const baseOptions: RunMechOptions = {
                 agent: testAgent,
-                task: 'Learn about problem type A',
-                embed: mockEmbed
+                task: 'Learn about problem type A'
             };
 
             // First task - no previous memory
@@ -226,14 +220,9 @@ describe('MECH End-to-End Tests', () => {
                 );
             });
 
-            const mockEmbed = async (text: string) => {
-                return Array(1536).fill(0).map(() => Math.random());
-            };
-
             const options: RunMechOptions = {
                 agent: testAgent,
-                task: 'Perform comprehensive data analysis',
-                embed: mockEmbed
+                task: 'Perform comprehensive data analysis'
             };
 
             const result = await runMECH({ ...options, loop: false });
@@ -325,14 +314,9 @@ describe('MECH End-to-End Tests', () => {
             setThoughtDelay('0'); // Use 0 delay for tests
             setModelScore('comprehensive-model', '95');
 
-            const mockEmbed = async (text: string) => {
-                return Array(1536).fill(0).map(() => Math.random());
-            };
-
             const options: RunMechOptions = {
                 agent: testAgent,
-                task: 'Execute comprehensive MECH workflow',
-                embed: mockEmbed
+                task: 'Execute comprehensive MECH workflow'
             };
 
             const result = await runMECH({ ...options, loop: false });
