@@ -349,7 +349,7 @@ export interface SimpleAgent {
     agent_id?: string;
     model?: string;
     modelClass?: string;        // Recommended: "reasoning", "standard", "code", "metacognition"
-    tools?: AgentTool[];
+    tools?: ToolFunction[];     // Functional tools that can be executed
     instructions?: string;
 }
 

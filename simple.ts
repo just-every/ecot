@@ -37,10 +37,10 @@ function toMechAgent(agent: SimpleAgent): MechAgent {
         agent_id: agent.agent_id || `${agentName}-${Date.now()}`,
         model: agent.model,
         modelClass: agent.modelClass,
-        tools: [],  // Tools will be added by MECH
+        tools: agent.tools || [],  // Preserve tools if provided
         instructions: agent.instructions,
         export: () => ({ ...agent } as Record<string, unknown>),
-        getTools: async () => []  // Tools will be added by MECH
+        getTools: async () => agent.tools || []  // Return the agent's tools
     };
 }
 

@@ -146,4 +146,49 @@ describe('Simple MECH API', () => {
         expect(result.mechOutcome?.error).toBeDefined(); 
         expect(result.mechOutcome?.error).toContain('Test error');
     });
+
+    it('should preserve tools from SimpleAgent', async () => {
+        const mockTool = {
+            function: async () => 'tool result',
+            definition: {
+                type: 'function' as const,
+                function: {
+                    name: 'test_tool',
+                    description: 'A test tool',
+                    parameters: {
+                        type: 'object',
+                        properties: {},
+                        required: []
+                    }
+                }
+            }
+        };
+
+        mockedRequest.mockImplementation(() => {
+            return createMockStream(
+                'Task completed with tools',
+                [{ 
+                    name: 'task_complete', 
+                    arguments: { result: 'Tools preserved successfully' } 
+                }]
+            );
+        });
+
+        const result = await runMECH({
+            agent: { 
+                name: 'ToolAgent',
+                tools: [mockTool]
+            },
+            task: 'Test tool preservation',
+            loop: false
+        });
+
+        expect(result.status).toBe('complete');
+        expect(result.mechOutcome?.result).toBe('Tools preserved successfully');
+        expect(mockedRequest).toHaveBeenCalledTimes(1);
+        
+        // Verify the tool was passed to the request
+        const callArgs = mockedRequest.mock.calls[0];
+        expect(callArgs[2].tools).toContain(mockTool);
+    });
 });
