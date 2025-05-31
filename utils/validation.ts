@@ -5,7 +5,7 @@
  */
 
 import { MechValidationError } from './errors.js';
-import type { MechAgent, SimpleMechOptions, SimpleMechWithMemoryOptions } from '../types.js';
+import type { MechAgent, SimpleMechOptions, RunMechOptions } from '../types.js';
 
 /**
  * Validate a MECH agent object
@@ -244,72 +244,6 @@ export function validateSimpleMechOptions(options: unknown): asserts options is 
     }
 }
 
-/**
- * Validate SimpleMechWithMemoryOptions
- */
-export function validateSimpleMechWithMemoryOptions(options: unknown): asserts options is SimpleMechWithMemoryOptions {
-    // First validate as basic options
-    validateSimpleMechOptions(options);
-    
-    const opts = options as any;
-
-    // Validate memory-specific properties
-    if (!('embed' in opts)) {
-        throw new MechValidationError(
-            'Memory options must include an "embed" function',
-            {
-                metadata: { 
-                    providedKeys: Object.keys(opts),
-                    missingRequired: 'embed',
-                    expectedType: '(text: string) => Promise<number[]>'
-                }
-            }
-        );
-    }
-
-    if (typeof opts.embed !== 'function') {
-        throw new MechValidationError(
-            'embed must be a function that converts text to embeddings',
-            {
-                metadata: { 
-                    embedType: typeof opts.embed,
-                    expectedType: 'function',
-                    expectedSignature: '(text: string) => Promise<number[]>'
-                }
-            }
-        );
-    }
-
-    if ('lookupMemories' in opts && opts.lookupMemories !== undefined) {
-        if (typeof opts.lookupMemories !== 'function') {
-            throw new MechValidationError(
-                'lookupMemories must be a function if provided',
-                {
-                    metadata: { 
-                        lookupMemoriesType: typeof opts.lookupMemories,
-                        expectedType: 'function',
-                        expectedSignature: '(embedding: number[]) => Promise<MemoryItem[]>'
-                    }
-                }
-            );
-        }
-    }
-
-    if ('saveMemory' in opts && opts.saveMemory !== undefined) {
-        if (typeof opts.saveMemory !== 'function') {
-            throw new MechValidationError(
-                'saveMemory must be a function if provided',
-                {
-                    metadata: { 
-                        saveMemoryType: typeof opts.saveMemory,
-                        expectedType: 'function',
-                        expectedSignature: '(taskId: string, memories: MemoryItem[]) => Promise<void>'
-                    }
-                }
-            );
-        }
-    }
-}
 
 /**
  * Validate model score input

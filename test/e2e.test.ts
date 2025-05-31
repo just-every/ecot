@@ -7,8 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { 
-    runMECH, 
-    runMECHWithMemory,
+    runMECH,
     setModelScore,
     setMetaFrequency,
     setThoughtDelay,
@@ -22,7 +21,6 @@ import {
     enableTracing,
     globalDebugger,
     type RunMechOptions,
-    type SimpleMechWithMemoryOptions,
     type SimpleAgent
 } from '../index.js';
 
@@ -155,7 +153,7 @@ describe('MECH End-to-End Tests', () => {
                 return Array(1536).fill(0).map(() => Math.random());
             };
 
-            const baseOptions: SimpleMechWithMemoryOptions = {
+            const baseOptions: RunMechOptions = {
                 agent: testAgent,
                 task: 'Learn about problem type A',
                 runAgent: mockRunAgent,
@@ -163,11 +161,11 @@ describe('MECH End-to-End Tests', () => {
             };
 
             // First task - no previous memory
-            const result1 = await runMECHWithMemory(baseOptions);
+            const result1 = await runMECH(baseOptions);
             expect(result1.status).toBe('complete');
 
             // Second task - should have some memory
-            const result2 = await runMECHWithMemory({
+            const result2 = await runMECH({
                 ...baseOptions,
                 task: 'Handle similar problem type A'
             });
@@ -194,14 +192,14 @@ describe('MECH End-to-End Tests', () => {
                 return Array(1536).fill(0).map(() => Math.random());
             };
 
-            const options: SimpleMechWithMemoryOptions = {
+            const options: RunMechOptions = {
                 agent: testAgent,
                 task: 'Perform comprehensive data analysis',
                 runAgent: mockRunAgent,
                 embed: mockEmbed
             };
 
-            const result = await runMECHWithMemory(options);
+            const result = await runMECH(options);
 
             expect(result.status).toBe('complete');
             expect(result.mechOutcome?.result).toBe('Analysis complete');
@@ -296,14 +294,14 @@ describe('MECH End-to-End Tests', () => {
                 return Array(1536).fill(0).map(() => Math.random());
             };
 
-            const options: SimpleMechWithMemoryOptions = {
+            const options: RunMechOptions = {
                 agent: testAgent,
                 task: 'Execute comprehensive MECH workflow',
                 runAgent: mockRunAgent,
                 embed: mockEmbed
             };
 
-            const result = await runMECHWithMemory(options);
+            const result = await runMECH(options);
 
             // Verify comprehensive integration
             expect(result.status).toBe('complete');

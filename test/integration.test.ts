@@ -7,8 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { 
-    runMECH, 
-    runMECHWithMemory,
+    runMECH,
     setModelScore,
     setMetaFrequency,
     setThoughtDelay,
@@ -17,8 +16,7 @@ import {
     getTotalCost,
     resetCostTracker,
     type SimpleAgent,
-    type RunMechOptions,
-    type SimpleMechWithMemoryOptions
+    type RunMechOptions
 } from '../index.js';
 import { createFullContext } from '../utils/internal_utils.js';
 
@@ -139,14 +137,14 @@ describe('MECH Integration Tests', () => {
                 return Array(1536).fill(0).map(() => Math.random());
             };
 
-            const options: SimpleMechWithMemoryOptions = {
+            const options: RunMechOptions = {
                 agent: mockAgent,
                 task: 'Remember this task',
                 runAgent: mockRunAgent,
                 embed: mockEmbed
             };
 
-            const result = await runMECHWithMemory(options);
+            const result = await runMECH(options);
 
             expect(result).toBeDefined();
             expect(result.status).toBe('complete');
@@ -168,14 +166,14 @@ describe('MECH Integration Tests', () => {
                 return Array(1536).fill(0).map(() => Math.random());
             };
 
-            const options: SimpleMechWithMemoryOptions = {
+            const options: RunMechOptions = {
                 agent: mockAgent,
                 task: 'Use memory for this task',
                 runAgent: mockRunAgentWithMemory,
                 embed: mockEmbed
             };
 
-            await runMECHWithMemory(options);
+            await runMECH(options);
 
             expect(mockRunAgentWithMemory).toHaveBeenCalled();
             expect(receivedHistory).toBeDefined();

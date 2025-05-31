@@ -5,8 +5,8 @@
  * for context-aware task execution.
  */
 
-import { runMECHWithMemory } from '../simple.js';
-import type { SimpleMechWithMemoryOptions, MemoryItem } from '../types.js';
+import { runMECH } from '../simple.js';
+import type { RunMechOptions, MemoryItem } from '../types.js';
 
 // Simulate a memory store
 const memoryStore = new Map<string, MemoryItem[]>();
@@ -81,7 +81,7 @@ This builds on our earlier discussions about Python programming.`;
     };
     
     // Configure MECH with memory
-    const options: SimpleMechWithMemoryOptions = {
+    const options: RunMechOptions = {
         agent: {
             name: 'MemoryBot',
             instructions: 'You are an assistant with memory of past conversations.'
@@ -101,7 +101,7 @@ This builds on our earlier discussions about Python programming.`;
     
     try {
         console.log('Starting MECH with memory features...\n');
-        const result = await runMECHWithMemory(options);
+        const result = await runMECH(options);
         
         console.log('\n\n✅ MECH Result:');
         console.log('-'.repeat(50));

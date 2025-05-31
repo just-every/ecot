@@ -11,13 +11,11 @@ import type {
     MechResult, 
     SimpleAgent,
     RunMechOptions,
-    SimpleMechOptions,
-    SimpleMechWithMemoryOptions
+    SimpleMechOptions
 } from './types.js';
 import { createFullContext, globalCostTracker } from './utils/internal_utils.js';
 import { 
     validateSimpleMechOptions, 
-    validateSimpleMechWithMemoryOptions, 
     sanitizeTextInput 
 } from './utils/validation.js';
 import { withErrorHandling } from './utils/errors.js';
@@ -50,6 +48,7 @@ function toMechAgent(agent: SimpleAgent): MechAgent {
  * 
  * @example
  * ```typescript
+ * // Basic usage
  * const result = await runMECH({
  *     agent: { name: 'MyAgent' },
  *     task: 'Analyze this code and suggest improvements',
@@ -57,6 +56,20 @@ function toMechAgent(agent: SimpleAgent): MechAgent {
  *         // Your LLM call here
  *         return { response: 'Analysis complete' };
  *     }
+ * });
+ * 
+ * // With memory
+ * const result = await runMECH({
+ *     agent: { name: 'MyAgent' },
+ *     task: 'Build a web app',
+ *     runAgent: async (agent, input, history) => {
+ *         // Your LLM call here
+ *         return { response: 'App built' };
+ *     },
+ *     // Optional memory functions
+ *     embed: async (text) => embeddings.create(text),
+ *     lookupMemories: async (embedding) => db.findSimilar(embedding),
+ *     saveMemory: async (taskId, memories) => db.save(taskId, memories)
  * });
  * ```
  */
@@ -72,47 +85,6 @@ export const runMECH = withErrorHandling(
         const context: SimpleMechOptions = {
             runAgent: options.runAgent,
             onHistory: options.onHistory,
-            onStatus: options.onStatus
-        };
-        
-        const fullContext = createFullContext(context);
-        return internalRunMECH(mechAgent, sanitizedTask, fullContext, options.loop || false, options.model);
-    },
-    'simple_api'
-);
-
-/**
- * Run MECH with memory using a simple interface
- * 
- * @example
- * ```typescript
- * const result = await runMECHWithMemory({
- *     agent: { name: 'MyAgent' },
- *     task: 'Build a web app',
- *     runAgent: async (agent, input, history) => {
- *         // Your LLM call here
- *         return { response: 'App built' };
- *     },
- *     // Optional memory functions
- *     embed: async (text) => embeddings.create(text),
- *     lookupMemories: async (embedding) => db.findSimilar(embedding)
- * });
- * ```
- */
-export const runMECHWithMemory = withErrorHandling(
-    async (options: SimpleMechWithMemoryOptions): Promise<MechResult> => {
-        // Validate input including memory-specific requirements
-        validateSimpleMechWithMemoryOptions(options);
-        
-        // Sanitize task input
-        const sanitizedTask = sanitizeTextInput(options.task);
-        
-        const mechAgent = toMechAgent(options.agent);
-        
-        // Build context with memory features
-        const context: SimpleMechOptions = {
-            runAgent: options.runAgent,
-            onHistory: options.onHistory,
             onStatus: options.onStatus,
             embed: options.embed,
             lookupMemories: options.lookupMemories,
@@ -120,10 +92,17 @@ export const runMECHWithMemory = withErrorHandling(
         };
         
         const fullContext = createFullContext(context);
-        return internalRunMECHWithMemory(mechAgent, sanitizedTask, fullContext);
+        
+        // Use memory wrapper if memory functions are provided
+        if (options.embed) {
+            return internalRunMECHWithMemory(mechAgent, sanitizedTask, fullContext);
+        } else {
+            return internalRunMECH(mechAgent, sanitizedTask, fullContext, options.loop || false, options.model);
+        }
     },
     'simple_api'
 );
+
 
 /**
  * Get the total cost of all MECH operations

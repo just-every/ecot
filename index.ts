@@ -16,7 +16,6 @@
 export {
     // Main functions
     runMECH,
-    runMECHWithMemory,
     getTotalCost,
     resetCostTracker,
     
@@ -149,7 +148,6 @@ export {
     validateTask,
     validateRunAgent,
     validateSimpleMechOptions,
-    validateSimpleMechWithMemoryOptions,
     validateModelScore,
     validateMetaFrequency,
     validateThoughtDelay,

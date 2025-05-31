@@ -384,17 +384,9 @@ export interface RunMechOptions extends SimpleMechOptions {
     task: string;
     loop?: boolean;
     model?: string;
-}
-
-/**
- * Options for running MECH with memory using the simple API
- */
-export interface SimpleMechWithMemoryOptions extends SimpleMechOptions {
-    agent: SimpleAgent;
-    task: string;
     
-    /** Required: Function to generate embeddings from text */
-    embed: (text: string) => Promise<number[]>;
+    /** Optional: Function to generate embeddings from text for memory features */
+    embed?: (text: string) => Promise<number[]>;
     
     /** Optional: Function to lookup memories by embedding */
     lookupMemories?: (embedding: number[]) => Promise<MemoryItem[]>;
@@ -402,6 +394,7 @@ export interface SimpleMechWithMemoryOptions extends SimpleMechOptions {
     /** Optional: Function to save memories */
     saveMemory?: (taskId: string, memories: MemoryItem[]) => Promise<void>;
 }
+
 
 // ============================================================================
 // Configuration Types

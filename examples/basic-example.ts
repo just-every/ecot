@@ -4,7 +4,7 @@
  * This shows how easy it is to use MECH with minimal setup
  */
 
-import { runMECH, runMECHWithMemory, getTotalCost } from '../index.js';
+import { runMECH, getTotalCost } from '../index.js';
 
 // Example 1: Basic usage - just provide agent name and LLM function
 async function basicExample() {
@@ -61,7 +61,7 @@ async function memoryExample() {
     // Simple in-memory storage for demo
     const memories: any[] = [];
     
-    const result = await runMECHWithMemory({
+    const result = await runMECH({
         agent: { name: 'MemoryAgent' },
         task: 'Remember that the capital of France is Paris, then answer: What is the capital of France?',
         runAgent: async (_agent, _input, _history) => {
