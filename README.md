@@ -3,316 +3,505 @@
 [![npm version](https://badge.fury.io/js/@just-every%2Fmech.svg)](https://www.npmjs.com/package/@just-every/mech)
 [![GitHub Actions](https://github.com/just-every/MECH/workflows/Release/badge.svg)](https://github.com/just-every/MECH/actions)
 
-MECH - Advanced LLM orchestration with meta-cognition
+**MECH** - Advanced LLM orchestration with meta-cognition, ensemble model rotation, and intelligent thought management.
 
-## Overview
+## 🚀 What is MECH?
 
-MECH is an advanced orchestration system for LLM agents that combines key capabilities:
+MECH is a sophisticated orchestration system for LLM agents that goes beyond simple API calls. It provides:
 
-- **Ensemble**: Multiple models are used in parallel or sequence, with their outputs compared, judged, or merged for higher reliability.
-- **Chain-of-thought**: The agent maintains a connected thread of thoughts, allowing for multi-step reasoning and context-aware problem solving.
-- **Meta-cognition**: The system periodically "thinks about its own thinking," analyzing recent reasoning history and adjusting its approach if needed.
-- **Hierarchy**: Model selection is weighted by dynamic scores, so more capable models are chosen more often, but all models can participate.
-- **Chain-of-thought**: The agent maintains a connected thread of thoughts, allowing for multi-step reasoning and context-aware problem solving.
-- **Hierarchy**: Model selection is weighted by a dynamic score, so more capable models are chosen more often, but all models can participate.
+- **🤖 Intelligent Model Rotation**: Automatically selects the best model for each task based on performance scores
+- **🧠 Meta-cognition**: The system "thinks about its thinking" and adapts its strategy
+- **⚡ Ensemble Power**: Leverages multiple models for higher reliability and better results
+- **💭 Thought Management**: Paces reasoning with configurable delays and interruption handling
+- **📚 Memory Integration**: Optional long-term memory with vector similarity search
+- **💰 Cost Tracking**: Built-in cost monitoring across all operations
 
-## Installation
+## 📦 Installation
 
 ```bash
 npm install @just-every/mech
 ```
 
-## Quick Start - Simple API
+## ⚡ Quick Start
 
-The simple API requires minimal setup - just provide your agent and a function to run it:
+Get started with just 3 lines of code:
 
 ```typescript
 import { runMECH } from '@just-every/mech';
 
-// Basic usage - only requires agent name and runAgent function
 const result = await runMECH({
-    agent: { name: 'MyAgent' },
-    task: 'Analyze this code and suggest improvements',
+    agent: { name: 'CodeReviewer' },
+    task: 'Review this function for potential improvements',
     runAgent: async (agent, input, history) => {
-        // Your LLM call here (OpenAI, Anthropic, etc.)
-        const response = await callYourLLM(input, history);
-        return { response };
+        // Your LLM integration (OpenAI, Anthropic, etc.)
+        return { response: await yourLLM.complete(input) };
     }
 });
 
-console.log(result.outcome); // 'completed' or 'fatal_error'
-console.log(result.output);  // The agent's response
+console.log(result.status);        // 'complete' or 'fatal_error'
+console.log(result.mechOutcome);   // The agent's response
 ```
 
-### With Optional Callbacks
+## 🎯 Real-World Examples
+
+### 🔍 Code Analysis Agent
+
+```typescript
+import { runMECH } from '@just-every/mech';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const result = await runMECH({
+    agent: { 
+        name: 'CodeAnalyzer',
+        instructions: 'You are an expert code reviewer. Analyze code for bugs, performance issues, and best practices.'
+    },
+    task: `Please review this TypeScript function:
+
+function processData(data: any[]): any {
+    let result = [];
+    for (let i = 0; i < data.length; i++) {
+        if (data[i].active) {
+            result.push(data[i]);
+        }
+    }
+    return result;
+}`,
+    runAgent: async (agent, input, history) => {
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4',
+            messages: [
+                { role: 'system', content: agent.instructions },
+                ...history.map(h => ({ role: h.role, content: h.content })),
+                { role: 'user', content: input }
+            ]
+        });
+        return { response: response.choices[0].message.content };
+    },
+    onStatus: (status) => console.log('📊 Status:', status.type),
+    onHistory: (item) => console.log('💬 New message:', item.role)
+});
+
+console.log('✅ Analysis complete:', result.mechOutcome?.result);
+```
+
+### 🧠 Multi-Turn Problem Solving
 
 ```typescript
 const result = await runMECH({
     agent: { 
-        name: 'CodeAnalyzer',
-        model: 'claude-3-opus-20240229',  // optional: specify model
-        tools: [/* your tools */]         // optional: provide tools
+        name: 'MathTutor',
+        instructions: 'You are a patient math tutor. Break down complex problems step by step.'
     },
-    task: 'Review this pull request',
+    task: 'Help me solve this calculus problem: Find the derivative of f(x) = x²e^x',
+    loop: true,  // Enable multi-turn conversation
     runAgent: async (agent, input, history) => {
-        // Your LLM implementation
-        return await yourLLM.complete(input, history);
-    },
-    loop: true,  // optional: allow multi-turn conversation
-    
-    // Optional callbacks
-    onHistory: (item) => console.log('New history:', item),
-    onStatus: (status) => console.log('Status update:', status)
-});
-```
-
-### With Memory Features
-
-```typescript
-const result = await runMECH({
-    agent: { name: 'ProjectBuilder' },
-    task: 'Create a React dashboard with user authentication',
-    runAgent: async (agent, input, history) => {
-        return await yourLLM.complete(input, history);
-    },
-    
-    // Optional memory functions - provide only what you need
-    embed: async (text) => {
-        // Your embedding function (OpenAI, Cohere, etc.)
-        return await embeddings.create(text);
-    },
-    lookupMemories: async (embedding) => {
-        // Your vector DB lookup (Pinecone, Weaviate, etc.)
-        return await vectorDB.findSimilar(embedding, 10);
-    },
-    saveMemory: async (taskId, memories) => {
-        // Your memory storage
-        await db.saveMemories(taskId, memories);
+        // Your LLM implementation here
+        return { response: await callYourLLM(input, history) };
     }
 });
 ```
 
-### Cost Tracking
+### 📚 Memory-Enhanced Research Assistant
 
 ```typescript
-import { getTotalCost, resetCostTracker } from '@just-every/mech';
+import { runMECH } from '@just-every/mech';
 
-// Run your MECH operations...
-
-// Check total cost across all MECH runs
-const totalCost = getTotalCost();
-console.log(`Total cost: $${totalCost.toFixed(4)}`);
-
-// Reset for new session
-resetCostTracker();
-```
-
-## Advanced Usage
-
-For users who need more control, MECH provides the full API with all configuration options:
-
-```typescript
-import { runMECHAdvanced, mechState, set_thought_delay } from '@just-every/mech';
-
-// Adjust MECH behavior
-mechState.metaFrequency = '10';  // Meta-cognition every 10 requests
-set_thought_delay('8');          // 8 second delay between thoughts
-
-// Use the advanced API with full MechContext
-const context: MechContext = {
-    // ... your full context implementation
-};
-
-const result = await runMECHAdvanced(agent, task, context, true);
-```
-
-## Features
-
-### Model Rotation
-MECH automatically rotates between models based on their performance scores:
-
-```typescript
-import { rotateModel } from '@just-every/mech';
-
-const nextModel = rotateModel(agent, 'reasoning');
-```
-
-### Meta-cognition
-The system periodically analyzes its own performance and can:
-- Adjust model scores
-- Enable/disable models
-- Change meta-cognition frequency
-- Inject strategic thoughts
-
-### Thought Delay
-Control the pacing of agent thoughts:
-
-```typescript
-import { setThoughtDelay, getThoughtDelay } from '@just-every/mech';
-
-// Set delay to 8 seconds
-setThoughtDelay('8');
-
-// Get current delay
-const currentDelay = getThoughtDelay();
-```
-
-### State Management
-Access and modify MECH state:
-
-```typescript
-import { mechState, setModelScore, disableModel } from '@just-every/mech';
-
-// Set a model's score
-setModelScore('gpt-4-turbo-preview', '85');
-
-// Disable a model temporarily
-disableModel('claude-2.1');
-
-// Check state
-console.log(mechState.metaFrequency); // '5'
-console.log(mechState.disabledModels); // Set { 'claude-2.1' }
-```
-
-## What MECH Provides
-
-When you use MECH, you automatically get:
-
-1. **Intelligent Model Rotation** - MECH rotates between different models based on performance scores
-2. **Cost Tracking** - Built-in cost tracking from @just-every/ensemble
-3. **Meta-cognition** - Periodic self-reflection to improve performance
-4. **Thought Management** - Pacing and delay controls for better reasoning
-5. **History Management** - Automatic conversation history tracking
-6. **Task Completion Tools** - Built-in tools for marking tasks complete or failed
-
-## API Reference
-
-### Simple API Functions
-
-- `runMECH(options)` - Run MECH with minimal setup
-  - `options.agent` - Simple agent object (only `name` is required)
-  - `options.task` - The task to perform
-  - `options.runAgent` - Your LLM function
-  - `options.loop?` - Enable multi-turn (default: false)
-  - `options.model?` - Override model selection
-  - `options.embed?` - Text embedding function (enables memory features)
-  - `options.lookupMemories?` - Vector similarity search
-  - `options.saveMemory?` - Memory persistence
-  - `options.onHistory?` - History callback
-  - `options.onStatus?` - Status update callback
-
-- `getTotalCost()` - Get total cost across all MECH operations
-- `resetCostTracker()` - Reset the cost tracker
-
-### Advanced API Functions
-
-- `runMECHAdvanced(agent, content, context, loop?, model?)` - Full control with MechContext
-- `runMECHWithMemoryAdvanced(agent, content, context, loop?, model?)` - Full control with memory
-
-### State Management
-
-- `mechState` - Global MECH state object
-- `setMetaFrequency(frequency)` - Set meta-cognition frequency (5, 10, 20, or 40)
-- `setModelScore(modelId, score)` - Set a model's performance score (0-100)
-- `disableModel(modelId)` - Temporarily disable a model
-- `enableModel(modelId)` - Re-enable a disabled model
-
-### Thought Management
-
-- `getThoughtDelay()` - Get current thought delay
-- `setThoughtDelay(delay)` - Set thought delay (0, 2, 4, 8, 16, 32, 64, or 128 seconds)
-- `runThoughtDelay()` - Execute the thought delay
-- `setDelayInterrupted(interrupted)` - Interrupt/resume thought delay
-
-### Tools
-
-- `getMECHTools(context)` - Get MECH-specific tools (taskComplete, taskFatalError)
-- `getThoughtTools(context)` - Get thought management tools
-- `getMetaCognitionTools(context)` - Get meta-cognition tools
-
-## Migration from Full Context
-
-If you're migrating from using the full MechContext:
-
-```typescript
-// Before - complex setup
-const context: MechContext = {
-    sendComms: comms.send,
-    getCommunicationManager: () => comms,
-    addHistory: history.add,
-    getHistory: history.get,
-    // ... many more fields
-};
-const result = await runMECH(agent, task, context, true);
-
-// After - simple setup
 const result = await runMECH({
-    agent: { name: 'MyAgent' },
-    task: task,
-    runAgent: myLLMFunction
+    agent: { 
+        name: 'ResearchAssistant',
+        instructions: 'You are a research assistant with access to past conversations and knowledge.'
+    },
+    task: 'Research the latest developments in quantum computing and compare with our previous discussion',
+    runAgent: async (agent, input, history) => {
+        return { response: await yourLLM.complete(input, history) };
+    },
+    
+    // Memory features (optional)
+    embed: async (text) => {
+        // Generate embeddings for memory storage
+        const response = await openai.embeddings.create({
+            model: 'text-embedding-3-small',
+            input: text
+        });
+        return response.data[0].embedding;
+    },
+    
+    lookupMemories: async (embedding) => {
+        // Search your vector database
+        const results = await vectorDB.query({
+            vector: embedding,
+            topK: 5,
+            includeMetadata: true
+        });
+        return results.matches.map(match => ({
+            text: match.metadata.text,
+            metadata: { score: match.score, ...match.metadata }
+        }));
+    },
+    
+    saveMemory: async (taskId, memories) => {
+        // Save memories to your database
+        for (const memory of memories) {
+            await db.memories.create({
+                taskId,
+                text: memory.text,
+                metadata: memory.metadata,
+                timestamp: new Date()
+            });
+        }
+    }
 });
 ```
 
-## How It Works
+## 🛠️ Advanced Configuration
 
-The simple API:
-1. **Provides sensible defaults** for all required MechContext fields
-2. **Imports CostTracker** from @just-every/ensemble automatically
-3. **Manages history** internally if you don't provide your own
-4. **Routes status messages** to your callbacks or console
-5. **Converts simple agents** to full MechAgent interface
+### 🎛️ Fine-tune MECH Behavior
 
-This means you can get started with just:
-- An agent name
-- A task description  
-- A function that calls your LLM
+```typescript
+import { runMECH, setMetaFrequency, setThoughtDelay, setModelScore } from '@just-every/mech';
 
-Everything else is handled automatically!
+// Configure meta-cognition frequency
+setMetaFrequency('10'); // Analyze performance every 10 LLM requests
 
-## Examples
+// Set thought delays for better reasoning
+setThoughtDelay('4'); // 4-second pause between thoughts
 
-The `examples/` directory contains practical demonstrations:
+// Adjust model performance scores
+setModelScore('gpt-4-turbo', '95');     // High score = used more often
+setModelScore('claude-3-sonnet', '85'); // Lower score = used less often
 
-### Running Examples
-
-```bash
-npm run build
-node dist/examples/simple-mech.js
+const result = await runMECH({
+    agent: { name: 'OptimizedAgent' },
+    task: 'Complex reasoning task requiring multiple models',
+    runAgent: yourLLMFunction
+});
 ```
 
-### Available Examples
+### 📊 Cost Monitoring
 
-1. **simple-mech.ts** - Basic MECH usage with minimal setup
-2. **mech-with-memory.ts** - Memory features for context-aware execution
-3. **meta-cognition.ts** - Meta-cognition and model rotation
-4. **thought-management.ts** - Thought delays and interruption handling
+```typescript
+import { runMECH, getTotalCost, resetCostTracker } from '@just-every/mech';
 
-## Testing
+// Reset cost tracking for new session
+resetCostTracker();
+
+// Run multiple MECH operations
+await runMECH({ /* options */ });
+await runMECH({ /* options */ });
+await runMECH({ /* options */ });
+
+// Check total costs
+const totalCost = getTotalCost();
+console.log(`💰 Total session cost: $${totalCost.toFixed(4)}`);
+
+// Set up cost alerts
+if (totalCost > 5.0) {
+    console.warn('⚠️ High cost detected! Consider optimizing.');
+}
+```
+
+## 🎮 Interactive Examples
+
+Run these examples to see MECH in action:
 
 ```bash
-# Run all tests
+# Build the project
+npm run build
+
+# Try different examples
+node dist/examples/simple-mech.js          # Basic usage
+node dist/examples/mech-with-memory.js     # Memory features  
+node dist/examples/meta-cognition.js       # Self-reflection
+node dist/examples/thought-management.js   # Thought pacing
+```
+
+## 🔧 Integration Patterns
+
+### 🌐 Express.js API Server
+
+```typescript
+import express from 'express';
+import { runMECH } from '@just-every/mech';
+
+const app = express();
+app.use(express.json());
+
+app.post('/api/analyze', async (req, res) => {
+    try {
+        const { task, agentType = 'Analyst' } = req.body;
+        
+        const result = await runMECH({
+            agent: { name: agentType },
+            task: task,
+            runAgent: async (agent, input, history) => {
+                // Your LLM integration
+                return { response: await yourLLM.complete(input) };
+            }
+        });
+        
+        res.json({
+            success: result.status === 'complete',
+            data: result.mechOutcome?.result,
+            cost: result.totalCost,
+            duration: result.durationSec
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+```
+
+### ⚛️ React Component
+
+```typescript
+import React, { useState } from 'react';
+import { runMECH } from '@just-every/mech';
+
+export function AIAssistant() {
+    const [response, setResponse] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleQuery = async (query: string) => {
+        setLoading(true);
+        try {
+            const result = await runMECH({
+                agent: { name: 'Assistant' },
+                task: query,
+                runAgent: async (agent, input, history) => {
+                    // Your LLM call
+                    return { response: await callLLM(input) };
+                },
+                onStatus: (status) => {
+                    console.log('Status:', status.type);
+                }
+            });
+            setResponse(result.mechOutcome?.result || 'No response');
+        } catch (error) {
+            setResponse('Error: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div>
+            <button onClick={() => handleQuery('Hello!')}>
+                {loading ? 'Thinking...' : 'Ask AI'}
+            </button>
+            <div>{response}</div>
+        </div>
+    );
+}
+```
+
+## 📚 Complete API Reference
+
+### Primary Function
+
+#### `runMECH(options)`
+
+The main function for running MECH with any configuration:
+
+```typescript
+interface RunMechOptions {
+    // Required
+    agent: SimpleAgent;           // Agent configuration
+    task: string;                 // Task description
+    runAgent: LLMFunction;        // Your LLM integration function
+    
+    // Optional Core
+    loop?: boolean;               // Enable multi-turn conversation (default: false)
+    model?: string;               // Override model selection
+    onHistory?: HistoryCallback;  // Called when history items are added
+    onStatus?: StatusCallback;    // Called for status updates
+    
+    // Optional Memory Features
+    embed?: EmbedFunction;        // Enable memory with embedding function
+    lookupMemories?: LookupFn;    // Vector similarity search
+    saveMemory?: SaveMemoryFn;    // Memory persistence
+}
+```
+
+**Example Response:**
+```typescript
+{
+    status: 'complete',           // 'complete' | 'fatal_error'
+    mechOutcome: {
+        status: 'complete',
+        result: 'Task completed successfully',
+        event: { /* ensemble event data */ }
+    },
+    history: [/* conversation history */],
+    durationSec: 12.5,
+    totalCost: 0.0043
+}
+```
+
+### State Management Functions
+
+```typescript
+// Meta-cognition
+setMetaFrequency('5' | '10' | '20' | '40')  // How often to self-reflect
+getMetaFrequency(): string                   // Current frequency
+
+// Model scoring (0-100, higher = used more often)
+setModelScore('gpt-4', '90')                // Set model performance score
+getModelScore('gpt-4'): number              // Get current score
+disableModel('claude-2')                    // Temporarily disable model
+enableModel('claude-2')                     // Re-enable disabled model
+
+// Thought management
+setThoughtDelay('0' | '2' | '4' | '8' | '16' | '32' | '64' | '128')  // Seconds
+getThoughtDelay(): string                   // Current delay setting
+```
+
+### Utility Functions
+
+```typescript
+// Cost tracking
+getTotalCost(): number          // Total cost across all MECH runs
+resetCostTracker(): void        // Reset cost counter
+
+// State inspection  
+mechState.llmRequestCount       // Number of LLM requests made
+mechState.disabledModels        // Set of disabled model IDs
+mechState.modelScores           // Current model performance scores
+```
+
+## 🔍 How MECH Works
+
+### 🔄 The MECH Loop
+
+1. **Model Selection**: Chooses optimal model based on performance scores and task type
+2. **Task Execution**: Runs your LLM function with enhanced context and tools
+3. **Meta-cognition**: Periodically analyzes performance and adjusts strategy
+4. **Memory Integration**: Optionally stores and retrieves relevant context
+5. **Cost Tracking**: Monitors expenses across all operations
+
+### 🧠 Meta-cognition in Action
+
+MECH can automatically:
+- Adjust model scores based on success/failure rates
+- Change meta-cognition frequency for better or worse performing agents
+- Disable underperforming models temporarily
+- Inject strategic thoughts to guide better reasoning
+
+### 🎯 Model Rotation Strategy
+
+Models are selected using weighted random selection:
+- Higher scored models (90-100) are chosen more frequently
+- Lower scored models (10-30) still participate but less often
+- Disabled models (score 0) are excluded entirely
+- Diversity is maintained by avoiding consecutive model reuse
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+**❌ "Model not available" errors**
+```typescript
+// Solution: Check model availability and adjust scores
+import { listDisabledModels, enableModel } from '@just-every/mech';
+
+console.log(listDisabledModels());
+enableModel('your-model-id');
+```
+
+**❌ High costs**
+```typescript
+// Solution: Monitor and control costs
+import { getTotalCost, resetCostTracker } from '@just-every/mech';
+
+const cost = getTotalCost();
+if (cost > 1.0) {
+    console.warn('Cost limit reached');
+    resetCostTracker(); // Start fresh
+}
+```
+
+**❌ Memory not working**
+```typescript
+// Solution: Ensure embed function is provided
+const result = await runMECH({
+    agent: { name: 'Agent' },
+    task: 'Remember this',
+    runAgent: myLLM,
+    embed: async (text) => {
+        // This enables memory features
+        return await generateEmbedding(text);
+    }
+});
+```
+
+### Performance Tips
+
+1. **Optimize Model Scores**: Regularly review and adjust based on performance
+2. **Use Appropriate Delays**: Balance reasoning quality with response time
+3. **Monitor Memory Usage**: Implement efficient vector storage and retrieval
+4. **Batch Operations**: Group related tasks to minimize overhead
+
+## 🤝 Migration Guide
+
+### From v0.1.3 and earlier
+
+The API has been simplified! Replace `runMECHWithMemory` with `runMECH`:
+
+```typescript
+// Before
+await runMECHWithMemory({ 
+    agent, task, runAgent, 
+    embed, lookupMemories, saveMemory 
+});
+
+// After  
+await runMECH({ 
+    agent, task, runAgent,
+    embed, lookupMemories, saveMemory  // Same parameters!
+});
+```
+
+## 📁 Project Structure
+
+```
+@just-every/mech/
+├── examples/           # Practical examples and demos
+├── test/              # Comprehensive test suite (118 tests)
+├── utils/             # Internal utilities and helpers
+├── index.ts           # Main exports and API
+├── simple.ts          # Simple API implementation  
+├── types.ts           # TypeScript definitions
+├── mech_state.ts      # State management
+├── mech_tools.ts      # Core MECH functionality
+├── thought_utils.ts   # Thought delay management
+└── meta_cognition.ts  # Meta-cognition implementation
+```
+
+## 🧪 Testing
+
+```bash
+# Run all tests (118 tests)
 npm test
 
-# Run specific test file
-npm test mech_state.test.ts
+# Run specific test suites
+npm test mech_state.test.ts      # State management
+npm test integration.test.ts     # Integration tests  
+npm test performance.test.ts     # Performance tests
+
+# Build and test examples
+npm run build
+npm test && npm run build        # Pre-commit workflow
 ```
 
-## Project Structure
+## 📄 License
 
+MIT - feel free to use in your projects!
+
+---
+
+**Ready to supercharge your LLM applications?** Install MECH today and experience intelligent model orchestration with meta-cognition! 🚀
+
+```bash
+npm install @just-every/mech
 ```
-mech/
-├── examples/      # Practical examples
-├── test/          # Test suite
-├── utils/         # Internal utilities
-├── index.ts       # Main exports
-├── simple.ts      # Simple API implementation
-├── types.ts       # TypeScript type definitions
-├── mech_state.ts  # State management
-├── mech_tools.ts  # Core MECH tools
-├── thought_utils.ts # Thought management
-└── meta_cognition.ts # Meta-cognition implementation
-```
-
-## License
-
-MIT
