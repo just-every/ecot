@@ -12,7 +12,7 @@ import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
 import { rotateModel } from './model_rotation.js';
 import { ToolFunction } from '@just-every/ensemble';
-import { MESSAGE_TYPES, AGENT_STATUS, TASK_STATUS, DEFAULT_META_FREQUENCY } from './constants.js';
+import { MESSAGE_TYPES, AGENT_STATUS, TASK_STATUS, DEFAULT_META_FREQUENCY } from './utils/constants.js';
 
 // Shared state for MECH execution
 let mechComplete = false;
@@ -223,8 +223,23 @@ export async function runMECH(
 }
 
 /**
- * Tool function to mark a task as successfully completed.
- * This also triggers automatic handling of git repositories for the task.
+ * Mark a task as successfully completed with automatic metrics reporting
+ * 
+ * This function should be called when the agent has successfully completed
+ * its assigned task. It automatically calculates execution metrics, triggers
+ * git repository handling, and provides comprehensive completion reporting.
+ * 
+ * @param result - Detailed description of what was accomplished
+ * @param context - MECH execution context with communication capabilities
+ * @returns Promise resolving to formatted completion message with execution metrics
+ * 
+ * @example
+ * ```typescript
+ * await taskComplete(
+ *   "Successfully analyzed the codebase and identified 3 optimization opportunities",
+ *   context
+ * );
+ * ```
  */
 export async function taskComplete(result: string, context: MechContext): Promise<string> {
     if (typeof result !== 'string') {
@@ -257,7 +272,23 @@ export async function taskComplete(result: string, context: MechContext): Promis
 }
 
 /**
- * Tool function to mark a task as failed with a fatal error.
+ * Report a fatal error that prevents task completion
+ * 
+ * Use this function when the agent encounters an unrecoverable error
+ * that makes task completion impossible. This triggers error reporting
+ * and cleanup procedures.
+ * 
+ * @param error - Detailed description of the fatal error that occurred
+ * @param context - MECH execution context for error reporting
+ * @returns Formatted error message with diagnostic information
+ * 
+ * @example
+ * ```typescript
+ * const errorMsg = taskFatalError(
+ *   "Unable to access required API endpoint after 3 retry attempts",
+ *   context
+ * );
+ * ```
  */
 export function taskFatalError(error: string, context: MechContext): string {
     if (typeof error !== 'string') {
@@ -290,7 +321,20 @@ export function taskFatalError(error: string, context: MechContext): string {
 }
 
 /**
- * Get all MECH tools as an array of tool definitions
+ * Get all MECH core tools that enable task completion and error reporting
+ * 
+ * These tools are automatically added to agents and provide the fundamental
+ * capabilities for task lifecycle management. All MECH agents receive these
+ * tools regardless of their custom tool configuration.
+ * 
+ * @param context - MECH execution context for tool creation
+ * @returns Array of tool functions for task management
+ * 
+ * @example
+ * ```typescript
+ * const coreTools = getMECHTools(context);
+ * const allTools = [...coreTools, ...customTools];
+ * ```
  */
 export function getMECHTools(context: MechContext): ToolFunction[] {
     if (!context.createToolFunction) {

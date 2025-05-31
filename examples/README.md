@@ -54,9 +54,9 @@ Demonstrates thought delays and interruption handling.
 
 ### Simple API
 ```typescript
-import { runSimpleMECH } from '@just-every/mech';
+import { runMECH } from '@just-every/mech';
 
-const result = await runSimpleMECH({
+const result = await runMECH({
     agent: { name: 'MyBot' },
     task: 'Solve this problem',
     runAgent: myLLMFunction
@@ -102,7 +102,7 @@ const currentDelay = getThoughtDelay(); // Returns '4'
 
 ## Integration Tips
 
-1. **Start Simple**: Use `runSimpleMECH` for basic tasks
+1. **Start Simple**: Use `runMECH` for basic tasks
 2. **Add Memory**: Include embedding functions for context awareness
 3. **Enable Meta-cognition**: Let MECH self-optimize with meta-cognition
 4. **Custom Context**: Build full `MechContext` for advanced features

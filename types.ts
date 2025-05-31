@@ -37,7 +37,7 @@ export interface MechResult {
 }
 
 // Import and re-export types from constants
-import type { MetaFrequency, ThoughtDelay } from './constants.js';
+import type { MetaFrequency, ThoughtDelay } from './utils/constants.js';
 export type { MetaFrequency, ThoughtDelay };
 
 // ============================================================================
@@ -161,7 +161,30 @@ export interface LLMResponse {
 
 /**
  * Complete MECH context with all required and optional fields
- * This is the full interface that MECH components expect
+ * 
+ * This is the full interface that MECH components expect. It provides:
+ * - Core functions: history management, communication, agent execution
+ * - Optional features: memory, project management, debugging
+ * - Tool creation utilities for extending agent capabilities
+ * 
+ * Most users will use SimpleMechOptions instead, which is automatically
+ * converted to MechContext by createFullContext().
+ * 
+ * @example
+ * ```typescript
+ * // Manual context creation (advanced users)
+ * const context: MechContext = {
+ *   sendComms: (msg) => console.log(msg),
+ *   getCommunicationManager: () => commManager,
+ *   addHistory: (item) => history.push(item),
+ *   getHistory: () => history,
+ *   costTracker: tracker,
+ *   // ... other required fields
+ * };
+ * 
+ * // Use with MECH
+ * const result = await runMECH(agent, task, context);
+ * ```
  */
 export interface MechContext {
     // ========================================================================
@@ -361,6 +384,23 @@ export interface RunMechOptions extends SimpleMechOptions {
     task: string;
     loop?: boolean;
     model?: string;
+}
+
+/**
+ * Options for running MECH with memory using the simple API
+ */
+export interface SimpleMechWithMemoryOptions extends SimpleMechOptions {
+    agent: SimpleAgent;
+    task: string;
+    
+    /** Required: Function to generate embeddings from text */
+    embed: (text: string) => Promise<number[]>;
+    
+    /** Optional: Function to lookup memories by embedding */
+    lookupMemories?: (embedding: number[]) => Promise<MemoryItem[]>;
+    
+    /** Optional: Function to save memories */
+    saveMemory?: (taskId: string, memories: MemoryItem[]) => Promise<void>;
 }
 
 // ============================================================================

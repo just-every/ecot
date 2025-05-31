@@ -1,8 +1,43 @@
 # MECH Utilities
 
-This directory contains internal utilities that support the MECH (Meta-cognition Ensemble Chain-of-thought Hierarchy) system.
+This directory contains all utility modules that support the MECH (Meta-cognition Ensemble Chain-of-thought Hierarchy) system.
 
 ## Module Overview
+
+### Core System Utilities
+
+### `constants.ts`
+System-wide constants and configuration values.
+- Valid meta-cognition frequencies
+- Thought delay options
+- Default values and limits
+- Message types and status codes
+
+### `errors.ts`
+Comprehensive error handling system.
+- Custom error classes (MechError, MechValidationError, etc.)
+- Error context and suggestions
+- Error wrapping utilities
+
+### `validation.ts`
+Input validation and sanitization.
+- Agent, task, and options validation
+- Security-focused input sanitization
+- Type guards and assertions
+
+### `performance.ts`
+Performance optimization utilities.
+- Intelligent caching system
+- Optimized delay implementations
+- Object pooling and batch processing
+- Utility functions (debounce, throttle)
+
+### `debug.ts`
+Advanced debugging and logging system.
+- Configurable debug levels
+- Execution tracing
+- Model selection logging
+- Performance metrics collection
 
 ### `internal_utils.ts`
 Core utilities for building MECH contexts with sensible defaults.
@@ -63,12 +98,20 @@ const result = await runMECHAdvanced(agent, task, context);
 4. **Zero Dependencies**: Only depends on types
 5. **Testable**: Pure functions where possible
 
-## Future Utilities
+## Organization Principles
 
-This directory is reserved for additional MECH-specific utilities as the system grows:
+1. **Logical Grouping**: Related functionality is grouped together
+2. **Clear Dependencies**: Utils depend only on types and each other
+3. **Modular Design**: Each utility can be used independently
+4. **Consistent Patterns**: All utils follow similar design patterns
 
-- Model selection strategies
-- Advanced memory management
-- Meta-cognition helpers
-- Performance optimizations
-- Debug utilities
+## Import Structure
+
+```typescript
+// From main package
+import { MechError, validateAgent, globalPerformanceCache } from '@just-every/mech';
+
+// Internal imports (within utils)
+import { MechError } from './errors.js';
+import { globalPerformanceCache } from './performance.js';
+```

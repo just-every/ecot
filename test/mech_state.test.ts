@@ -39,8 +39,7 @@ describe('MECH State Management', () => {
         });
 
         it('should handle invalid frequency values', () => {
-            const result = setMetaFrequency('invalid' as any);
-            expect(result).toContain('Invalid frequency');
+            expect(() => setMetaFrequency('invalid' as any)).toThrow(/Meta frequency must be one of/);
             expect(mechState.metaFrequency).toBe('5'); // Should remain at default
         });
 
@@ -99,14 +98,11 @@ describe('MECH State Management', () => {
         });
 
         it('should validate score range', () => {
-            const result1 = setModelScore('gpt-4', '150');
-            expect(result1).toContain('Invalid score');
+            expect(() => setModelScore('gpt-4', '150')).toThrow(/Score must be a number between 0 and 100/);
             
-            const result2 = setModelScore('gpt-4', '-10');
-            expect(result2).toContain('Invalid score');
+            expect(() => setModelScore('gpt-4', '-10')).toThrow(/Score must be a number between 0 and 100/);
             
-            const result3 = setModelScore('gpt-4', 'abc');
-            expect(result3).toContain('Invalid score');
+            expect(() => setModelScore('gpt-4', 'abc')).toThrow(/Score must be a number between 0 and 100/);
         });
 
         it('should list all model scores', () => {

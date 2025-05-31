@@ -7,10 +7,28 @@
 
 import type { MECHState, MechContext } from './types.js';
 import { ToolFunction, MODEL_CLASSES, findModel, ModelClassID } from '@just-every/ensemble';
-import { VALID_FREQUENCIES, DEFAULT_MODEL_SCORE, MIN_MODEL_SCORE, MAX_MODEL_SCORE, DEFAULT_META_FREQUENCY, type MetaFrequency } from './constants.js';
+import { VALID_FREQUENCIES, DEFAULT_MODEL_SCORE, DEFAULT_META_FREQUENCY, type MetaFrequency } from './utils/constants.js';
+import { validateModelScore, validateMetaFrequency } from './utils/validation.js';
+import { withErrorHandling } from './utils/errors.js';
+import { globalPerformanceCache } from './utils/performance.js';
 
 /**
- * Global MECH state
+ * Global state container for the MECH system
+ * 
+ * Manages meta-cognition frequency, model performance scores, and disabled models.
+ * This state persists across MECH executions and influences model selection behavior.
+ * Changes to this state affect all subsequent MECH operations.
+ * 
+ * @example
+ * ```typescript
+ * // Check current state
+ * console.log(`LLM requests: ${mechState.llmRequestCount}`);
+ * console.log(`Meta frequency: ${mechState.metaFrequency}`);
+ * console.log(`Disabled models: ${mechState.disabledModels.size}`);
+ * 
+ * // View model scores
+ * console.log(listModelScores());
+ * ```
  */
 export const mechState: MECHState = {
     llmRequestCount: 0,
@@ -19,6 +37,21 @@ export const mechState: MECHState = {
     modelScores: {},
 };
 
+/**
+ * Get a formatted list of currently disabled models
+ * 
+ * Provides a human-readable summary of which models are currently
+ * excluded from the rotation algorithm. Useful for debugging
+ * model selection issues.
+ * 
+ * @returns Human-readable string listing disabled models or "No models disabled"
+ * 
+ * @example
+ * ```typescript
+ * console.log(listDisabledModels());
+ * // Output: "gpt-4\nclaude-3\n2 models disabled"
+ * ```
+ */
 export function listDisabledModels(): string {
     if (mechState.disabledModels.size === 0) {
         return 'No models are currently disabled.';
@@ -28,6 +61,24 @@ export function listDisabledModels(): string {
     }
 }
 
+/**
+ * Get a formatted list of model scores for performance monitoring
+ * 
+ * Shows current performance scores for all models or models in a specific class.
+ * Higher scores indicate better performance and increase selection probability.
+ * 
+ * @param modelClass - Optional model class to filter results
+ * @returns Human-readable string listing model scores
+ * 
+ * @example
+ * ```typescript
+ * // All model scores
+ * console.log(listModelScores());
+ * 
+ * // Reasoning model scores only
+ * console.log(listModelScores('reasoning'));
+ * ```
+ */
 export function listModelScores(modelClass?: ModelClassID): string {
     if (modelClass && MODEL_CLASSES[modelClass]?.models?.length > 0) {
         return MODEL_CLASSES[modelClass].models
@@ -59,13 +110,15 @@ export function listModelScores(modelClass?: ModelClassID): string {
  * @param frequency - The frequency to set (5, 10, 20, or 40)
  * @returns The new frequency or error message
  */
-export function setMetaFrequency(frequency: string): string {
-    if (VALID_FREQUENCIES.includes(frequency as MetaFrequency)) {
+export const setMetaFrequency = withErrorHandling(
+    (frequency: string): string => {
+        validateMetaFrequency(frequency);
         mechState.metaFrequency = frequency as MetaFrequency;
+        console.log(`[MECH] Meta-cognition frequency set to ${frequency}`);
         return mechState.metaFrequency;
-    }
-    return `Invalid frequency: ${frequency}. Valid values are: ${VALID_FREQUENCIES.join(', ')}`;
-}
+    },
+    'state_management'
+);
 
 /**
  * Get the current meta-cognition frequency
@@ -82,40 +135,43 @@ export function getMetaFrequency(): string {
  * @param modelClass - Optional model class for class-specific scores
  * @returns Success message or error
  */
-export function setModelScore(modelId: string, scoreOrClass: string, modelClass?: string): string {
-    // Validate inputs
-    if (!modelId || typeof modelId !== 'string') {
-        return `Invalid modelId: ${modelId}. Must be a non-empty string.`;
-    }
-    
-    // Parse the score
-    const scoreStr = modelClass ? scoreOrClass : scoreOrClass;
-    const score = Number(scoreStr);
-    
-    // Validate the score
-    if (isNaN(score) || score < MIN_MODEL_SCORE || score > MAX_MODEL_SCORE) {
-        return `Invalid score: ${scoreStr}. Score must be between ${MIN_MODEL_SCORE} and ${MAX_MODEL_SCORE}.`;
-    }
-    
-    // If modelClass is provided, store class-specific score
-    if (modelClass) {
-        if (!mechState.modelScores[modelId]) {
-            mechState.modelScores[modelId] = {};
+export const setModelScore = withErrorHandling(
+    (modelId: string, scoreOrClass: string, modelClass?: string): string => {
+        // Validate inputs using validation system
+        validateModelScore(modelId, scoreOrClass, modelClass);
+        
+        // Parse the score
+        const scoreStr = modelClass ? scoreOrClass : scoreOrClass;
+        const score = Number(scoreStr);
+        
+        // If modelClass is provided, store class-specific score
+        if (modelClass) {
+            if (!mechState.modelScores[modelId]) {
+                mechState.modelScores[modelId] = {};
+            }
+            if (typeof mechState.modelScores[modelId] === 'number') {
+                // Convert to object format
+                const currentScore = mechState.modelScores[modelId] as number;
+                mechState.modelScores[modelId] = { overall: currentScore };
+            }
+            
+            // Type-safe assignment for class-specific scores
+            const modelScoreObj = mechState.modelScores[modelId] as Record<string, number>;
+            modelScoreObj[modelClass] = score;
+            console.log(`[MECH] Model ${modelId} score for ${modelClass} set to ${score}`);
+        } else {
+            // Store overall score
+            mechState.modelScores[modelId] = score;
+            console.log(`[MECH] Model ${modelId} score set to ${score}`);
         }
-        if (typeof mechState.modelScores[modelId] === 'number') {
-            // Convert to object format
-            mechState.modelScores[modelId] = { overall: mechState.modelScores[modelId] as number };
-        }
-        (mechState.modelScores[modelId] as any)[modelClass] = score;
-        console.log(`[MECH] Model ${modelId} score for ${modelClass} set to ${score}`);
-    } else {
-        // Store overall score
-        mechState.modelScores[modelId] = score;
-        console.log(`[MECH] Model ${modelId} score set to ${score}`);
-    }
-    
-    return `Score set to ${score}`;
-}
+        
+        // Invalidate cache for this model
+        globalPerformanceCache.invalidateModel(modelId);
+        
+        return `Score set to ${score}`;
+    },
+    'state_management'
+);
 
 /**
  * Disable a model so it won't be selected
@@ -164,13 +220,14 @@ export function getModelScore(modelId: string, modelClass?: string): number {
         if (typeof scoreData === 'number') {
             // Simple numeric score - return it regardless of whether modelClass is specified
             return scoreData;
-        } else if (typeof scoreData === 'object') {
+        } else if (typeof scoreData === 'object' && scoreData !== null) {
             // Class-specific scores
-            if (modelClass && modelClass in scoreData) {
-                return (scoreData as any)[modelClass];
+            const scoreObj = scoreData as Record<string, number>;
+            if (modelClass && modelClass in scoreObj) {
+                return scoreObj[modelClass];
             }
             // Return overall if exists, otherwise default
-            return (scoreData as any).overall || DEFAULT_MODEL_SCORE;
+            return scoreObj.overall || DEFAULT_MODEL_SCORE;
         }
     }
 

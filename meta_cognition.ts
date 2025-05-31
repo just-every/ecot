@@ -17,13 +17,34 @@ import { getThoughtDelay, getThoughtTools } from './thought_utils.js';
 import { ResponseInput, getModelFromClass } from '@just-every/ensemble';
 
 /**
- * Spawns a metacognition process that analyzes recent history and can
- * modify system behavior.
- *
- * @param agent - The main agent instance
- * @param context - The MECH context containing required utilities
- * @param startTime - The start time of the current run
- * @returns Promise that resolves when metacognition is complete
+ * Spawn a metacognition process to analyze and optimize agent performance
+ * 
+ * Metacognition is MECH's "thinking about thinking" capability. It:
+ * - Analyzes recent agent thoughts and tool usage patterns
+ * - Identifies inefficiencies, errors, and optimization opportunities
+ * - Can adjust system parameters (model scores, meta frequency, thought delay)
+ * - Injects strategic guidance into the agent's thought process
+ * 
+ * The metacognition agent has access to specialized tools for system tuning
+ * and runs on high-quality reasoning models for optimal analysis.
+ * 
+ * @param agent - The main agent being analyzed
+ * @param context - MECH execution context with history and tools
+ * @param startTime - When the current task execution began (for performance analysis)
+ * 
+ * @throws {TypeError} If any required parameters are invalid
+ * 
+ * @example
+ * ```typescript
+ * // Triggered automatically based on meta frequency
+ * await spawnMetaThought(agent, context, taskStartTime);
+ * 
+ * // Metacognition might result in:
+ * // - Model score adjustments
+ * // - Injected strategic thoughts
+ * // - Changed meta frequency
+ * // - Disabled underperforming models
+ * ```
  */
 export async function spawnMetaThought(
     agent: MechAgent, 

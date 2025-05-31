@@ -4,7 +4,7 @@
  * This shows how easy it is to use MECH with minimal setup
  */
 
-import { runMECH, runMECHWithMemory, getTotalCost } from './simple.js';
+import { runMECH, runMECHWithMemory, getTotalCost } from '../index.js';
 
 // Example 1: Basic usage - just provide agent name and LLM function
 async function basicExample() {

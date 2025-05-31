@@ -7,40 +7,77 @@
 import { MODEL_CLASSES, ModelClassID, getModelFromClass } from '@just-every/ensemble';
 import { mechState, getModelScore } from './mech_state.js';
 import type { MechAgent } from './types.js';
+import { globalPerformanceCache } from './utils/performance.js';
+// MechModelError available if needed for error handling
+import { debugModelSelection, debugTrace } from './utils/debug.js';
 
 /**
- * Rotate models based on MECH hierarchy scores
+ * Intelligent model selection using hierarchical scoring and rotation
  * 
- * @param agent - The agent to rotate models for
- * @param modelClass - Optional model class to use
- * @returns The selected model ID or undefined
+ * This function implements the core model rotation logic for MECH:
+ * 1. Attempts to use getModelFromClass() for direct model selection
+ * 2. Falls back to weighted random selection based on model scores
+ * 3. Filters out disabled models and ensures rotation (avoids consecutive use)
+ * 4. Uses performance caching for efficiency
+ * 
+ * Higher model scores increase selection probability. Models with score 0 are
+ * rarely selected, while models with score 100 are heavily favored.
+ * 
+ * @param agent - The agent needing a model assignment
+ * @param modelClass - Optional specific model class to use (e.g., 'reasoning', 'coding')
+ * @returns Selected model ID or undefined if no suitable model found
+ * 
+ * @example
+ * ```typescript
+ * // Basic rotation with default model class
+ * const model = await rotateModel(agent);
+ * 
+ * // Force specific model class for reasoning tasks
+ * const reasoningModel = await rotateModel(agent, 'reasoning');
+ * 
+ * // Check if model was selected
+ * if (model) {
+ *   agent.model = model;
+ * } else {
+ *   console.warn('No suitable model available');
+ * }
+ * ```
  */
 export async function rotateModel(
     agent: MechAgent,
     modelClass?: ModelClassID
 ): Promise<string | undefined> {
-    // Validate agent
+    // Validate agent first
     if (!agent || typeof agent !== 'object') {
         throw new TypeError('Invalid agent: must be a valid MechAgent object');
     }
+    
+    debugTrace('model_rotation', 'start', { agentName: agent.name, modelClass });
+    
     // Store last model used to ensure rotation
     const lastModel = agent.model;
     mechState.lastModelUsed = lastModel;
     let model: string | undefined;
+    let selectionReason = 'unknown';
 
     modelClass = modelClass || (agent.modelClass as ModelClassID);
     if (modelClass) {
         // First try to get a model using getModelFromClass which respects overrides
         try {
             model = await getModelFromClass(modelClass);
+            selectionReason = 'getModelFromClass';
             console.log(`[MECH] Model selected via getModelFromClass for class ${modelClass}: ${model}`);
+            
+            debugModelSelection(agent, [], model, {}, 0, selectionReason);
+            debugTrace('model_rotation', 'end', { selectedModel: model, reason: selectionReason });
             return model;
         } catch (error) {
             console.log(`[MECH] getModelFromClass failed for ${modelClass}, falling back to rotation logic`);
+            selectionReason = 'rotation_fallback';
         }
-        
-        // Fallback to original rotation logic if getModelFromClass fails
-        const modelClassStr = modelClass as string;
+            
+            // Fallback to original rotation logic if getModelFromClass fails
+            const modelClassStr = modelClass as string;
 
         if (modelClassStr in MODEL_CLASSES) {
             // Safe to use the key since we've verified it exists
@@ -60,29 +97,45 @@ export async function rotateModel(
             });
 
             if (models.length > 0) {
-                // Use weighted selection based on model scores
-                // Pass the model class to getModelScore to get class-specific scores
-                const totalScore = models.reduce(
-                    (sum, modelId) => {
-                        const score = getModelScore(modelId, modelClassStr);
-                        // Ensure score is valid
-                        return sum + (isNaN(score) || score < 0 ? 0 : score);
-                    },
-                    0
+                // Use cached weighted selection based on model scores
+                const totalScore = globalPerformanceCache.getCachedWeightedTotal(
+                    models,
+                    modelClassStr as ModelClassID,
+                    () => models.reduce((sum, modelId) => {
+                        const score = globalPerformanceCache.getCachedScore(
+                            modelId,
+                            modelClassStr as ModelClassID,
+                            () => getModelScore(modelId, modelClassStr)
+                        );
+                        return sum + Math.max(0, score || 0);
+                    }, 0)
                 );
 
                 if (totalScore > 0) {
-                    // Weighted random selection
+                    // Collect scores for debugging
+                    const scores: Record<string, number> = {};
+                    for (const modelId of models) {
+                        scores[modelId] = globalPerformanceCache.getCachedScore(
+                            modelId,
+                            modelClassStr as ModelClassID,
+                            () => getModelScore(modelId, modelClassStr)
+                        );
+                    }
+                    
+                    selectionReason = 'weighted_random';
+                    
+                    // Weighted random selection with cached scores
                     let rand = Math.random() * totalScore;
                     for (const modelId of models) {
-                        // Use class-specific score for weighting
-                        const score = getModelScore(modelId, modelClassStr);
-                        rand -= (isNaN(score) || score < 0 ? 0 : score);
+                        const score = scores[modelId];
+                        rand -= Math.max(0, score || 0);
                         if (rand <= 0) {
                             model = modelId;
                             break;
                         }
                     }
+                    
+                    debugModelSelection(agent, models, model, scores, totalScore, selectionReason);
 
                     // Fallback in case rounding errors cause us to miss
                     if (!model) {
@@ -113,7 +166,9 @@ export async function rotateModel(
     // Final validation
     if (!model) {
         console.warn('[MECH] No model could be selected through rotation');
+        selectionReason = 'no_model_available';
     }
 
+    debugTrace('model_rotation', 'end', { selectedModel: model, reason: selectionReason });
     return model;
 }

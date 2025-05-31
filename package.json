@@ -18,7 +18,14 @@
     "chain-of-thought",
     "meta-cognition",
     "orchestration",
-    "magi"
+    "artificial-intelligence",
+    "machine-learning",
+    "gpt",
+    "claude",
+    "model-rotation",
+    "performance-optimization",
+    "agent-framework",
+    "typescript"
   ],
   "author": "just-every",
   "license": "MIT",
@@ -28,21 +35,52 @@
   "homepage": "https://github.com/just-every/MECH#readme",
   "scripts": {
     "build": "tsc",
+    "build:watch": "tsc --watch",
     "clean": "rm -rf dist",
-    "watch": "tsc --watch",
     "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run test/integration.test.ts",
+    "test:performance": "vitest run test/performance.test.ts",
+    "test:e2e": "vitest run test/e2e.test.ts",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && npm run test:run",
     "prepare": "npm run build",
-    "example": "npm run build && node --experimental-vm-modules dist/example.js",
+    "prepublishOnly": "npm run validate",
+    "example": "npm run build && node --experimental-vm-modules dist/examples/basic-example.js",
+    "example:simple": "npm run build && node --experimental-vm-modules examples/simple-mech.js",
+    "example:memory": "npm run build && node --experimental-vm-modules examples/mech-with-memory.js",
+    "example:meta": "npm run build && node --experimental-vm-modules examples/meta-cognition.js",
+    "dev": "npm run build:watch",
+    "start": "npm run example",
+    "debug": "npm run build && MECH_DEBUG=true MECH_LOG_LEVEL=debug npm run example",
+    "performance": "npm run build && npm run test:performance",
     "release": "./scripts/release.sh",
     "release:patch": "./scripts/release.sh patch",
     "release:minor": "./scripts/release.sh minor",
-    "release:major": "./scripts/release.sh major"
+    "release:major": "./scripts/release.sh major",
+    "release:quick": "./scripts/release-quick.sh"
   },
   "dependencies": {
-    "@just-every/ensemble": "^0.1.6"
+    "@just-every/ensemble": "^0.1.12"
+  },
+  "peerDependencies": {
+    "openai": ">=4.0.0",
+    "anthropic": ">=0.20.0"
+  },
+  "peerDependenciesMeta": {
+    "openai": {
+      "optional": true
+    },
+    "anthropic": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^22.15.29",
+    "@vitest/coverage-v8": "^3.1.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.4"
   },
@@ -54,9 +92,26 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "IMPROVEMENTS.md",
+    "examples",
+    "CLAUDE.md"
   ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/just-every"
+  },
+  "config": {
+    "commitizen": {
+      "path": "conventional-changelog"
+    }
   }
 }

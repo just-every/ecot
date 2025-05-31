@@ -122,6 +122,92 @@ export {
 export type { MECHState, MetaFrequency, ThoughtDelay } from './types.js';
 
 // ============================================================================
+// Error Handling
+// ============================================================================
+export {
+    // Error classes
+    MechError,
+    MechValidationError,
+    MechModelError,
+    MechMemoryError,
+    
+    // Error utilities
+    createAgentValidationError,
+    withErrorHandling,
+    
+    // Types
+    type MechErrorComponent,
+    type MechErrorContext,
+} from './utils/errors.js';
+
+// ============================================================================
+// Validation
+// ============================================================================
+export {
+    // Validation functions
+    validateAgent,
+    validateTask,
+    validateRunAgent,
+    validateSimpleMechOptions,
+    validateSimpleMechWithMemoryOptions,
+    validateModelScore,
+    validateMetaFrequency,
+    validateThoughtDelay,
+    sanitizeTextInput,
+    validateNoSensitiveData,
+} from './utils/validation.js';
+
+// ============================================================================
+// Performance Optimizations
+// ============================================================================
+export {
+    // Performance classes
+    MechPerformanceCache,
+    OptimizedThoughtDelay,
+    MechObjectPool,
+    BatchProcessor,
+    
+    // Global cache
+    globalPerformanceCache,
+    
+    // Utility functions
+    debounce,
+    throttle,
+} from './utils/performance.js';
+
+// ============================================================================
+// Debug System
+// ============================================================================
+export {
+    // Debug configuration
+    setDebugMode,
+    setLogLevel,
+    enableTracing,
+    enablePerformanceLogging,
+    
+    // Debug functions
+    debugLog,
+    debugTrace,
+    debugModelSelection,
+    debugPerformance,
+    debugValidation,
+    
+    // Global debugger
+    globalDebugger,
+    
+    // Decorators and utilities
+    traced,
+    measurePerformance,
+    
+    // Types
+    type MechDebugConfig,
+    type DebugTraceEntry,
+    type ModelSelectionEntry,
+    type PerformanceMetric,
+    type ValidationEvent,
+} from './utils/debug.js';
+
+// ============================================================================
 // Constants
 // ============================================================================
 export {
@@ -135,4 +221,4 @@ export {
     TASK_STATUS,
     MESSAGE_TYPES,
     AGENT_STATUS
-} from './constants.js';
+} from './utils/constants.js';

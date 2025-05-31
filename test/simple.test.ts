@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { runMECH, getTotalCost, resetCostTracker } from '../simple.js';
+import { runMECH, getTotalCost, resetCostTracker } from '../index.js';
 
 describe('Simple MECH API', () => {
     beforeEach(() => {
@@ -32,7 +32,7 @@ describe('Simple MECH API', () => {
         await runMECH({
             agent: { name: 'CallbackAgent' },
             task: 'Test callbacks',
-            runAgent: async () => ({
+            runAgent: async (_agent, _input, _history) => ({
                 response: 'Done',
                 tool_calls: []
             }),
@@ -49,7 +49,7 @@ describe('Simple MECH API', () => {
         await runMECH({
             agent: { name: 'CostAgent' },
             task: 'Track cost',
-            runAgent: async () => ({
+            runAgent: async (_agent, _input, _history) => ({
                 response: 'Cost tracked',
                 tool_calls: []
             })
@@ -63,7 +63,7 @@ describe('Simple MECH API', () => {
         const result = await runMECH({
             agent: { name: 'ErrorAgent' },
             task: 'Cause error',
-            runAgent: async () => {
+            runAgent: async (_agent, _input, _history) => {
                 throw new Error('Test error');
             }
         });

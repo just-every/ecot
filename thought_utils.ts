@@ -3,7 +3,10 @@
  */
 import { ToolFunction } from '@just-every/ensemble';
 import type { MechContext } from './types.js';
-import { VALID_THOUGHT_DELAYS, DEFAULT_THOUGHT_DELAY, MESSAGE_TYPES, type ThoughtDelay } from './constants.js';
+import { VALID_THOUGHT_DELAYS, DEFAULT_THOUGHT_DELAY, MESSAGE_TYPES, type ThoughtDelay } from './utils/constants.js';
+import { OptimizedThoughtDelay } from './utils/performance.js';
+import { validateThoughtDelay } from './utils/validation.js';
+import { withErrorHandling } from './utils/errors.js';
 
 // Thought utilities for managing thought delay and related tools
 
@@ -43,6 +46,33 @@ export function getValidThoughtDelays(): readonly string[] {
     return VALID_THOUGHT_DELAYS;
 }
 
+/**
+ * Execute an optimized thought delay with interrupt support
+ * 
+ * Implements intelligent delays between agent thoughts to:
+ * - Allow time for external processes to complete
+ * - Provide natural pacing for complex reasoning
+ * - Enable interruption for urgent messages or user input
+ * 
+ * Uses AbortController for clean cancellation and sends status updates
+ * through the communication system.
+ * 
+ * @param context - Optional MECH context for status reporting
+ * @returns Promise that resolves when delay completes or is interrupted
+ * 
+ * @example
+ * ```typescript
+ * // Basic delay execution
+ * await runThoughtDelay(context);
+ * 
+ * // With interruption handling
+ * try {
+ *   await runThoughtDelay(context);
+ * } catch (error) {
+ *   console.log('Delay was interrupted');
+ * }
+ * ```
+ */
 export async function runThoughtDelay(context?: MechContext): Promise<void> {
     const delayMs = parseInt(thoughtDelay);
     
@@ -59,40 +89,22 @@ export async function runThoughtDelay(context?: MechContext): Promise<void> {
         delayAbortController = new AbortController();
         const signal = delayAbortController.signal;
 
-        // Create a delay promise that can be interrupted
+        // Use optimized delay implementation
         try {
-            await new Promise<void>(resolve => {
-                // Break the delay into smaller chunks and check for interruption
-                const chunkSize = 100; // Check every 100ms
-                let remaining = delayMs * 1000;
-
-                // Set up abort handler
-                signal.addEventListener(
-                    'abort',
-                    () => {
-                        // If aborted, resolve immediately
-                        resolve();
-                    },
-                    { once: true }
-                );
-
-                function waitChunk() {
-                    if (signal.aborted || remaining <= 0) {
-                        // If interrupted or completed, resolve immediately
-                        resolve();
-                        return;
+            await OptimizedThoughtDelay.runDelay(
+                delayMs * 1000, // Convert to milliseconds
+                signal,
+                (remaining) => {
+                    // Optional: Send progress updates
+                    if (context?.sendComms) {
+                        context.sendComms({
+                            type: MESSAGE_TYPES.AGENT_STATUS,
+                            status: 'thinking',
+                            remainingMs: remaining
+                        });
                     }
-
-                    // Wait for the next chunk or the remaining time (whichever is smaller)
-                    const waitTime = Math.min(chunkSize, remaining);
-                    remaining -= waitTime;
-
-                    setTimeout(() => waitChunk(), waitTime);
                 }
-
-                // Start the chunked waiting process
-                waitChunk();
-            });
+            );
         } catch (error) {
             // Just suppress errors from abortion
             console.log('[ThoughtDelay] Delay was aborted');
@@ -125,22 +137,33 @@ export async function runThoughtDelay(context?: MechContext): Promise<void> {
  * @param level The message content to process.
  * @returns A promise that resolves with a success message after the calculated delay.
  */
-export function setThoughtDelay(delay: string, _context?: MechContext): string {
-    // Validate input type
-    if (typeof delay !== 'string') {
-        return `Invalid delay type: ${typeof delay}. Must be a string.`;
-    }
-    
-    if (VALID_THOUGHT_DELAYS.includes(delay as ThoughtDelay)) {
+export const setThoughtDelay = withErrorHandling(
+    (delay: string, _context?: MechContext): string => {
+        validateThoughtDelay(delay);
         thoughtDelay = delay as ThoughtDelay;
-        return `Thought delay set to ${thoughtDelay} seconds`; // Return the success message
-    }
-
-    return `Invalid delay: ${delay}. Valid values are: ${VALID_THOUGHT_DELAYS.join(', ')}`;
-}
+        console.log(`[MECH] Thought delay set to ${thoughtDelay} seconds`);
+        return `Thought delay set to ${thoughtDelay} seconds`;
+    },
+    'thought_management'
+);
 
 /**
- * Get all thought tools as an array of tool definitions
+ * Get thought management tools for dynamic delay control
+ * 
+ * These tools allow agents or metacognition to adjust their thinking pace
+ * in response to task complexity or external conditions. Provides runtime
+ * control over the thought delay system.
+ * 
+ * @param context - MECH execution context for tool creation
+ * @returns Array of tools for thought delay management
+ * 
+ * @example
+ * ```typescript
+ * const thoughtTools = getThoughtTools(context);
+ * agent.tools.push(...thoughtTools);
+ * 
+ * // Agent can now use setThoughtDelay tool to adjust pacing
+ * ```
  */
 export function getThoughtTools(context: MechContext): ToolFunction[] {
     if (!context.createToolFunction) {

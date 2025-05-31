@@ -4,8 +4,8 @@
  * This example shows the simplest way to use MECH with minimal setup.
  */
 
-import { runSimpleMECH } from '../simple.js';
-import type { RunMechOptions } from '../types.js';
+import { runMECH } from '../simple.js';
+import type { SimpleMechOptions } from '../types.js';
 
 async function main() {
     console.log('🤖 Simple MECH Example\n');
@@ -26,7 +26,7 @@ async function main() {
     };
     
     // Configure MECH
-    const options: RunMechOptions = {
+    const options: SimpleMechOptions = {
         agent: {
             name: 'SimpleBot',
             instructions: 'You are a helpful assistant that provides clear, concise answers.'
@@ -43,7 +43,7 @@ async function main() {
     
     try {
         console.log('Starting MECH...\n');
-        const result = await runSimpleMECH(options);
+        const result = await runMECH(options);
         
         console.log('\n\n✅ MECH Result:');
         console.log('-'.repeat(50));
