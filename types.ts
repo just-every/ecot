@@ -2,6 +2,7 @@
  * MECH Types
  * 
  * Type definitions for the Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) system.
+ * Updated to use @just-every/ensemble embed function.
  */
 
 import type { 
