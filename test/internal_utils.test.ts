@@ -3,7 +3,7 @@ import {
     createDefaultHistory,
     defaultDateFormat,
     defaultReadableTime,
-    defaultCreateToolFunction,
+    wrapEnsembleCreateToolFunction,
     createDefaultCommunicationManager,
     defaultDescribeHistory,
     defaultFormatMemories,
@@ -73,7 +73,7 @@ describe('Internal Utils', () => {
             // Create a named function instead of trying to assign name
             function add(x: number, y: number) { return x + y; }
             
-            const tool = defaultCreateToolFunction(
+            const tool = wrapEnsembleCreateToolFunction(
                 add,
                 'Add two numbers',
                 { x: 'First number', y: 'Second number' }
@@ -83,8 +83,8 @@ describe('Internal Utils', () => {
             expect(tool.definition.function.name).toBe('add');
             expect(tool.definition.function.description).toBe('Add two numbers');
             expect(tool.definition.function.parameters.properties).toEqual({
-                x: { description: 'First number' },
-                y: { description: 'Second number' }
+                x: { description: 'First number', type: 'string' },
+                y: { description: 'Second number', type: 'string' }
             });
             
             // Test execution
@@ -93,7 +93,7 @@ describe('Internal Utils', () => {
         });
 
         it('should handle functions returning non-strings', async () => {
-            const tool = defaultCreateToolFunction(
+            const tool = wrapEnsembleCreateToolFunction(
                 () => ({ key: 'value', num: 42 }),
                 'Return object'
             );
@@ -103,7 +103,7 @@ describe('Internal Utils', () => {
         });
 
         it('should handle anonymous functions', () => {
-            const tool = defaultCreateToolFunction(
+            const tool = wrapEnsembleCreateToolFunction(
                 () => 'test',
                 'Anonymous function'
             );
@@ -112,7 +112,7 @@ describe('Internal Utils', () => {
         });
 
         it('should handle complex parameter types', () => {
-            const tool = defaultCreateToolFunction(
+            const tool = wrapEnsembleCreateToolFunction(
                 () => {},
                 'Complex params',
                 {
@@ -124,10 +124,10 @@ describe('Internal Utils', () => {
             );
             
             const props = tool.definition.function.parameters.properties;
-            expect(props.simple).toEqual({ description: 'A string param' });
+            expect(props.simple).toEqual({ description: 'A string param', type: 'string' });
             expect(props.complex).toEqual({ description: 'Complex param', type: 'number' });
-            expect(props.nullParam).toEqual({ description: 'null' });
-            expect(props.numParam).toEqual({ description: '123' });
+            expect(props.nullParam).toEqual({ description: 'The nullParam parameter', type: 'string' });
+            expect(props.numParam).toEqual({ description: 'The numParam parameter', type: 'string' });
         });
     });
 
