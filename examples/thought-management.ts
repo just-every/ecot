@@ -3,85 +3,32 @@
  * 
  * This example shows how MECH manages thought delays and
  * interruptions for better reasoning flow.
+ * 
+ * MECH now handles all LLM communication internally through @just-every/ensemble,
+ * providing automatic thought pacing and intelligent delays.
  */
 
-import { runMECHAdvanced } from '../index.js';
+import { runMECH } from '../simple.js';
 import { setThoughtDelay, getThoughtDelay, setDelayInterrupted } from '../thought_utils.js';
-import type { MechAgent, MechContext } from '../types.js';
+import type { RunMechOptions } from '../types.js';
 
 async function simulateThoughtProcess() {
     console.log('💭 Thought Management Example\n');
+    console.log('Note: This example requires API keys to be configured in your environment.\n');
     
     // Track thought timing
     const thoughtTimings: { thought: string; duration: number }[] = [];
     let lastThoughtTime = Date.now();
     
-    // Create context with thought tracking
-    const context: MechContext = {
-        sendComms: (msg) => {
-            if (typeof msg === 'object' && 'type' in msg) {
-                const m = msg as any;
-                if (m.type === 'thought_delay') {
-                    console.log(`\n⏱️  Thought delay: ${m.delayMs}ms`);
-                } else if (m.type === 'thought_complete') {
-                    const duration = Date.now() - lastThoughtTime;
-                    console.log(`   ✓ Thought completed in ${duration}ms`);
-                    lastThoughtTime = Date.now();
-                }
-            }
-        },
-        
-        getCommunicationManager: () => ({
-            send: () => {},
-            isClosed: () => false,
-            close: () => {}
-        }),
-        
-        addHistory: (item) => {
-            if (item.type === 'thinking' && 'content' in item) {
-                const duration = Date.now() - lastThoughtTime;
-                const thought = String(item.content).substring(0, 50);
-                thoughtTimings.push({ thought, duration });
-                console.log(`\n💭 Thinking: "${thought}..."`);
-            }
-        },
-        
-        getHistory: () => [],
-        processPendingHistoryThreads: async () => {},
-        describeHistory: (agent, messages) => messages,
-        costTracker: { getTotalCost: () => 0 },
-        
-        runStreamedWithTools: async (agent, input) => {
-            // Simulate thinking with current delay
-            const delay = parseInt(getThoughtDelay()) * 1000;
-            console.log(`\n🤔 Processing with ${delay}ms thought delay...`);
-            
-            if (delay > 0) {
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-            
-            return {
-                response: `After careful consideration (${delay}ms): ${input}`,
-                tool_calls: []
-            };
-        },
-        
-        dateFormat: () => new Date().toISOString(),
-        readableTime: (ms) => `${(ms / 1000).toFixed(1)}s`
-    };
-    
-    const agent: MechAgent = {
-        name: 'ThoughtfulBot',
-        agent_id: 'thought-bot-001',
-        modelClass: 'reasoning',
-        instructions: 'You think carefully before responding.',
-        export: () => ({ name: 'ThoughtfulBot' }),
-        getTools: async () => []
-    };
-    
     try {
         // Test different thought delays
         const delays = ['0', '2', '4'] as const;
+        
+        console.log('ℹ️  MECH Thought Management Features:');
+        console.log('   • Configurable delays between thoughts (0-128 seconds)');
+        console.log('   • Interruptible thought processes');
+        console.log('   • Automatic pacing for complex reasoning');
+        console.log('   • Real-time thought status updates\n');
         
         for (const delay of delays) {
             console.log(`\n${'='.repeat(60)}`);
@@ -91,12 +38,34 @@ async function simulateThoughtProcess() {
             setThoughtDelay(delay);
             
             const startTime = Date.now();
-            const result = await runMECHAdvanced(
-                agent,
-                `Quick question with ${delay}s delay: What is 2+2?`,
-                context,
-                false
-            );
+            
+            const options: RunMechOptions = {
+                agent: {
+                    name: 'ThoughtfulBot',
+                    modelClass: 'reasoning',
+                    instructions: 'You think carefully before responding. Take your time to consider the question.'
+                },
+                task: `Quick question with ${delay}s delay: What is 2+2?`,
+                onStatus: (status) => {
+                    if (status.type === 'thought_delay') {
+                        console.log(`\n⏱️  Thought delay: ${(status as any).delayMs}ms`);
+                    } else if (status.type === 'thought_complete') {
+                        const duration = Date.now() - lastThoughtTime;
+                        console.log(`   ✓ Thought completed in ${duration}ms`);
+                        lastThoughtTime = Date.now();
+                    }
+                },
+                onHistory: (item) => {
+                    if (item.type === 'thinking' && 'content' in item) {
+                        const duration = Date.now() - lastThoughtTime;
+                        const thought = String(item.content).substring(0, 50);
+                        thoughtTimings.push({ thought, duration });
+                        console.log(`\n💭 Thinking: "${thought}..."`);
+                    }
+                }
+            };
+            
+            const result = await runMECH(options);
             
             const totalTime = Date.now() - startTime;
             console.log(`\n✅ Completed in ${(totalTime / 1000).toFixed(1)}s`);
@@ -109,14 +78,30 @@ async function simulateThoughtProcess() {
         console.log('='.repeat(60));
         
         setThoughtDelay('8'); // Set a long delay
+        console.log('\nSetting thought delay to 8 seconds...');
+        console.log('Will interrupt after 2 seconds to demonstrate interruption handling.');
+        
+        const interruptOptions: RunMechOptions = {
+            agent: {
+                name: 'ThoughtfulBot',
+                modelClass: 'reasoning',
+                instructions: 'You are analyzing a complex problem that requires deep thought.'
+            },
+            task: 'Analyze the philosophical implications of artificial general intelligence on human society, considering ethical, economic, and existential perspectives.',
+            onStatus: (status) => {
+                if (status.type === 'thought_delay') {
+                    console.log(`\n⏱️  Starting ${(status as any).delayMs}ms thought delay...`);
+                }
+            },
+            onHistory: (item) => {
+                if (item.type === 'thinking') {
+                    console.log('💭 Deep thinking in progress...');
+                }
+            }
+        };
         
         // Start a task
-        const interruptPromise = runMECHAdvanced(
-            agent,
-            'Complex question that might be interrupted',
-            context,
-            false
-        );
+        const interruptPromise = runMECH(interruptOptions);
         
         // Interrupt after 2 seconds
         setTimeout(() => {
@@ -142,8 +127,17 @@ async function simulateThoughtProcess() {
             });
         }
         
+        console.log('\n💡 Key Takeaways:');
+        console.log('   • Thought delays improve reasoning quality');
+        console.log('   • Longer delays allow for deeper analysis');
+        console.log('   • Interruption handling prevents blocking');
+        console.log('   • Configurable delays adapt to task complexity');
+        
     } catch (error) {
         console.error('❌ Error:', error);
+        console.log('\n🔧 Common issues:');
+        console.log('   • Ensure API keys are set in your environment');
+        console.log('   • Check that @just-every/ensemble is properly installed');
     }
 }
 

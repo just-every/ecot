@@ -20,19 +20,17 @@ import { ResponseInput } from '@just-every/ensemble';
  * enhancement, retrieving relevant past experiences before execution and storing
  * new learnings after completion.
  *
- * @param agent - The agent to run
+ * @param agent - The agent to run (specify model via agent.model or agent.modelClass)
  * @param content - The user input to process
  * @param context - The MECH context containing required utilities
- * @param loop - Whether to loop continuously or exit after completion
- * @param model - Optional fixed model to use
+ * @param loop - Whether to loop continuously or exit after completion (default: true)
  * @returns Promise that resolves to a MechResult containing status, cost, and metrics
  */
 export async function runMECHWithMemory(
     agent: MechAgent,
     content: string,
     context: MechContext,
-    loop: boolean = false,
-    model?: string
+    loop: boolean = true
 ): Promise<MechResult> {
     console.log(
         `Running MECH with memory for task: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`
@@ -58,7 +56,7 @@ export async function runMECHWithMemory(
                 taskId: randomUUID(),
                 taskDescription: content,
                 prompt: content,
-                model,
+                model: agent.model,
             });
             console.log(`Task recorded with ID: ${taskId}`);
         } catch (err) {
@@ -109,8 +107,7 @@ ${formattedMemories}`,
             agent,
             content,
             context,
-            loop,
-            model
+            loop
         );
 
         // Extract status, metrics from the result

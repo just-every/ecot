@@ -2,6 +2,18 @@
 
 This directory contains examples demonstrating the Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) system.
 
+## Important: API Keys Required
+
+MECH now uses `@just-every/ensemble` for LLM communication. Before running examples, ensure you have API keys configured in your environment:
+
+```bash
+export OPENAI_API_KEY="your-openai-key"
+export ANTHROPIC_API_KEY="your-anthropic-key"
+export GOOGLE_API_KEY="your-google-key"
+```
+
+MECH will automatically select the best available model based on your configured keys.
+
 ## Running Examples
 
 Build MECH first, then run examples:
@@ -21,7 +33,7 @@ The simplest way to use MECH with minimal setup.
 - Basic MECH configuration
 - Simple agent definition
 - Status and history callbacks
-- Mock LLM integration
+- Automatic LLM integration via ensemble
 
 ### 2. MECH with Memory (`mech-with-memory.ts`)
 Demonstrates memory features for context-aware task execution.
@@ -58,8 +70,7 @@ import { runMECH } from '@just-every/mech';
 
 const result = await runMECH({
     agent: { name: 'MyBot' },
-    task: 'Solve this problem',
-    runAgent: myLLMFunction
+    task: 'Solve this problem'
 });
 ```
 
@@ -79,10 +90,10 @@ const result = await runMECHAdvanced(agent, task, context);
 
 ### Meta-cognition Control
 ```typescript
-import { set_meta_frequency, mechState } from '@just-every/mech';
+import { setMetaFrequency, mechState } from '@just-every/mech';
 
 // Run meta-cognition every 10 LLM calls
-set_meta_frequency('10');
+setMetaFrequency('10');
 
 // Check current state
 console.log(mechState.metaFrequency);
@@ -91,10 +102,10 @@ console.log(mechState.llmRequestCount);
 
 ### Thought Delays
 ```typescript
-import { set_thought_delay, getThoughtDelay } from '@just-every/mech';
+import { setThoughtDelay, getThoughtDelay } from '@just-every/mech';
 
 // Set 4-second delay between thoughts
-set_thought_delay('4');
+setThoughtDelay('4');
 
 // Check current delay
 const currentDelay = getThoughtDelay(); // Returns '4'
@@ -108,18 +119,6 @@ const currentDelay = getThoughtDelay(); // Returns '4'
 4. **Custom Context**: Build full `MechContext` for advanced features
 
 ## Common Patterns
-
-### Mock LLM for Testing
-```typescript
-const mockLLM = async (agent, input, history) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return {
-        response: `Processed: ${input}`,
-        tool_calls: []
-    };
-};
-```
 
 ### Memory Integration
 ```typescript

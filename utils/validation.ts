@@ -24,27 +24,29 @@ export function validateAgent(agent: unknown): asserts agent is MechAgent {
         );
     }
     
-    if (!('name' in agent) || typeof agent.name !== 'string' || !agent.name.trim()) {
+    // Name is optional - will default to "Agent" in toMechAgent
+    if ('name' in agent && agent.name !== undefined && (typeof agent.name !== 'string' || !agent.name.trim())) {
         throw new MechValidationError(
-            'Agent must have a non-empty string "name" property',
+            'Agent "name" must be a non-empty string if provided',
             {
                 metadata: { 
-                    hasName: 'name' in agent,
-                    nameType: 'name' in agent ? typeof agent.name : 'missing',
-                    nameValue: 'name' in agent ? agent.name : undefined,
-                    expectedName: 'non-empty string'
+                    nameType: typeof agent.name,
+                    nameValue: agent.name,
+                    expectedName: 'non-empty string or undefined'
                 }
             }
         );
     }
 
     // Optional property validations with helpful messages
+    const agentName = ('name' in agent && agent.name) ? agent.name : 'Agent';
+    
     if ('agent_id' in agent && typeof agent.agent_id !== 'string') {
         throw new MechValidationError(
             'Agent "agent_id" must be a string if provided',
             {
-                agentName: agent.name,
                 metadata: { 
+                    agentName,
                     agentIdType: typeof agent.agent_id,
                     agentIdValue: agent.agent_id
                 }
@@ -58,8 +60,8 @@ export function validateAgent(agent: unknown): asserts agent is MechAgent {
             throw new MechValidationError(
                 `Agent "modelClass" must be one of: ${validClasses.join(', ')}`,
                 {
-                    agentName: agent.name,
                     metadata: { 
+                        agentName,
                         receivedModelClass: agent.modelClass,
                         validModelClasses: validClasses
                     }
@@ -72,8 +74,8 @@ export function validateAgent(agent: unknown): asserts agent is MechAgent {
         throw new MechValidationError(
             'Agent "instructions" must be a string if provided',
             {
-                agentName: agent.name,
                 metadata: { 
+                    agentName,
                     instructionsType: typeof agent.instructions
                 }
             }
@@ -123,36 +125,7 @@ export function validateTask(task: unknown): asserts task is string {
     }
 }
 
-/**
- * Validate runAgent function
- */
-export function validateRunAgent(runAgent: unknown): asserts runAgent is SimpleMechOptions['runAgent'] {
-    if (typeof runAgent !== 'function') {
-        throw new MechValidationError(
-            'runAgent must be a function that accepts (agent, input, history) and returns Promise<{response, tool_calls}>',
-            {
-                metadata: { 
-                    runAgentType: typeof runAgent,
-                    expectedSignature: '(agent: MechAgent, input: string, history: ResponseInput) => Promise<LLMResponse>'
-                }
-            }
-        );
-    }
-
-    // Check function parameter count (should accept 3 parameters)
-    if (runAgent.length < 3) {
-        throw new MechValidationError(
-            'runAgent function should accept 3 parameters: (agent, input, history)',
-            {
-                metadata: { 
-                    actualParameterCount: runAgent.length,
-                    expectedParameterCount: 3,
-                    expectedSignature: '(agent: MechAgent, input: string, history: ResponseInput) => Promise<LLMResponse>'
-                }
-            }
-        );
-    }
-}
+// validateRunAgent removed - MECH now uses ensemble directly
 
 /**
  * Validate SimpleMechOptions
@@ -172,7 +145,7 @@ export function validateSimpleMechOptions(options: unknown): asserts options is 
 
     const opts = options as any;
 
-    // Validate required properties
+    // Validate required properties  
     if (!('agent' in opts)) {
         throw new MechValidationError(
             'Options must include an "agent" property',
@@ -197,22 +170,9 @@ export function validateSimpleMechOptions(options: unknown): asserts options is 
         );
     }
 
-    if (!('runAgent' in opts)) {
-        throw new MechValidationError(
-            'Options must include a "runAgent" property',
-            {
-                metadata: { 
-                    providedKeys: Object.keys(opts),
-                    missingRequired: 'runAgent'
-                }
-            }
-        );
-    }
-
     // Validate each property
     validateAgent(opts.agent);
     validateTask(opts.task);
-    validateRunAgent(opts.runAgent);
 
     // Validate optional callbacks
     if ('onHistory' in opts && opts.onHistory !== undefined) {

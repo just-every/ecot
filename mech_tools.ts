@@ -11,7 +11,7 @@ import { mechState, incrementLLMRequestCount } from './mech_state.js';
 import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
 import { rotateModel } from './model_rotation.js';
-import { ToolFunction } from '@just-every/ensemble';
+import { ToolFunction, request } from '@just-every/ensemble';
 import { MESSAGE_TYPES, AGENT_STATUS, TASK_STATUS, DEFAULT_META_FREQUENCY } from './utils/constants.js';
 
 // Shared state for MECH execution
@@ -24,19 +24,17 @@ let taskStartTime = new Date();
 /**
  * Runs the Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH)
  *
- * @param agent - The agent to run
+ * @param agent - The agent to run (specify model via agent.model or agent.modelClass)
  * @param content - The user input to process
  * @param context - The MECH context containing required utilities
- * @param loop - Whether to loop continuously or exit after completion
- * @param model - Optional fixed model to use (if not provided, models will rotate based on hierarchy scores)
+ * @param loop - Whether to loop continuously or exit after completion (default: true)
  * @returns Promise that resolves to a MechResult containing status, cost, and duration
  */
 export async function runMECH(
     agent: MechAgent,
     content: string,
     context: MechContext,
-    loop: boolean = false,
-    model?: string
+    loop: boolean = true
 ): Promise<MechResult> {
     // Validate inputs
     if (!agent || typeof agent !== 'object') {
@@ -102,7 +100,7 @@ export async function runMECH(
 
             // Rotate the model using the MECH hierarchy-aware rotation (influenced by model scores)
             try {
-                agent.model = model || await rotateModel(agent);
+                agent.model = await rotateModel(agent);
             } catch (rotationError) {
                 console.error('[MECH] Error rotating model:', rotationError);
                 // Fall back to agent's default model if rotation fails
@@ -117,36 +115,94 @@ export async function runMECH(
                 agent_id: agent.agent_id,
                 status: AGENT_STATUS.MECH_START,
                 meta_data: {
-                    model: model,
+                    model: agent.model,
                 },
             });
 
-            // Run the command with unified tool handling
-            // Note: The actual runner execution is provided by the context
-            let response;
-            if (context.runStreamedWithTools) {
-                try {
-                    response = await context.runStreamedWithTools(
-                        agent,
-                        '',
-                        context.getHistory()
-                    );
-                } catch (runError) {
-                    console.error('[MECH] Error running agent:', runError);
-                    throw runError;
-                }
-            } else {
-                throw new Error('runStreamedWithTools not provided in context');
-            }
+            // Run the agent using ensemble.request() directly
+            try {
+                const stream = request(agent.model || 'claude-3-5-sonnet-20241022', context.getHistory(), {
+                    agentId: agent.agent_id,
+                    tools: agent.tools || []
+                });
 
-            console.log('[MECH] ', response);
+                let finalResponse = '';
+                let toolCalls: Array<{ name: string; arguments: any }> = [];
+
+                // Process the ensemble stream
+                for await (const event of stream) {
+                    if (event.type === 'message_delta' && 'content' in event) {
+                        finalResponse += event.content;
+                    } else if (event.type === 'tool_done' && 'tool_calls' in event) {
+                        for (const toolCall of event.tool_calls) {
+                            toolCalls.push({
+                                name: toolCall.function.name,
+                                arguments: JSON.parse(toolCall.function.arguments)
+                            });
+                        }
+                    }
+                    
+                    // Send stream events if handler is available
+                    if (context.sendStreamEvent) {
+                        context.sendStreamEvent(event);
+                    }
+                }
+
+                const response = { response: finalResponse, tool_calls: toolCalls };
+                console.log('[MECH] ', response);
+                
+                // Execute tool calls if any
+                if (toolCalls.length > 0) {
+                    for (const toolCall of toolCalls) {
+                        // Find and execute the tool
+                        const tool = agent.tools?.find((t: any) => {
+                            const toolName = t.definition?.function?.name || 
+                                           (t.function as any)?.name || 
+                                           t.name;
+                            return toolName === toolCall.name;
+                        });
+                        
+                        if (tool) {
+                            try {
+                                // Execute the tool function
+                                const toolFunc = (tool as any).function || tool;
+                                if (typeof toolFunc === 'function') {
+                                    // For task_complete, extract the result parameter
+                                    if (toolCall.name === 'task_complete') {
+                                        await toolFunc(toolCall.arguments.result);
+                                    } else if (toolCall.name === 'task_fatal_error') {
+                                        await toolFunc(toolCall.arguments.error);
+                                    } else {
+                                        await toolFunc(toolCall.arguments);
+                                    }
+                                } else if (typeof toolFunc.function === 'function') {
+                                    // For task_complete, extract the result parameter
+                                    if (toolCall.name === 'task_complete') {
+                                        await toolFunc.function(toolCall.arguments.result);
+                                    } else if (toolCall.name === 'task_fatal_error') {
+                                        await toolFunc.function(toolCall.arguments.error);
+                                    } else {
+                                        await toolFunc.function(toolCall.arguments);
+                                    }
+                                }
+                            } catch (toolError) {
+                                console.error(`[MECH] Error executing tool ${toolCall.name}:`, toolError);
+                            }
+                        }
+                    }
+                }
+
+            } catch (runError) {
+                console.error('[MECH] Error running agent:', runError);
+                throw runError;
+            }
 
             context.sendComms({
                 type: MESSAGE_TYPES.AGENT_STATUS,
                 agent_id: agent.agent_id,
                 status: AGENT_STATUS.MECH_DONE,
                 meta_data: {
-                    model: model,
+                    model: agent.model,
                 },
             });
 

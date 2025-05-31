@@ -31,9 +31,10 @@ import { withErrorHandling } from './utils/errors.js';
  * @internal
  */
 function toMechAgent(agent: SimpleAgent): MechAgent {
+    const agentName = agent.name || 'Agent';
     return {
-        name: agent.name,
-        agent_id: agent.agent_id || `${agent.name}-${Date.now()}`,
+        name: agentName,
+        agent_id: agent.agent_id || `${agentName}-${Date.now()}`,
         model: agent.model,
         modelClass: agent.modelClass,
         tools: [],  // Tools will be added by MECH
@@ -51,21 +52,13 @@ function toMechAgent(agent: SimpleAgent): MechAgent {
  * // Basic usage
  * const result = await runMECH({
  *     agent: { name: 'MyAgent' },
- *     task: 'Analyze this code and suggest improvements',
- *     runAgent: async (agent, input, history) => {
- *         // Your LLM call here
- *         return { response: 'Analysis complete' };
- *     }
+ *     task: 'Analyze this code and suggest improvements'
  * });
  * 
  * // With memory
  * const result = await runMECH({
  *     agent: { name: 'MyAgent' },
  *     task: 'Build a web app',
- *     runAgent: async (agent, input, history) => {
- *         // Your LLM call here
- *         return { response: 'App built' };
- *     },
  *     // Optional memory functions
  *     embed: async (text) => embeddings.create(text),
  *     lookupMemories: async (embedding) => db.findSimilar(embedding),
@@ -83,7 +76,6 @@ export const runMECH = withErrorHandling(
         
         const mechAgent = toMechAgent(options.agent);
         const context: SimpleMechOptions = {
-            runAgent: options.runAgent,
             onHistory: options.onHistory,
             onStatus: options.onStatus,
             embed: options.embed,
@@ -95,9 +87,9 @@ export const runMECH = withErrorHandling(
         
         // Use memory wrapper if memory functions are provided
         if (options.embed) {
-            return internalRunMECHWithMemory(mechAgent, sanitizedTask, fullContext);
+            return internalRunMECHWithMemory(mechAgent, sanitizedTask, fullContext, options.loop);
         } else {
-            return internalRunMECH(mechAgent, sanitizedTask, fullContext, options.loop || false, options.model);
+            return internalRunMECH(mechAgent, sanitizedTask, fullContext, options.loop);
         }
     },
     'simple_api'

@@ -148,16 +148,7 @@ export type CreateToolFunction = (
     returnDescription?: string
 ) => ToolFunction;
 
-/**
- * LLM response structure
- */
-export interface LLMResponse {
-    response: string;
-    tool_calls?: Array<{
-        name: string;
-        arguments: Record<string, any>;
-    }>;
-}
+// LLMResponse removed - MECH now uses ensemble events directly
 
 /**
  * Complete MECH context with all required and optional fields
@@ -225,11 +216,6 @@ export interface MechContext {
      * Cost tracking instance
      */
     costTracker: CostTracker;
-    
-    /**
-     * Run an agent with streaming and tools
-     */
-    runStreamedWithTools: (agent: MechAgent, input: string, history: ResponseInput) => Promise<LLMResponse>;
 
     // ========================================================================
     // Optional Core Functions
@@ -342,11 +328,6 @@ export interface MechContext {
  */
 export interface SimpleMechOptions {
     /**
-     * Function to run the agent - this is your LLM integration
-     */
-    runAgent: (agent: MechAgent, input: string, history: ResponseInput) => Promise<LLMResponse>;
-    
-    /**
      * Optional callback when history items are added
      */
     onHistory?: (item: ResponseInputItem) => void;
@@ -368,10 +349,10 @@ export interface SimpleMechOptions {
  * Simple agent definition for the easy API
  */
 export interface SimpleAgent {
-    name: string;
+    name?: string;              // Optional: defaults to "Agent"
     agent_id?: string;
     model?: string;
-    modelClass?: string;
+    modelClass?: string;        // Recommended: "reasoning", "standard", "code", "metacognition"
     tools?: AgentTool[];
     instructions?: string;
 }
@@ -382,8 +363,7 @@ export interface SimpleAgent {
 export interface RunMechOptions extends SimpleMechOptions {
     agent: SimpleAgent;
     task: string;
-    loop?: boolean;
-    model?: string;
+    loop?: boolean;                   // Default: true (enable multi-turn conversation)
     
     /** Optional: Function to generate embeddings from text for memory features */
     embed?: (text: string) => Promise<number[]>;

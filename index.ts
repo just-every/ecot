@@ -44,7 +44,6 @@ export type {
     SimpleMechOptions,
     
     // Helper types
-    LLMResponse,
     MemoryItem,
 } from './types.js';
 
@@ -146,7 +145,6 @@ export {
     // Validation functions
     validateAgent,
     validateTask,
-    validateRunAgent,
     validateSimpleMechOptions,
     validateModelScore,
     validateMetaFrequency,
@@ -220,3 +218,4 @@ export {
     MESSAGE_TYPES,
     AGENT_STATUS
 } from './utils/constants.js';
+

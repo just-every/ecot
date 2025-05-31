@@ -173,58 +173,6 @@ export function createFullContext(options: SimpleMechOptions): MechContext {
         processPendingHistoryThreads: defaultProcessPendingHistoryThreads,
         describeHistory: defaultDescribeHistory,
         costTracker: globalCostTracker,
-        runStreamedWithTools: async (agent, input, history) => {
-            try {
-                const result = await options.runAgent(agent, input, history);
-                
-                // For the simple API, automatically call task_complete if the runAgent succeeds
-                // and returns a response. This makes the simple API truly simple - users don't 
-                // need to manually call completion tools.
-                if (result && typeof result === 'object' && 'response' in result) {
-                    // Look for task_complete tool in agent.tools
-                    const taskCompleteToolIndex = agent.tools?.findIndex(
-                        tool => {
-                            const funcName = tool.definition?.function?.name || 
-                                           (tool.function as any)?.name ||
-                                           (tool as any)?.name;
-                            return funcName === 'task_complete';
-                        }
-                    );
-                    
-                    if (taskCompleteToolIndex !== undefined && taskCompleteToolIndex >= 0 && agent.tools) {
-                        const taskCompleteTool = agent.tools[taskCompleteToolIndex];
-                        try {
-                            // Call task_complete with the response
-                            await taskCompleteTool.function(result.response || 'Task completed successfully');
-                        } catch (toolError) {
-                            console.error('Error calling task_complete tool:', toolError);
-                        }
-                    }
-                }
-                
-                return result;
-            } catch (error) {
-                // For the simple API, automatically call task_fatal_error on failure
-                // Look for task_fatal_error tool in agent.tools
-                const taskErrorToolIndex = agent.tools?.findIndex(
-                    tool => tool.definition?.function?.name === 'task_fatal_error' ||
-                           (tool.function?.name === 'task_fatal_error')
-                );
-                
-                if (taskErrorToolIndex !== undefined && taskErrorToolIndex >= 0 && agent.tools) {
-                    const taskErrorTool = agent.tools[taskErrorToolIndex];
-                    try {
-                        // Call task_fatal_error with the error message
-                        await taskErrorTool.function((error as any)?.message || String(error));
-                    } catch (toolError) {
-                        console.error('Error calling task_fatal_error tool:', toolError);
-                    }
-                }
-                
-                // Re-throw the original error so the MECH loop can still handle it
-                throw error;
-            }
-        },
         
         // ========================================================================
         // Optional Core Functions (with defaults)

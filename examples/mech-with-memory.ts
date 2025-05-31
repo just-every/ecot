@@ -4,6 +4,9 @@
  * This example demonstrates how to use MECH with memory features for context-aware
  * task execution. It shows practical patterns for building AI systems that remember
  * and learn from previous interactions.
+ * 
+ * MECH now handles LLM communication internally through the @just-every/ensemble package,
+ * so you only need to provide memory functions for embedding and storage.
  */
 
 import { runMECH, getTotalCost, resetCostTracker } from '../simple.js';
@@ -141,6 +144,7 @@ async function personalKnowledgeAssistant() {
     
     for (const query of queries) {
         console.log(`\\n👤 Query: ${query}`);
+        console.log('🤖 MECH is processing with automatic LLM selection...');
         
         const result = await runMECH({
             agent: { 
@@ -148,25 +152,6 @@ async function personalKnowledgeAssistant() {
                 instructions: 'You are a knowledgeable assistant. Use retrieved memories to provide accurate, contextual answers.'
             },
             task: query,
-            runAgent: async (agent, input, history) => {
-                console.log(`🤖 ${agent.name} processing query...`);
-                
-                // Get relevant memories (they'll be automatically provided by MECH)
-                const hasMemoryContext = history.some(item => 
-                    item.content?.includes('RELEVANT_MEMORIES') || 
-                    item.content?.includes('Based on memory')
-                );
-                
-                if (hasMemoryContext) {
-                    return { 
-                        response: `Based on my knowledge: I can help with ${input}. Let me provide details from what I remember.`
-                    };
-                } else {
-                    return { 
-                        response: `I'll search my knowledge base for information about: ${input}`
-                    };
-                }
-            },
             
             // Memory integration
             embed: embeddingService.generateEmbedding.bind(embeddingService),
@@ -216,35 +201,14 @@ async function learningConversationAgent() {
     
     for (const [index, userMessage] of conversation.entries()) {
         console.log(`\\n👤 User (${index + 1}/${conversation.length}): ${userMessage}`);
+        console.log('🤖 MECH is processing conversation...');
         
         const result = await runMECH({
             agent: { 
                 name: 'LearningBot',
-                instructions: 'You are a helpful coding assistant that learns user preferences and provides personalized advice.'
+                instructions: 'You are a helpful coding assistant that learns user preferences and provides personalized advice. Remember important details about the user\'s projects and preferences.'
             },
             task: userMessage,
-            runAgent: async (agent, input, _history) => {
-                console.log(`🤖 ${agent.name} thinking about: "${input}"`);
-                
-                // Simulate contextual responses based on conversation flow
-                let response = '';
-                
-                if (input.includes('React project')) {
-                    response = "Great! I love helping with React projects. What specific aspect would you like help with?";
-                } else if (input.includes('state management')) {
-                    response = "State management is crucial in React! There are several options: useState/useReducer for local state, Context API for app-wide state, or external libraries like Redux, Zustand, or Jotai.";
-                } else if (input.includes('Redux or Context')) {
-                    response = "Good question! For small to medium apps, Context API is often sufficient and simpler. Redux is powerful for large apps with complex state logic, time-travel debugging needs, or when you need predictable state updates.";
-                } else if (input.includes('large application')) {
-                    response = "For large applications, I'd recommend Redux Toolkit (RTK) or Zustand. RTK reduces Redux boilerplate significantly, and both handle complex state well. The choice depends on your team's familiarity and specific needs.";
-                } else if (input.includes('remember my preference')) {
-                    response = "Absolutely! I'll remember that you're working on React projects and prefer advice about scalable state management solutions. I'll keep this in mind for future conversations.";
-                } else {
-                    response = "I'm here to help! What would you like to know?";
-                }
-                
-                return { response };
-            },
             
             embed: embeddingService.generateEmbedding.bind(embeddingService),
             
@@ -322,49 +286,14 @@ async function domainExpertResearcher() {
     
     const researchQuery = "How can I build a system that retrieves relevant information and generates contextual responses?";
     console.log(`\\n🔍 Research Query: ${researchQuery}`);
+    console.log('🤖 MECH is analyzing with domain expertise...');
     
     const result = await runMECH({
         agent: { 
             name: 'DomainExpert',
-            instructions: 'You are an AI research expert. Provide comprehensive, technically accurate answers using relevant research and examples.'
+            instructions: 'You are an AI research expert. Provide comprehensive, technically accurate answers using relevant research and examples. When memories are provided, integrate them into your analysis.'
         },
         task: researchQuery,
-        runAgent: async (agent, input, _history) => {
-            console.log(`🔬 ${agent.name} conducting research...`);
-            
-            const response = `
-RESEARCH ANALYSIS: Building Information Retrieval + Generation Systems
-
-Based on current research and best practices:
-
-🏗️ ARCHITECTURE OVERVIEW:
-1. **Retrieval Component**: Vector database for semantic search
-2. **Generation Component**: Large Language Model for response synthesis
-3. **Integration Layer**: RAG (Retrieval Augmented Generation) pattern
-
-🔧 IMPLEMENTATION APPROACH:
-1. **Document Processing**: Chunk and embed knowledge base
-2. **Query Processing**: Embed user queries for semantic matching
-3. **Retrieval**: Find most relevant chunks using cosine similarity
-4. **Generation**: Prompt LLM with query + retrieved context
-5. **Response**: Synthesize contextual, grounded answers
-
-🎯 KEY TECHNOLOGIES:
-- **Embeddings**: OpenAI text-embedding-ada-002, Sentence Transformers
-- **Vector DBs**: Pinecone, Weaviate, Chroma, FAISS
-- **LLMs**: GPT-4, Claude, PaLM, open-source alternatives
-- **Frameworks**: LangChain, LlamaIndex, Haystack
-
-⚡ OPTIMIZATION STRATEGIES:
-- Hybrid search (semantic + keyword)
-- Reranking for relevance
-- Caching for performance
-- Streaming for responsiveness
-
-This system design enables contextual, accurate responses while maintaining verifiable information sources.`;
-
-            return { response };
-        },
         
         embed: embeddingService.generateEmbedding.bind(embeddingService),
         
@@ -413,8 +342,8 @@ async function runMemoryExamples() {
         console.log(`Total cost: $${totalCost.toFixed(6)}`);
         
         if (totalCost === 0) {
-            console.log('ℹ️  Note: $0 cost because examples use simulated responses');
-            console.log('🔗 Real usage: Integrate with OpenAI, Anthropic, or other providers');
+            console.log('ℹ️  Note: If cost is $0, ensure API keys are configured in your environment');
+            console.log('🔗 MECH integrates with OpenAI, Anthropic, Google, and other providers via @just-every/ensemble');
         }
         
         console.log('\\n🎉 Memory integration examples completed!');
@@ -431,6 +360,7 @@ async function runMemoryExamples() {
         console.log('   • Monitor memory storage costs');
         console.log('   • Set up memory cleanup policies');
         console.log('   • Consider hybrid search approaches');
+        console.log('   • Configure API keys: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY');
         
     } catch (error) {
         console.error('❌ Error in memory examples:', error);
