@@ -191,7 +191,7 @@ const result = await runMECH({
     },
     task: 'Research the latest developments in quantum computing and compare with our previous discussion',
     
-    // Memory features (optional) - embedding is handled automatically by MECH using @just-every/ensemble
+    // Memory features (optional) - embedding is handled automatically by @just-every/ensemble
     
     lookupMemories: async (embedding) => {
         // Search your vector database
