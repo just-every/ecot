@@ -18,7 +18,22 @@ vi.mock('@just-every/ensemble', () => ({
     },
     getModelFromClass: vi.fn().mockRejectedValue(new Error('Mock: No override')),
     findModel: vi.fn().mockReturnValue({ id: 'gpt-4', name: 'GPT-4' }),
-    ModelClassID: {}
+    ModelClassID: {},
+    createToolFunction: vi.fn((fn, description, params, returns, functionName) => ({
+        function: fn,
+        definition: {
+            type: 'function',
+            function: {
+                name: functionName || fn.name || 'anonymous',
+                description: description || '',
+                parameters: {
+                    type: 'object',
+                    properties: params || {},
+                    required: []
+                }
+            }
+        }
+    }))
 }));
 
 describe('Model Rotation', () => {

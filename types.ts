@@ -140,7 +140,7 @@ export interface MemoryItem {
 }
 
 /**
- * Tool function creator
+ * Tool function creator (using ensemble's createToolFunction)
  */
 export type CreateToolFunction = (
     fn: (...args: any[]) => any,

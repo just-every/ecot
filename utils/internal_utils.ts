@@ -5,17 +5,15 @@
  */
 
 import type { ResponseInput, ResponseInputItem } from '@just-every/ensemble';
-import { CostTracker } from '@just-every/ensemble';
+import { CostTracker, createToolFunction } from '@just-every/ensemble';
 import type { 
     MechContext, 
     SimpleMechOptions,
     MechAgent,
-    CreateToolFunction,
     ToolFunction,
     CommunicationManager,
     MemoryItem
 } from '../types.js';
-import type { ToolParameter } from '@just-every/ensemble';
 
 /**
  * Default history management implementation
@@ -58,50 +56,40 @@ export function defaultReadableTime(ms: number): string {
 }
 
 /**
- * Default tool function creator
+ * Wrapper around ensemble's createToolFunction that ensures string return values
  */
-export const defaultCreateToolFunction: CreateToolFunction = (
+export function wrapEnsembleCreateToolFunction(
     fn: (...args: any[]) => any,
     description: string,
     params?: Record<string, any>,
     _returnDescription?: string
-): ToolFunction => {
+): ToolFunction {
     // Wrap the function to ensure it returns a string
     const executableFn = async (...args: any[]) => {
         const result = await fn(...args);
         return typeof result === 'string' ? result : JSON.stringify(result);
     };
     
-    // Convert simple params to ToolParameter format
-    const properties: Record<string, ToolParameter> = {};
+    // Convert simple params to ensemble's ToolParameterMap format
+    const paramMap: Record<string, any> = {};
     if (params) {
         for (const [key, value] of Object.entries(params)) {
             if (typeof value === 'string') {
-                properties[key] = { description: value };
-            } else if (typeof value === 'object' && value !== null) {
-                properties[key] = value as ToolParameter;
+                paramMap[key] = value; // Simple string description
             } else {
-                properties[key] = { description: String(value) };
+                paramMap[key] = value; // Pass through more complex parameter objects
             }
         }
     }
     
-    return {
-        function: executableFn,
-        definition: {
-            type: 'function',
-            function: {
-                name: fn.name || 'anonymous',
-                description,
-                parameters: {
-                    type: 'object',
-                    properties,
-                    required: Object.keys(properties)
-                }
-            }
-        }
-    };
-};
+    return createToolFunction(
+        executableFn,
+        description,
+        paramMap,
+        _returnDescription,
+        fn.name || 'anonymous'
+    );
+}
 
 /**
  * Default communication manager
@@ -177,7 +165,7 @@ export function createFullContext(options: SimpleMechOptions): MechContext {
         // ========================================================================
         // Optional Core Functions (with defaults)
         // ========================================================================
-        createToolFunction: defaultCreateToolFunction,
+        createToolFunction: wrapEnsembleCreateToolFunction,
         dateFormat: defaultDateFormat,
         readableTime: defaultReadableTime,
         MAGI_CONTEXT: 'MECH System Context',

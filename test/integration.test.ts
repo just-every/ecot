@@ -44,7 +44,22 @@ vi.mock('@just-every/ensemble', () => ({
         };
         const modelList = models[modelClass] || models.reasoning;
         return modelList[0];
-    })
+    }),
+    createToolFunction: vi.fn((fn, description, params, returns, functionName) => ({
+        function: fn,
+        definition: {
+            type: 'function',
+            function: {
+                name: functionName || fn.name || 'anonymous',
+                description: description || '',
+                parameters: {
+                    type: 'object',
+                    properties: params || {},
+                    required: []
+                }
+            }
+        }
+    }))
 }));
 
 // Helper to create async stream for mock responses

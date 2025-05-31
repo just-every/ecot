@@ -15,7 +15,22 @@ vi.mock('@just-every/ensemble', () => ({
             models: ['gpt-3.5-turbo', 'claude-instant']
         }
     },
-    findModel: vi.fn().mockReturnValue({ id: 'gpt-4-turbo', name: 'GPT-4 Turbo' })
+    findModel: vi.fn().mockReturnValue({ id: 'gpt-4-turbo', name: 'GPT-4 Turbo' }),
+    createToolFunction: vi.fn((fn, description, params, returns, functionName) => ({
+        function: fn,
+        definition: {
+            type: 'function',
+            function: {
+                name: functionName || fn.name || 'anonymous',
+                description: description || '',
+                parameters: {
+                    type: 'object',
+                    properties: params || {},
+                    required: []
+                }
+            }
+        }
+    }))
 }));
 
 describe('Meta-cognition', () => {
