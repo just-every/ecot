@@ -5,7 +5,7 @@
  */
 
 import { MechValidationError } from './errors.js';
-import type { MechAgent, SimpleMechOptions, RunMechOptions } from '../types.js';
+import type { MechAgent, SimpleMechOptions } from '../types.js';
 
 /**
  * Validate a MECH agent object
