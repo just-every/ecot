@@ -89,6 +89,13 @@ export async function runMECH(
         }
     });
     
+    // Initialize counter with current global count
+    if (mechState.llmRequestCount > 0) {
+        for (let i = 0; i < mechState.llmRequestCount; i++) {
+            requestContext.incrementCounter('llmRequestCount');
+        }
+    }
+    
     // Load existing model scores from mechState if available
     Object.entries(mechState.modelScores).forEach(([model, score]) => {
         if (typeof score === 'number') {
@@ -164,6 +171,8 @@ export async function runMECH(
             onIteration: async (_iteration: any, _ctx: any) => {
                 // Track LLM requests using context counter
                 const requestCount = requestContext.incrementCounter('llmRequestCount');
+                // Also update global mechState
+                mechState.llmRequestCount = requestCount;
                 const metaFrequency = parseInt(mechState.metaFrequency);
                 
                 if (requestCount % metaFrequency === 0) {
@@ -262,6 +271,10 @@ Total cost: $${totalCost.toFixed(6)}`;
         
         // Track model usage
         requestContext.incrementCounter(`modelUsage:${selectedModel}`);
+        
+        // Increment LLM request count for initial request
+        const requestCount = requestContext.incrementCounter('llmRequestCount');
+        mechState.llmRequestCount = requestCount;
         
         // Run the request
         for await (const event of request(

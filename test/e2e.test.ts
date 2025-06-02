@@ -147,7 +147,11 @@ describe('MECH End-to-End Tests', () => {
                 if (options?.toolHandler?.onToolCall) {
                     const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
                     if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
-                        await options.toolHandler.onToolComplete(toolCall, 'Task completed', options.toolHandler.context);
+                        // Parse the arguments from the tool call
+                        const args = JSON.parse(toolCall.function.arguments);
+                        // The result should be what the tool returns when executed
+                        const result = `Task completed: ${args.result}`;
+                        await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
                     }
                 }
             })();
@@ -161,15 +165,28 @@ describe('MECH End-to-End Tests', () => {
                 'analyze', 'plan', 'implement', 'test', 'complete'
             ];
 
-            mockedRequest.mockImplementation(() => {
-                // Complete the task immediately
-                return createMockStream(
-                    'Multi-step task completed',
-                    [{ 
-                        name: 'task_complete', 
-                        arguments: { result: 'Multi-step task completed successfully' } 
-                    }]
-                );
+            mockedRequest.mockImplementation((model, messages, options) => {
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'Multi-step task completed' };
+                    
+                    const toolCall = {
+                        id: 'test-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'Multi-step task completed successfully' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
+                        }
+                    }
+                })();
             });
 
             const options: RunMechOptions = {
@@ -186,7 +203,7 @@ describe('MECH End-to-End Tests', () => {
             const result = await runMECH({ ...options, loop: false });
 
             expect(result.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Multi-step task completed successfully');
+            expect(result.mechOutcome?.result).toBe('Task completed: Multi-step task completed successfully');
             expect(result.durationSec).toBeGreaterThanOrEqual(0);
             expect(mockedRequest).toHaveBeenCalledTimes(1); // Exactly one call
         });
@@ -195,16 +212,29 @@ describe('MECH End-to-End Tests', () => {
             let attempts = 0;
             const maxAttempts = 3;
 
-            mockedRequest.mockImplementation(() => {
+            mockedRequest.mockImplementation((model, messages, options) => {
                 attempts++;
-                // Complete immediately for test simplicity
-                return createMockStream(
-                    'Found the solution!',
-                    [{ 
-                        name: 'task_complete', 
-                        arguments: { result: 'Solution found after 1 attempts' } 
-                    }]
-                );
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'Found the solution!' };
+                    
+                    const toolCall = {
+                        id: 'test-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'Solution found after 1 attempts' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
+                        }
+                    }
+                })();
             });
 
             const options: RunMechOptions = {
@@ -215,7 +245,7 @@ describe('MECH End-to-End Tests', () => {
             const result = await runMECH({ ...options, loop: false });
 
             expect(result.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Solution found after 1 attempts');
+            expect(result.mechOutcome?.result).toBe('Task completed: Solution found after 1 attempts');
             expect(attempts).toBe(1);
         });
     });
@@ -246,15 +276,28 @@ describe('MECH End-to-End Tests', () => {
         });
 
         it('should handle memory-intensive analytical tasks', async () => {
-            mockedRequest.mockImplementation(() => {
-                // Complete analysis immediately
-                return createMockStream(
-                    'Analysis complete',
-                    [{ 
-                        name: 'task_complete', 
-                        arguments: { result: 'Comprehensive analysis completed' } 
-                    }]
-                );
+            mockedRequest.mockImplementation((model, messages, options) => {
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'Analysis complete' };
+                    
+                    const toolCall = {
+                        id: 'test-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'Comprehensive analysis completed' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
+                        }
+                    }
+                })();
             });
 
             const options: RunMechOptions = {
@@ -265,22 +308,35 @@ describe('MECH End-to-End Tests', () => {
             const result = await runMECH({ ...options, loop: false });
 
             expect(result.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Comprehensive analysis completed');
+            expect(result.mechOutcome?.result).toBe('Task completed: Comprehensive analysis completed');
             expect(mockedRequest).toHaveBeenCalledTimes(1);
         });
     });
 
     describe('System Adaptation and Optimization', () => {
         it('should demonstrate automatic system tuning through meta-cognition', async () => {
-            mockedRequest.mockImplementation(() => {
-                // Complete immediately with task_complete
-                return createMockStream(
-                    'Task completed',
-                    [{ 
-                        name: 'task_complete', 
-                        arguments: { result: 'Adaptive optimization successful' } 
-                    }]
-                );
+            mockedRequest.mockImplementation((model, messages, options) => {
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'Task completed' };
+                    
+                    const toolCall = {
+                        id: 'test-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'Adaptive optimization successful' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
+                        }
+                    }
+                })();
             });
 
             const options: RunMechOptions = {
@@ -295,21 +351,34 @@ describe('MECH End-to-End Tests', () => {
             const result = await runMECH({ ...options, loop: false });
 
             expect(result.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Adaptive optimization successful');
+            expect(result.mechOutcome?.result).toBe('Task completed: Adaptive optimization successful');
             expect(mockedRequest).toHaveBeenCalledTimes(1);
             expect(mechState.llmRequestCount).toBeGreaterThan(0);
         });
 
         it('should handle model performance degradation gracefully', async () => {
-            mockedRequest.mockImplementation(() => {
-                // Complete immediately instead of simulating failures
-                return createMockStream(
-                    'Task completed',
-                    [{ 
-                        name: 'task_complete', 
-                        arguments: { result: 'Completed with resilient model handling' } 
-                    }]
-                );
+            mockedRequest.mockImplementation((model, messages, options) => {
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'Task completed' };
+                    
+                    const toolCall = {
+                        id: 'test-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'Completed with resilient model handling' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
+                        }
+                    }
+                })();
             });
 
             const options: RunMechOptions = {
@@ -324,7 +393,7 @@ describe('MECH End-to-End Tests', () => {
             const result = await runMECH({ ...options, loop: false });
 
             expect(result.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Completed with resilient model handling');
+            expect(result.mechOutcome?.result).toBe('Task completed: Completed with resilient model handling');
             expect(mockedRequest).toHaveBeenCalledTimes(1);
         });
     });
@@ -333,15 +402,28 @@ describe('MECH End-to-End Tests', () => {
         it('should integrate all MECH features in a comprehensive workflow', async () => {
             const sessionId = globalDebugger.startSession('comprehensive-test');
 
-            mockedRequest.mockImplementation(() => {
-                // Complete immediately with comprehensive result
-                return createMockStream(
-                    'Comprehensive workflow completed',
-                    [{ 
-                        name: 'task_complete', 
-                        arguments: { result: 'All MECH features integrated and working' } 
-                    }]
-                );
+            mockedRequest.mockImplementation((model, messages, options) => {
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'Comprehensive workflow completed' };
+                    
+                    const toolCall = {
+                        id: 'test-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'All MECH features integrated and working' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
+                        }
+                    }
+                })();
             });
 
             // Enable all advanced features
@@ -360,7 +442,7 @@ describe('MECH End-to-End Tests', () => {
 
             // Verify comprehensive integration
             expect(result.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('All MECH features integrated and working');
+            expect(result.mechOutcome?.result).toBe('Task completed: All MECH features integrated and working');
             expect(mockedRequest).toHaveBeenCalledTimes(1);
 
             // Verify debug session
@@ -371,15 +453,28 @@ describe('MECH End-to-End Tests', () => {
         });
 
         it('should handle complex state transitions and edge cases', async () => {
-            mockedRequest.mockImplementation(() => {
-                // Complete immediately
-                return createMockStream(
-                    'State transitions handled',
-                    [{ 
-                        name: 'task_complete', 
-                        arguments: { result: 'Complex state management successful' } 
-                    }]
-                );
+            mockedRequest.mockImplementation((model, messages, options) => {
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'State transitions handled' };
+                    
+                    const toolCall = {
+                        id: 'test-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'Complex state management successful' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
+                        }
+                    }
+                })();
             });
 
             // Configure complex state scenario
@@ -396,7 +491,7 @@ describe('MECH End-to-End Tests', () => {
             const result = await runMECH({ ...options, loop: false });
 
             expect(result.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Complex state management successful');
+            expect(result.mechOutcome?.result).toBe('Task completed: Complex state management successful');
             // Verify that the model was disabled as configured
             expect(mechState.disabledModels.has('unreliable-model')).toBe(true);
             expect(mechState.llmRequestCount).toBeGreaterThan(0);
@@ -406,15 +501,28 @@ describe('MECH End-to-End Tests', () => {
 
     describe('Error Recovery and Resilience', () => {
         it('should demonstrate robust error recovery across system components', async () => {
-            mockedRequest.mockImplementation(() => {
-                // Complete immediately without errors
-                return createMockStream(
-                    'Task completed',
-                    [{ 
-                        name: 'task_complete', 
-                        arguments: { result: 'System recovery successful' } 
-                    }]
-                );
+            mockedRequest.mockImplementation((model, messages, options) => {
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'Task completed' };
+                    
+                    const toolCall = {
+                        id: 'test-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'System recovery successful' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
+                        }
+                    }
+                })();
             });
 
             const options: RunMechOptions = {
@@ -425,7 +533,7 @@ describe('MECH End-to-End Tests', () => {
             const result = await runMECH({ ...options, loop: false });
 
             expect(result.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('System recovery successful');
+            expect(result.mechOutcome?.result).toBe('Task completed: System recovery successful');
             expect(mockedRequest).toHaveBeenCalledTimes(1);
         });
 
@@ -440,15 +548,28 @@ describe('MECH End-to-End Tests', () => {
             // Verify models were disabled
             expect(mechState.disabledModels.size).toBe(3);
 
-            mockedRequest.mockImplementation(() => {
-                // Simulate minimal functionality under constraints
-                return createMockStream(
-                    'Operating under constraints',
-                    [{ 
-                        name: 'task_complete', 
-                        arguments: { result: 'Graceful degradation successful' } 
-                    }]
-                );
+            mockedRequest.mockImplementation((model, messages, options) => {
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'Operating under constraints' };
+                    
+                    const toolCall = {
+                        id: 'test-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'Graceful degradation successful' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
+                        }
+                    }
+                })();
             });
 
             const options: RunMechOptions = {
@@ -459,7 +580,7 @@ describe('MECH End-to-End Tests', () => {
             const result = await runMECH({ ...options, loop: false });
 
             expect(result.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Graceful degradation successful');
+            expect(result.mechOutcome?.result).toBe('Task completed: Graceful degradation successful');
         });
     });
 
@@ -467,15 +588,28 @@ describe('MECH End-to-End Tests', () => {
         it('should maintain performance with extended usage patterns', async () => {
             const longRunningSession = globalDebugger.startSession('long-running-test');
 
-            mockedRequest.mockImplementation(() => {
-                // Complete immediately
-                return createMockStream(
-                    'Completed extended session',
-                    [{ 
-                        name: 'task_complete', 
-                        arguments: { result: 'Extended usage pattern successful' } 
-                    }]
-                );
+            mockedRequest.mockImplementation((model, messages, options) => {
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'Completed extended session' };
+                    
+                    const toolCall = {
+                        id: 'test-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'Extended usage pattern successful' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, options.toolHandler.context);
+                        }
+                    }
+                })();
             });
 
             const options: RunMechOptions = {
@@ -488,7 +622,7 @@ describe('MECH End-to-End Tests', () => {
             const duration = Date.now() - startTime;
 
             expect(result.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Extended usage pattern successful');
+            expect(result.mechOutcome?.result).toBe('Task completed: Extended usage pattern successful');
             expect(mockedRequest).toHaveBeenCalledTimes(1);
             expect(duration).toBeLessThan(10000); // Should complete in reasonable time
 

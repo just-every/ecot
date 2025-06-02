@@ -147,8 +147,8 @@ describe('MECH Integration Tests', () => {
                     if (action === 'execute' || action === ToolCallAction.EXECUTE) {
                         // Execute the tool through the handler
                         const result = toolName === 'task_fatal_error' 
-                            ? 'Simulated error'
-                            : 'Task completed successfully';
+                            ? `Task failed: ${toolArgs.error}`
+                            : `Task completed: ${toolArgs.result}`;
                             
                         if (options?.toolHandler?.onToolComplete) {
                             await options.toolHandler.onToolComplete(toolCall, result, context);
@@ -196,7 +196,7 @@ describe('MECH Integration Tests', () => {
 
             expect(result.status).toBe('complete');
             expect(result.mechOutcome?.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Task completed successfully');
+            expect(result.mechOutcome?.result).toBe('Task completed: Task completed successfully');
         });
 
         it('should handle error scenarios gracefully', async () => {
@@ -478,7 +478,7 @@ describe('MECH Integration Tests', () => {
             expect(result.status).toBe('complete');
             // The fact that task_complete was called proves MECH tools were added
             expect(result.mechOutcome?.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Task completed successfully');
+            expect(result.mechOutcome?.result).toBe('Task completed: Task completed successfully');
         });
 
         it('should provide MECH tools via simple API', async () => {
@@ -493,7 +493,7 @@ describe('MECH Integration Tests', () => {
             expect(result.status).toBe('complete');
             // The fact that task_complete was called proves MECH tools were added
             expect(result.mechOutcome?.status).toBe('complete');
-            expect(result.mechOutcome?.result).toBe('Task completed successfully');
+            expect(result.mechOutcome?.result).toBe('Task completed: Task completed successfully');
         });
     });
 });

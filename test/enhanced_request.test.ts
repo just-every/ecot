@@ -240,9 +240,11 @@ describe('Enhanced Request Integration', () => {
                         };
                         
                         if (options?.toolHandler?.onToolCall) {
-                            await options.toolHandler.onToolCall(toolCall, context);
-                            if (options?.toolHandler?.onToolComplete) {
-                                await options.toolHandler.onToolComplete(toolCall, 'Done', context);
+                            const action = await options.toolHandler.onToolCall(toolCall, context);
+                            if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                                const args = JSON.parse(toolCall.function.arguments);
+                                const result = `Task completed: ${args.result}`;
+                                await options.toolHandler.onToolComplete(toolCall, result, context);
                             }
                         }
                     }
@@ -267,7 +269,9 @@ describe('Enhanced Request Integration', () => {
                     if (options?.toolHandler?.onToolCall) {
                         const action = await options.toolHandler.onToolCall(toolCall, context);
                         if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
-                            await options.toolHandler.onToolComplete(toolCall, 'Done', context);
+                            const args = JSON.parse(toolCall.function.arguments);
+                            const result = `Task completed: ${args.result}`;
+                            await options.toolHandler.onToolComplete(toolCall, result, context);
                         }
                     }
                 })();
