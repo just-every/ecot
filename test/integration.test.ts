@@ -15,7 +15,7 @@ import {
     resetLLMRequestCount,
     getTotalCost,
     resetCostTracker,
-    type SimpleAgent,
+    type MechAgent,
     type RunMechOptions
 } from '../index.js';
 import { createFullContext } from '../utils/internal_utils.js';
@@ -89,7 +89,7 @@ async function* createMockStream(response: string, toolCalls: Array<{ name: stri
 }
 
 describe('MECH Integration Tests', () => {
-    let mockAgent: SimpleAgent;
+    let mockAgent: MechAgent;
     let mockedRequest: ReturnType<typeof vi.fn>;
     // No longer need mockedEnhancedRequest - using mockedRequest instead
     

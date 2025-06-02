@@ -278,7 +278,7 @@ class MechDebugger {
 
         const entry: ModelSelectionEntry = {
             timestamp: new Date(),
-            agentName: agent.name,
+            agentName: agent.name || 'Agent',
             modelClass: agent.modelClass,
             availableModels,
             selectedModel,

@@ -12,7 +12,7 @@ import {
     resetLLMRequestCount,
     resetCostTracker,
     type RunMechOptions,
-    type SimpleAgent
+    type MechAgent
 } from '../index.js';
 import { request, ToolCallAction, RequestContext, EnhancedRequestMock } from '@just-every/ensemble';
 import { getMECHTools } from '../mech_tools.js';
@@ -52,7 +52,7 @@ vi.mock('@just-every/ensemble', async () => {
 });
 
 describe('Enhanced Request Integration', () => {
-    let mockAgent: SimpleAgent;
+    let mockAgent: MechAgent;
     let mockedRequest: ReturnType<typeof vi.fn>;
     
     beforeEach(() => {

@@ -9,7 +9,6 @@ import { runMECHWithMemory as internalRunMECHWithMemory } from './mech_memory_wr
 import type { 
     MechAgent, 
     MechResult, 
-    SimpleAgent,
     RunMechOptions
 } from './types.js';
 import { createFullContext, globalCostTracker } from './utils/internal_utils.js';
@@ -20,27 +19,25 @@ import {
 import { withErrorHandling } from './utils/errors.js';
 
 /**
- * Convert a simple agent to MechAgent
- */
-/**
- * Convert a simple agent to MechAgent format with full MECH capabilities
+ * Ensure agent has all required methods and fields
  * 
- * @param agent - Simple agent configuration with minimal required fields
- * @returns Full MechAgent with auto-generated ID, timestamps, and default capabilities
+ * This internal helper adds the required export() and getTools() methods
+ * if they're not already present, and ensures name and agent_id are set.
+ * 
+ * @param agent - Agent configuration (all fields optional)
+ * @returns Agent with all required methods and fields
  * @internal
  */
-function toMechAgent(agent: SimpleAgent): MechAgent {
+function toMechAgent(agent: MechAgent): MechAgent {
     const agentName = agent.name || 'Agent';
+    const agentId = agent.agent_id || `${agentName}-${Date.now()}`;
+    
     return {
+        ...agent,
         name: agentName,
-        agent_id: agent.agent_id || `${agentName}-${Date.now()}`,
-        model: agent.model,
-        modelClass: agent.modelClass,
-        tools: agent.tools || [],  // Preserve tools if provided
-        instructions: agent.instructions,
-        onRequest: agent.onRequest,  // Preserve onRequest hook if provided
-        export: () => ({ ...agent } as Record<string, unknown>),
-        getTools: async () => agent.tools || []  // Return the agent's tools
+        agent_id: agentId,
+        export: agent.export || (() => ({ ...agent } as Record<string, unknown>)),
+        getTools: agent.getTools || (async () => agent.tools || [])
     };
 }
 
@@ -137,7 +134,7 @@ export function resetCostTracker(): void {
 export type { 
     MechResult, 
     MechOutcome,
-    SimpleAgent,
+    MechAgent,
     RunMechOptions 
 } from './types.js';
 

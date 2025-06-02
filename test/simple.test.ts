@@ -212,7 +212,7 @@ describe('Simple MECH API', () => {
         expect(result.mechOutcome?.error).toContain('Test error');
     });
 
-    it('should preserve tools from SimpleAgent', async () => {
+    it('should preserve tools from agent', async () => {
         const mockTool = {
             function: async () => 'tool result',
             definition: {

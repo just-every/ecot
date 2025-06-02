@@ -20,7 +20,6 @@ export {
     resetCostTracker,
     
     // Types
-    type SimpleAgent,
     type RunMechOptions,
 } from './simple.js';
 

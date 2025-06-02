@@ -84,20 +84,26 @@ export interface AgentTool {
 }
 
 /**
- * Agent interface required by MECH
- * This is a subset of the full Agent class to minimize dependencies
+ * Agent interface for MECH
+ * 
+ * All fields are optional for ease of use. The system will:
+ * - Default name to "Agent" if not provided
+ * - Auto-generate agent_id as "{name}-{timestamp}" if not provided
+ * - Add export() and getTools() methods if not present
  */
 export interface MechAgent {
-    name: string;
-    agent_id: string;
-    model?: string;
-    modelClass?: string;
-    tools?: ToolFunction[];
-    instructions?: string;
+    name?: string;              // Defaults to "Agent"
+    agent_id?: string;          // Auto-generated if not provided
+    model?: string;             // Specific model to use
+    modelClass?: string;        // "reasoning", "standard", "code", "metacognition"
+    tools?: ToolFunction[];     // Agent's available tools
+    instructions?: string;      // System instructions for the agent
     historyThread?: ResponseInputItem[];
     args?: Record<string, any>;
-    export(): Record<string, any>;
-    getTools(): Promise<ToolFunction[]>;
+    
+    // These methods are optional - will be added by toMechAgent if missing
+    export?: () => Record<string, any>;
+    getTools?: () => Promise<ToolFunction[]>;
     
     /** Optional hook called before each request to modify agent or messages */
     onRequest?: (agent: MechAgent, messages: ResponseInput) => Promise<[MechAgent, ResponseInput]>;
@@ -322,27 +328,14 @@ export interface MechContext {
 // Simple API Types
 // ============================================================================
 
-/**
- * Simple agent definition for the easy API
- */
-export interface SimpleAgent {
-    name?: string;              // Optional: defaults to "Agent"
-    agent_id?: string;
-    model?: string;
-    modelClass?: string;        // Recommended: "reasoning", "standard", "code", "metacognition"
-    tools?: ToolFunction[];     // Functional tools that can be executed
-    instructions?: string;
-    
-    /** Optional hook called before each request to modify agent or messages */
-    onRequest?: (agent: MechAgent, messages: ResponseInput) => Promise<[MechAgent, ResponseInput]>;
-}
+// SimpleAgent removed - use MechAgent for all cases
 
 /**
  * Options for running MECH with the simple API
  */
 export interface RunMechOptions {
     /** The agent configuration */
-    agent: SimpleAgent;
+    agent: MechAgent;
     
     /** The task to execute */
     task: string;

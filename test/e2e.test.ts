@@ -21,7 +21,7 @@ import {
     enableTracing,
     globalDebugger,
     type RunMechOptions,
-    type SimpleAgent
+    type MechAgent
 } from '../index.js';
 import { request, ToolCallAction, EnhancedRequestMock } from '@just-every/ensemble';
 
@@ -98,7 +98,7 @@ async function* createMockStream(response: string, toolCalls: Array<{ name: stri
 }
 
 describe('MECH End-to-End Tests', () => {
-    let testAgent: SimpleAgent;
+    let testAgent: MechAgent;
     let mockedRequest: ReturnType<typeof vi.fn>;
     // No longer need mockedEnhancedRequest - using mockedRequest instead
     

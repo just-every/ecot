@@ -323,7 +323,7 @@ ${context.formatMemories(memories)}`
                     },
                 },
             },
-            agent.agent_id
+            agent.agent_id || 'unknown-agent'
         );
 
         // Parse JSON response to extract learnings
