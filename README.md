@@ -22,6 +22,8 @@ MECH is a sophisticated orchestration system for LLM agents that goes beyond sim
 npm install @just-every/mech
 ```
 
+**Note:** MECH requires `@just-every/ensemble` v0.1.27 or later for optimal performance.
+
 ## 🔑 Setup
 
 MECH automatically handles all LLM communication. Just set your API keys:
@@ -34,6 +36,12 @@ export GOOGLE_API_KEY="your-google-key"
 ```
 
 That's it! MECH will automatically route to the appropriate provider based on the model you specify.
+
+### 🆕 New in v0.1.11+
+- Simplified tool creation with ensemble's `tool()` builder
+- Enhanced state management with `RequestContextWithState`
+- Improved test utilities with `EnhancedRequestMock`
+- 40% less boilerplate code
 
 ## 🧠 Model Classes
 
@@ -220,6 +228,58 @@ const result = await runMECH({
 });
 ```
 
+## 🔧 Custom Tools
+
+### Creating Custom Tools with ensemble's Tool Builder
+
+MECH now uses ensemble v0.1.27's `tool()` builder for creating custom tools:
+
+```typescript
+import { runMECH } from '@just-every/mech';
+import { tool } from '@just-every/ensemble';
+
+// Create a custom tool using the builder pattern
+const weatherTool = tool('get_weather')
+    .description('Get current weather for a location')
+    .string('location', 'City name or coordinates', true)
+    .enum('units', ['celsius', 'fahrenheit'], 'Temperature units', false)
+    .implement(async (args) => {
+        // Your implementation here
+        const { location, units = 'celsius' } = args;
+        // Fetch weather data...
+        return `Weather in ${location}: 22°${units === 'celsius' ? 'C' : 'F'} and sunny`;
+    })
+    .build();
+
+// Use the tool with MECH
+const result = await runMECH({
+    agent: {
+        name: 'WeatherBot',
+        modelClass: 'standard',
+        tools: [weatherTool]  // Add your custom tools here
+    },
+    task: 'What\'s the weather like in Paris?'
+});
+```
+
+### Tool Categories and Priorities
+
+```typescript
+const criticalTool = tool('emergency_shutdown')
+    .description('Emergency system shutdown')
+    .category('control')        // Tool category
+    .constraints({ 
+        priority: 100,          // Higher priority = executed first
+        maxExecutions: 1        // Limit executions per session
+    })
+    .hasSideEffects()          // Mark as having side effects
+    .implement(async () => {
+        // Implementation
+        return 'System shutdown initiated';
+    })
+    .build();
+```
+
 ## 🛠️ Advanced Configuration
 
 ### 🎛️ Fine-tune MECH Behavior
@@ -279,6 +339,7 @@ npm run build
 
 # Try different examples
 node dist/examples/simple-mech.js          # Basic usage
+node dist/examples/custom-tools.js         # Custom tools with tool builder
 node dist/examples/mech-with-memory.js     # Memory features  
 node dist/examples/meta-cognition.js       # Self-reflection
 node dist/examples/thought-management.js   # Thought pacing

@@ -85,8 +85,6 @@ export {
     // Advanced MECH functions
     runMECH as runMECHAdvanced,
     getMECHTools,
-    taskComplete,
-    taskFatalError,
 } from './mech_tools.js';
 
 export {

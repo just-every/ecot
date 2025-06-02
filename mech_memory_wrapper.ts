@@ -104,8 +104,8 @@ ${formattedMemories}`,
     // Step 2: Run the original MECH process and get the result
     try {
         const mechResult: MechResult = await runMECH(
-            agent,
             content,
+            agent,
             context,
             loop
         );

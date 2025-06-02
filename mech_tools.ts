@@ -1,72 +1,68 @@
 /**
- * MECH Tools
+ * MECH Tools - Enhanced Version
  *
  * Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) implementation.
- * This file replaces the previous MEC (Multi-Ensemble Chain) implementation
- * with the more advanced MECH system that adds meta-cognition and hierarchy capabilities.
+ * This version uses ensemble's enhancedRequest for streamlined tool handling.
  */
 
 import type { MechAgent, MechContext, MechOutcome, MechResult } from './types.js';
-import { mechState, incrementLLMRequestCount } from './mech_state.js';
+import { mechState } from './mech_state.js';
 import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
 import { rotateModel } from './model_rotation.js';
-import { ToolFunction, request } from '@just-every/ensemble';
-import { MESSAGE_TYPES, AGENT_STATUS, TASK_STATUS, DEFAULT_META_FREQUENCY } from './utils/constants.js';
-
-// Shared state for MECH execution
-let mechComplete = false;
-let mechOutcome: MechOutcome = {};
-
-// Track task start time for duration calculation
-let taskStartTime = new Date();
+import { 
+    request,
+    ToolCallAction,
+    createRequestContextWithState,
+    tool,
+    type EnhancedToolFunction,
+    type RequestContext
+} from '@just-every/ensemble';
+import { MESSAGE_TYPES, AGENT_STATUS } from './utils/constants.js';
 
 /**
- * Runs the Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH)
- *
- * @param agent - The agent to run (specify model via agent.model or agent.modelClass)
- * @param content - The user input to process
- * @param context - The MECH context containing required utilities
- * @param loop - Whether to loop continuously or exit after completion (default: true)
- * @returns Promise that resolves to a MechResult containing status, cost, and duration
+ * Get MECH control tools using ensemble's ToolBuilder
+ */
+export function getMECHTools(): EnhancedToolFunction[] {
+    return [
+        tool('task_complete')
+            .description('Report that the task has completed successfully')
+            .category('control')
+            .constraints({ priority: 100 })
+            .hasSideEffects()
+            .string('result', 'A few paragraphs describing the result. Be thorough and comprehensive.', true)
+            .implement((args: { result: string }) => {
+                console.log('[MECH] Task completed:', args.result);
+                return `Task completed: ${args.result}`;
+            })
+            .build(),
+            
+        tool('task_fatal_error')
+            .description('Report that you were not able to complete the task')
+            .category('control')
+            .constraints({ priority: 100 })
+            .hasSideEffects()
+            .string('error', 'Describe the error that occurred in a few sentences', true)
+            .implement((args: { error: string }) => {
+                console.error('[MECH] Task failed:', args.error);
+                return `Task failed: ${args.error}`;
+            })
+            .build()
+    ];
+}
+
+/**
+ * Enhanced MECH execution using ensemble's enhancedRequest
  */
 export async function runMECH(
-    agent: MechAgent,
     content: string,
+    agent: MechAgent,
     context: MechContext,
-    loop: boolean = true
+    loop = true,
+    metadata?: Record<string, any>
 ): Promise<MechResult> {
-    // Validate inputs
-    if (!agent || typeof agent !== 'object') {
-        throw new TypeError('Invalid agent: must be a valid MechAgent object');
-    }
+    const startTime = Date.now();
     
-    if (!content || typeof content !== 'string') {
-        throw new TypeError('Invalid content: must be a non-empty string');
-    }
-    
-    if (!context || typeof context !== 'object') {
-        throw new TypeError('Invalid context: must be a valid MechContext object');
-    }
-    
-    console.log(`Running MECH with command: ${content}`);
-
-    // Reset state for this run
-    mechComplete = false;
-    mechOutcome = {};
-
-    // Start timing
-    const startTime = new Date();
-    taskStartTime = startTime;
-    const costBaseline = context.costTracker.getTotalCost();
-
-    // Reset the meta-cognition state
-    mechState.llmRequestCount = 0;
-    mechState.disabledModels.clear();
-    mechState.modelScores = {};
-    mechState.lastModelUsed = undefined;
-    mechState.metaFrequency = DEFAULT_META_FREQUENCY;
-
     // Add initial prompt to history
     context.addHistory({
         type: 'message',
@@ -75,340 +71,273 @@ export async function runMECH(
     });
 
     // Add MECH tools to the agent
-    agent.tools = agent.tools || [];
-    agent.tools.unshift(...getMECHTools(context));
+    const mechTools = getMECHTools();
+    const allTools = [...mechTools, ...(agent.tools || [])];
 
     const comm = context.getCommunicationManager();
+    
+    // Create request context with state management
+    const requestContext = createRequestContextWithState({
+        metadata: {
+            ...metadata,
+            mechOutcome: {} as MechOutcome,
+            mechStartTime: startTime
+        },
+        messages: context.getHistory(),
+        onHalt: () => {
+            comm.send({ type: 'MECH_HALTED', timestamp: Date.now() });
+        }
+    });
+    
+    // Load existing model scores from mechState if available
+    Object.entries(mechState.modelScores).forEach(([model, score]) => {
+        if (typeof score === 'number') {
+            requestContext.updateScore(model, score);
+        }
+    });
+    
+    // Load disabled models
+    mechState.disabledModels.forEach(model => {
+        requestContext.disableModel(model);
+    });
 
-    do {
-        try {
-            // Check if we need to trigger meta-cognition
-            const { shouldTriggerMeta } = incrementLLMRequestCount();
-            if (shouldTriggerMeta) {
-                console.log(
-                    `[MECH] Triggering meta-cognition after ${mechState.llmRequestCount} LLM requests`
-                );
-                try {
-                    await spawnMetaThought(agent, context, startTime);
-                } catch (error) {
-                    console.error('[MECH] Error in meta-cognition:', error);
+    // Configure request options
+    const requestOptions: any = {
+        tools: allTools,
+        
+        // Tool handler configuration
+        toolHandler: {
+            context: requestContext,
+            
+            // Hook for controlling tool execution
+            onToolCall: async (toolCall: any, _ctx: any) => {
+                // Check for MECH control tools
+                const toolName = toolCall.function?.name;
+                if (toolName === 'task_complete' || toolName === 'task_fatal_error') {
+                    return ToolCallAction.EXECUTE;
+                }
+                
+                // Allow all other tools
+                return ToolCallAction.EXECUTE;
+            },
+            
+            // Hook after tool completion
+            onToolComplete: async (toolCall: any, result: any, ctx: any) => {
+                const reqCtx = ctx as RequestContext;
+                
+                const toolName = toolCall.function?.name;
+                if (toolName === 'task_complete') {
+                    reqCtx.setMetadata('mechOutcome', {
+                        status: 'complete',
+                        result: result
+                    });
+                    reqCtx.halt();
+                } else if (toolName === 'task_fatal_error') {
+                    reqCtx.setMetadata('mechOutcome', {
+                        status: 'fatal_error',
+                        error: result
+                    });
+                    reqCtx.halt();
+                }
+            },
+            
+            executionMode: 'sequential',
+            errorStrategy: 'return-error'
+        },
+        
+        // Loop configuration
+        loop: loop ? {
+            maxIterations: 100,
+            continueCondition: async (ctx: any) => {
+                // Check if we should continue
+                if (!ctx.shouldContinue || ctx.isHalted) {
+                    return false;
+                }
+                
+                // Check communication channel
+                if (comm.isClosed()) {
+                    return false;
+                }
+                
+                return true;
+            },
+            onIteration: async (_iteration: any, _ctx: any) => {
+                // Track LLM requests using context counter
+                const requestCount = requestContext.incrementCounter('llmRequestCount');
+                const metaFrequency = parseInt(mechState.metaFrequency);
+                
+                if (requestCount % metaFrequency === 0) {
+                    console.log(
+                        `[MECH] Triggering meta-cognition after ${requestCount} LLM requests`
+                    );
+                    try {
+                        await spawnMetaThought(agent, context, new Date(startTime));
+                        
+                        // Update model scores based on meta-cognition results
+                        const scores = requestContext.getAllScores();
+                        Object.entries(scores).forEach(([model, score]) => {
+                            mechState.modelScores[model] = score;
+                        });
+                    } catch (error) {
+                        console.error('[MECH] Error in meta-cognition:', error);
+                    }
+                }
+                
+                // Process pending history threads
+                await context.processPendingHistoryThreads();
+                
+                // Apply thought delay
+                const delay = getThoughtDelay();
+                const delayNum = parseInt(delay);
+                if (delayNum > 0) {
+                    await runThoughtDelay(context);
                 }
             }
-
-            // Process any pending history threads at the start of each mech loop
-            await context.processPendingHistoryThreads();
-
-            // Rotate the model using the MECH hierarchy-aware rotation (influenced by model scores)
-            try {
-                agent.model = await rotateModel(agent);
-            } catch (rotationError) {
-                console.error('[MECH] Error rotating model:', rotationError);
-                // Fall back to agent's default model if rotation fails
-                if (!agent.model) {
-                    throw new Error('No model available for agent');
-                }
-            }
-            // Note: modelSettings deletion is handled by the runner
-
-            context.sendComms({
-                type: MESSAGE_TYPES.AGENT_STATUS,
-                agent_id: agent.agent_id,
-                status: AGENT_STATUS.MECH_START,
-                meta_data: {
-                    model: agent.model,
-                },
-            });
-
-            // Run the agent using ensemble.request() directly
-            try {
-                const stream = request(agent.model || 'claude-3-5-sonnet-20241022', context.getHistory(), {
-                    agentId: agent.agent_id,
-                    tools: agent.tools || []
-                });
-
-                let finalResponse = '';
-                let toolCalls: Array<{ name: string; arguments: any }> = [];
-
-                // Process the ensemble stream
-                for await (const event of stream) {
-                    if (event.type === 'message_delta' && 'content' in event) {
-                        finalResponse += event.content;
-                    } else if (event.type === 'tool_done' && 'tool_calls' in event) {
-                        for (const toolCall of event.tool_calls) {
-                            toolCalls.push({
-                                name: toolCall.function.name,
-                                arguments: JSON.parse(toolCall.function.arguments)
-                            });
-                        }
+        } : false,
+        
+        // Tool result transformation
+        toolResultTransformer: {
+            augment: (toolName: any, result: any, _metrics: any) => {
+                if (toolName === 'task_complete' || toolName === 'task_fatal_error') {
+                    const duration = Date.now() - startTime;
+                    const totalCost = context.costTracker.getTotalCost();
+                    
+                    // Record performance metrics
+                    if (agent.model) {
+                        requestContext.recordRequestTime(agent.model, duration);
                     }
                     
-                    // Send stream events if handler is available
-                    if (context.sendStreamEvent) {
-                        context.sendStreamEvent(event);
-                    }
+                    return `${result}
+
+=== METRICS ===
+Duration  : ${Math.round(duration / 1000)}s
+Total cost: $${totalCost.toFixed(6)}`;
                 }
-
-                const response = { response: finalResponse, tool_calls: toolCalls };
-                console.log('[MECH] ', response);
-                
-                // Execute tool calls if any
-                if (toolCalls.length > 0) {
-                    for (const toolCall of toolCalls) {
-                        // Find and execute the tool
-                        const tool = agent.tools?.find((t: any) => {
-                            const toolName = t.definition?.function?.name || 
-                                           (t.function as any)?.name || 
-                                           t.name;
-                            return toolName === toolCall.name;
-                        });
-                        
-                        if (tool) {
-                            try {
-                                // Execute the tool function
-                                const toolFunc = (tool as any).function || tool;
-                                if (typeof toolFunc === 'function') {
-                                    // For task_complete, extract the result parameter
-                                    if (toolCall.name === 'task_complete') {
-                                        await toolFunc(toolCall.arguments.result);
-                                    } else if (toolCall.name === 'task_fatal_error') {
-                                        await toolFunc(toolCall.arguments.error);
-                                    } else {
-                                        await toolFunc(toolCall.arguments);
-                                    }
-                                } else if (typeof toolFunc.function === 'function') {
-                                    // For task_complete, extract the result parameter
-                                    if (toolCall.name === 'task_complete') {
-                                        await toolFunc.function(toolCall.arguments.result);
-                                    } else if (toolCall.name === 'task_fatal_error') {
-                                        await toolFunc.function(toolCall.arguments.error);
-                                    } else {
-                                        await toolFunc.function(toolCall.arguments);
-                                    }
-                                }
-                            } catch (toolError) {
-                                console.error(`[MECH] Error executing tool ${toolCall.name}:`, toolError);
-                            }
-                        }
-                    }
-                }
-
-            } catch (runError) {
-                console.error('[MECH] Error running agent:', runError);
-                throw runError;
+                return result;
             }
-
-            context.sendComms({
-                type: MESSAGE_TYPES.AGENT_STATUS,
-                agent_id: agent.agent_id,
-                status: AGENT_STATUS.MECH_DONE,
-                meta_data: {
-                    model: agent.model,
-                },
-            });
-
-            if (!mechComplete) {
-                // Let magi know our progress
-                comm.send({
-                    type: MESSAGE_TYPES.PROCESS_UPDATED,
-                    history: context.getHistory(),
-                });
-
-                context.sendComms({
-                    type: MESSAGE_TYPES.AGENT_STATUS,
-                    agent_id: agent.agent_id,
-                    status: AGENT_STATUS.THOUGHT_DELAY,
-                    meta_data: {
-                        seconds: getThoughtDelay(),
-                    },
-                });
-
-                // Wait the required delay before the next thought
-                await runThoughtDelay(context);
+        },
+        
+        // Event handling
+        eventEmitter: async (event: any, _ctx: any) => {
+            if (context.sendStreamEvent) {
+                context.sendStreamEvent(event);
             }
-        } catch (error: any) {
-            // Handle any error that occurred during agent execution
-            console.error(
-                `Error running agent command: ${error?.message || String(error)}`
-            );
-            comm.send({ type: MESSAGE_TYPES.ERROR, error });
-            
-            // Set fatal error status in mechOutcome
-            taskFatalError(
-                `Agent execution failed: ${error?.message || String(error)}`,
-                context
-            );
-            break; // Exit the loop immediately on error
+        },
+        
+        // Debugging
+        debug: {
+            logToolCalls: true,
+            logToolResults: true
         }
-    } while (!mechComplete && loop && !comm.isClosed());
-
-    // Calculate performance metrics
-    const durationSec = Math.round(
-        (new Date().getTime() - startTime.getTime()) / 1000
-    );
-    const totalCost = context.costTracker.getTotalCost() - costBaseline;
-
-    // Build and return the appropriate result object
-    if (mechOutcome.status === TASK_STATUS.COMPLETE) {
-        return {
-            status: TASK_STATUS.COMPLETE,
-            mechOutcome,
-            history: context.getHistory(),
-            durationSec,
-            totalCost,
-        };
-    } else if (mechOutcome.status === TASK_STATUS.FATAL_ERROR) {
-        return {
-            status: TASK_STATUS.FATAL_ERROR,
-            mechOutcome,
-            history: context.getHistory(),
-            durationSec,
-            totalCost,
-        };
-    } else {
-        // Default case if no explicit outcome was set but mechComplete is true
-        console.warn(
-            'MECH completed but no outcome status was set, assuming success'
-        );
-        return {
-            status: TASK_STATUS.COMPLETE,
-            history: context.getHistory(),
-            durationSec,
-            totalCost,
-        };
-    }
-}
-
-/**
- * Mark a task as successfully completed with automatic metrics reporting
- * 
- * This function should be called when the agent has successfully completed
- * its assigned task. It automatically calculates execution metrics, triggers
- * git repository handling, and provides comprehensive completion reporting.
- * 
- * @param result - Detailed description of what was accomplished
- * @param context - MECH execution context with communication capabilities
- * @returns Promise resolving to formatted completion message with execution metrics
- * 
- * @example
- * ```typescript
- * await taskComplete(
- *   "Successfully analyzed the codebase and identified 3 optimization opportunities",
- *   context
- * );
- * ```
- */
-export async function taskComplete(result: string, context: MechContext): Promise<string> {
-    if (typeof result !== 'string') {
-        result = String(result || 'Task completed');
-    }
-    
-    console.log(`[TaskRun] Task completed successfully: ${result}`);
-
-    // Calculate metrics for immediate use in the response
-    const durationSec = Math.round(
-        (new Date().getTime() - taskStartTime.getTime()) / 1000
-    );
-    const totalCost = context.costTracker.getTotalCost();
-
-    // Add metrics to the result message
-    const resultWithMetrics = `${result}\n\n=== METRICS ===\nDuration  : ${durationSec}s\nTotal cost: $${totalCost.toFixed(6)}`;
-
-    mechComplete = true;
-    mechOutcome = {
-        status: TASK_STATUS.COMPLETE,
-        result,
-        event: {
-            type: 'process_done',
-            output: resultWithMetrics,
-            history: context.getHistory(),
-        } as any,
     };
 
-    return `Task ended successfully\n\n${resultWithMetrics}`;
-}
+    try {
+        // Send start status
+        comm.send({
+            type: MESSAGE_TYPES.AGENT_STATUS,
+            agent_id: agent.agent_id,
+            status: AGENT_STATUS.MECH_START,
+            meta_data: {
+                model: agent.model,
+            },
+        });
 
-/**
- * Report a fatal error that prevents task completion
- * 
- * Use this function when the agent encounters an unrecoverable error
- * that makes task completion impossible. This triggers error reporting
- * and cleanup procedures.
- * 
- * @param error - Detailed description of the fatal error that occurred
- * @param context - MECH execution context for error reporting
- * @returns Formatted error message with diagnostic information
- * 
- * @example
- * ```typescript
- * const errorMsg = taskFatalError(
- *   "Unable to access required API endpoint after 3 retry attempts",
- *   context
- * );
- * ```
- */
-export function taskFatalError(error: string, context: MechContext): string {
-    if (typeof error !== 'string') {
-        error = String(error || 'Unknown error');
-    }
-    
-    console.error(`[TaskRun] Task failed: ${error}`);
-
-    // Calculate metrics for immediate use in the response
-    const durationSec = Math.round(
-        (new Date().getTime() - taskStartTime.getTime()) / 1000
-    );
-    const totalCost = context.costTracker.getTotalCost();
-
-    // Add metrics to the error message
-    const errorWithMetrics = `Error: ${error}\n\n=== METRICS ===\nDuration  : ${durationSec}s\nTotal cost: $${totalCost.toFixed(6)}`;
-
-    mechComplete = true;
-    mechOutcome = {
-        status: TASK_STATUS.FATAL_ERROR,
-        error,
-        event: {
-            type: 'process_failed',
-            error: errorWithMetrics,
-            history: context.getHistory(),
-        } as any,
-    };
-
-    return `Task failed\n\n${errorWithMetrics}`;
-}
-
-/**
- * Get all MECH core tools that enable task completion and error reporting
- * 
- * These tools are automatically added to agents and provide the fundamental
- * capabilities for task lifecycle management. All MECH agents receive these
- * tools regardless of their custom tool configuration.
- * 
- * @param context - MECH execution context for tool creation
- * @returns Array of tool functions for task management
- * 
- * @example
- * ```typescript
- * const coreTools = getMECHTools(context);
- * const allTools = [...coreTools, ...customTools];
- * ```
- */
-export function getMECHTools(context: MechContext): ToolFunction[] {
-    if (!context.createToolFunction) {
-        return [];
-    }
-    
-    return [
-        context.createToolFunction(
-            function task_complete(result: string) { return taskComplete(result, context); },
-            'Report that the task has completed successfully',
-            {
-                result: 'A few paragraphs describing the result of the task. Include any assumptions you made, problems overcome and what the final outcome was.',
+        // Select model if needed
+        let selectedModel = await rotateModel(agent);
+        
+        // Check if model is disabled in state
+        if (selectedModel && requestContext.isModelDisabled(selectedModel)) {
+            console.log(`[MECH] Model ${selectedModel} is disabled, selecting alternative`);
+            const disabledModels = requestContext.getDisabledModels();
+            // Filter out disabled models and retry
+            selectedModel = await rotateModel({
+                ...agent,
+                excludeModels: disabledModels
+            } as MechAgent);
+        }
+        
+        if (!selectedModel) {
+            throw new Error('No model available for execution');
+        }
+        
+        // Track model usage
+        requestContext.incrementCounter(`modelUsage:${selectedModel}`);
+        
+        // Run the request
+        for await (const event of request(
+            selectedModel,
+            requestContext.messages,
+            requestOptions
+        )) {
+            // Events are handled by eventEmitter
+            // Just need to check for text content to log
+            if (event.type === 'message_delta' && 'content' in event) {
+                // Log response content if needed
+                console.log('[MECH] ', { response: event.content });
             }
-        ),
-        context.createToolFunction(
-            function task_fatal_error(error: string) { return taskFatalError(error, context); },
-            'Report that you were not able to complete the task',
-            { error: 'Describe the error that occurred in a few sentences' }
-        ),
-    ];
+        }
+
+        // Get outcome from context
+        const outcome = requestContext.getMetadata<MechOutcome>('mechOutcome') || {
+            status: 'incomplete',
+            error: 'Task did not complete'
+        };
+
+        // Send completion status
+        comm.send({
+            type: MESSAGE_TYPES.AGENT_STATUS,
+            agent_id: agent.agent_id,
+            status: AGENT_STATUS.MECH_DONE,
+            meta_data: {
+                model: selectedModel,
+                modelScores: requestContext.getAllScores(),
+                disabledModels: requestContext.getDisabledModels()
+            },
+        });
+
+        // Calculate final metrics
+        const endTime = Date.now();
+        const durationSec = (endTime - startTime) / 1000;
+        const totalCost = context.costTracker.getTotalCost();
+
+        return {
+            status: outcome?.status === 'complete' || outcome?.status === 'fatal_error' 
+                ? outcome.status 
+                : 'fatal_error',
+            durationSec,
+            totalCost,
+            history: context.getHistory(),
+            mechOutcome: outcome?.status === 'complete' || outcome?.status === 'fatal_error'
+                ? outcome
+                : { status: 'fatal_error', error: 'Task did not complete' }
+        };
+
+    } catch (error) {
+        console.error('[MECH] Error running agent:', error);
+        
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        // Send error status
+        comm.send({
+            type: MESSAGE_TYPES.ERROR,
+            error: errorMessage,
+        });
+
+        const endTime = Date.now();
+        const durationSec = (endTime - startTime) / 1000;
+        const totalCost = context.costTracker.getTotalCost();
+
+        return {
+            status: 'fatal_error',
+            durationSec,
+            totalCost,
+            history: context.getHistory(),
+            mechOutcome: {
+                status: 'fatal_error',
+                error: `Agent execution failed: ${errorMessage}`
+            }
+        };
+    }
 }
+
+// Task completion and error handling are now integrated into getMECHTools

@@ -56,7 +56,8 @@ export function defaultReadableTime(ms: number): string {
 }
 
 /**
- * Wrapper around ensemble's createToolFunction that ensures string return values
+ * Note: This wrapper is no longer needed with ensemble v0.1.27's ToolBuilder API
+ * Keeping for backward compatibility but should be deprecated
  */
 export function wrapEnsembleCreateToolFunction(
     fn: (...args: any[]) => any,
@@ -139,7 +140,22 @@ export const globalCostTracker = new CostTracker();
  */
 export function createFullContext(options: SimpleMechOptions): MechContext {
     const historyManager = createDefaultHistory();
-    const commManager = createDefaultCommunicationManager();
+    
+    // Create communication manager that uses sendComms
+    let closed = false;
+    let sendCommsFunc: ((msg: unknown) => void) | undefined;
+    
+    const commManager: CommunicationManager = {
+        send: (message: any) => {
+            if (sendCommsFunc) {
+                sendCommsFunc(message);
+            } else {
+                console.log('[MECH]', message);
+            }
+        },
+        isClosed: () => closed,
+        close: () => { closed = true; }
+    };
     
     // Build the full context with defaults
     const fullContext: MechContext = {
@@ -165,7 +181,7 @@ export function createFullContext(options: SimpleMechOptions): MechContext {
         // ========================================================================
         // Optional Core Functions (with defaults)
         // ========================================================================
-        createToolFunction: wrapEnsembleCreateToolFunction,
+        createToolFunction: wrapEnsembleCreateToolFunction, // Deprecated - use tool() builder instead
         dateFormat: defaultDateFormat,
         readableTime: defaultReadableTime,
         MAGI_CONTEXT: 'MECH System Context',
@@ -181,6 +197,9 @@ export function createFullContext(options: SimpleMechOptions): MechContext {
         }),
         formatMemories: defaultFormatMemories,
     };
+    
+    // Set sendCommsFunc to use the context's sendComms
+    sendCommsFunc = fullContext.sendComms;
     
     return fullContext;
 }

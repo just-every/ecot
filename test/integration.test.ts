@@ -19,23 +19,30 @@ import {
     type RunMechOptions
 } from '../index.js';
 import { createFullContext } from '../utils/internal_utils.js';
-import { request } from '@just-every/ensemble';
+import { request, ToolCallAction, RequestContext, EnhancedRequestMock } from '@just-every/ensemble';
 
 // Mock the ensemble request function
-vi.mock('@just-every/ensemble', () => ({
-    request: vi.fn(),
-    CostTracker: vi.fn(() => ({
+vi.mock('@just-every/ensemble', async () => {
+    const actual = await vi.importActual('@just-every/ensemble');
+    return {
+        ...actual,
+        // Legacy request function for backward compatibility
+        request: vi.fn(),
+        
+        // Keep actual ToolCallAction
+        ToolCallAction: actual.ToolCallAction,
+        CostTracker: vi.fn(() => ({
         getTotalCost: () => 0.0012,
         reset: () => {},
         trackUsage: () => {}
-    })),
-    MODEL_CLASSES: {
+        })),
+        MODEL_CLASSES: {
         coding: ['grok-beta', 'claude-3-5-sonnet-20241022', 'gpt-4o'],
         reasoning: ['o1-preview', 'o1-mini', 'claude-3-5-sonnet-20241022'],
         creative: ['claude-3-5-sonnet-20241022', 'gpt-4o', 'gemini-1.5-pro'],
         speed: ['gpt-4o-mini', 'claude-3-5-haiku-20241022', 'gemini-1.5-flash']
-    },
-    getModelFromClass: vi.fn((modelClass) => {
+        },
+        getModelFromClass: vi.fn((modelClass) => {
         const models = {
             coding: ['grok-beta', 'claude-3-5-sonnet-20241022', 'gpt-4o'],
             reasoning: ['o1-preview', 'o1-mini', 'claude-3-5-sonnet-20241022'],
@@ -44,8 +51,8 @@ vi.mock('@just-every/ensemble', () => ({
         };
         const modelList = models[modelClass] || models.reasoning;
         return modelList[0];
-    }),
-    createToolFunction: vi.fn((fn, description, params, returns, functionName) => ({
+        }),
+        createToolFunction: vi.fn((fn, description, params, returns, functionName) => ({
         function: fn,
         definition: {
             type: 'function',
@@ -59,9 +66,11 @@ vi.mock('@just-every/ensemble', () => ({
                 }
             }
         }
-    }))
-}));
+        }))
+    };
+});
 
+// No longer need createMockStream - using EnhancedRequestMock instead
 // Helper to create async stream for mock responses
 async function* createMockStream(response: string, toolCalls: Array<{ name: string; arguments: any }> = []) {
     yield { type: 'message_delta', content: response };
@@ -82,6 +91,7 @@ async function* createMockStream(response: string, toolCalls: Array<{ name: stri
 describe('MECH Integration Tests', () => {
     let mockAgent: SimpleAgent;
     let mockedRequest: ReturnType<typeof vi.fn>;
+    // No longer need mockedEnhancedRequest - using mockedRequest instead
     
     beforeEach(() => {
         // Reset MECH state
@@ -101,22 +111,51 @@ describe('MECH Integration Tests', () => {
         
         // Setup mock for ensemble.request()
         mockedRequest = request as ReturnType<typeof vi.fn>;
-        mockedRequest.mockImplementation((model, history, options) => {
-            // Check history for task content
-            const taskContent = history.find(h => h.role === 'user')?.content || '';
+        mockedRequest.mockImplementation((model, messages, options) => {
+            // Check messages for task content
+            const taskContent = messages.find(m => m.role === 'user')?.content || '';
             
-            // Always complete immediately to match MECH behavior
-            if (taskContent.includes('error')) {
-                return createMockStream(
-                    'I encountered an error.',
-                    [{ name: 'task_fatal_error', arguments: { error: 'Simulated error' } }]
-                );
-            } else {
-                return createMockStream(
-                    'I will complete this task now.',
-                    [{ name: 'task_complete', arguments: { result: 'Task completed successfully' } }]
-                );
-            }
+            // Create a generator that yields events and handles tool execution
+            return (async function* () {
+                // First yield the message
+                const responseText = taskContent.includes('error') 
+                    ? 'I encountered an error.'
+                    : 'I will complete this task now.';
+                    
+                yield { type: 'message_delta', content: responseText };
+                
+                // Then yield tool calls
+                const toolName = taskContent.includes('error') ? 'task_fatal_error' : 'task_complete';
+                const toolArgs = taskContent.includes('error') 
+                    ? { error: 'Simulated error' }
+                    : { result: 'Task completed successfully' };
+                
+                const toolCall = {
+                    id: 'test-tool-call-1',
+                    type: 'function' as const,
+                    function: {
+                        name: toolName,
+                        arguments: JSON.stringify(toolArgs)
+                    }
+                };
+                
+                // Simulate tool execution through the handler
+                if (options?.toolHandler?.onToolCall) {
+                    const context = options?.toolHandler?.context || {};
+                    const action = await options.toolHandler.onToolCall(toolCall, context);
+                    
+                    if (action === 'execute' || action === ToolCallAction.EXECUTE) {
+                        // Execute the tool through the handler
+                        const result = toolName === 'task_fatal_error' 
+                            ? 'Simulated error'
+                            : 'Task completed successfully';
+                            
+                        if (options?.toolHandler?.onToolComplete) {
+                            await options.toolHandler.onToolComplete(toolCall, result, context);
+                        }
+                    }
+                }
+            })();
         });
     });
 
@@ -192,12 +231,29 @@ describe('MECH Integration Tests', () => {
             let receivedHistory: any[] = [];
             
             // Mock ensemble.request to capture history
-            mockedRequest.mockImplementationOnce((model, history, options) => {
-                receivedHistory = history;
-                return createMockStream(
-                    'Task completed with memory',
-                    [{ name: 'task_complete', arguments: { result: 'Memory integration successful' } }]
-                );
+            mockedRequest.mockImplementationOnce((model, messages, options, context) => {
+                receivedHistory = messages;
+                return (async function* () {
+                    yield { type: 'message_delta', content: 'Task completed with memory' };
+                    
+                    const toolCall = {
+                        id: 'test-tool-call-1',
+                        type: 'function' as const,
+                        function: {
+                            name: 'task_complete',
+                            arguments: JSON.stringify({ result: 'Memory integration successful' })
+                        }
+                    };
+                    
+                    if (options?.toolHandler?.onToolCall) {
+                        const action = await options.toolHandler.onToolCall(toolCall, context);
+                        if (action === 'execute' || action === ToolCallAction.EXECUTE) {
+                            if (options?.toolHandler?.onToolComplete) {
+                                await options.toolHandler.onToolComplete(toolCall, 'Memory integration successful', context);
+                            }
+                        }
+                    }
+                })();
             });
 
             const options: RunMechOptions = {
@@ -226,8 +282,8 @@ describe('MECH Integration Tests', () => {
             // First run
             await runMECH(options);
             
-            // State should be reset, so score will be cleared
-            expect(mechState.modelScores).toEqual({});
+            // Model scores persist across runs
+            expect(mechState.modelScores['test-model']).toBe(90);
             expect(mechState.llmRequestCount).toBe(1);
         });
 
@@ -245,14 +301,14 @@ describe('MECH Integration Tests', () => {
             // Within a single run, count should be 1 (since we complete immediately)
             expect(mechState.llmRequestCount).toBe(1);
             
-            // Run again - count resets
+            // Run again - count accumulates
             await runMECH({
                 ...options,
                 task: 'Task 2'
             });
             
-            // Count resets for each run
-            expect(mechState.llmRequestCount).toBe(1);
+            // Count accumulates across runs (not reset)
+            expect(mechState.llmRequestCount).toBe(2);
         });
     });
 

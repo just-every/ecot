@@ -64,7 +64,7 @@
     "release:quick": "./scripts/release-quick.sh"
   },
   "dependencies": {
-    "@just-every/ensemble": "^0.1.12"
+    "@just-every/ensemble": "^0.1.25"
   },
   "peerDependencies": {
     "openai": ">=4.0.0",

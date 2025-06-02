@@ -88,7 +88,7 @@ export const runMECH = withErrorHandling(
         if (options.lookupMemories && options.saveMemory) {
             return internalRunMECHWithMemory(mechAgent, sanitizedTask, fullContext, options.loop);
         } else {
-            return internalRunMECH(mechAgent, sanitizedTask, fullContext, options.loop);
+            return internalRunMECH(sanitizedTask, mechAgent, fullContext, options.loop);
         }
     },
     'simple_api'
