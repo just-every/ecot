@@ -320,28 +320,6 @@ export interface MechContext {
 // ============================================================================
 
 /**
- * Minimal context for the simple API
- * Only the truly required fields for basic operation
- */
-export interface SimpleMechOptions {
-    /**
-     * Optional callback when history items are added
-     */
-    onHistory?: (item: ResponseInputItem) => void;
-    
-    /**
-     * Optional callback for status updates
-     */
-    onStatus?: (status: { type: string; [key: string]: unknown }) => void;
-    
-    /**
-     * Optional memory functions
-     */
-    lookupMemories?: (embedding: number[]) => Promise<MemoryItem[]>;
-    saveMemory?: (taskId: string, memories: MemoryItem[]) => Promise<void>;
-}
-
-/**
  * Simple agent definition for the easy API
  */
 export interface SimpleAgent {
@@ -356,10 +334,21 @@ export interface SimpleAgent {
 /**
  * Options for running MECH with the simple API
  */
-export interface RunMechOptions extends SimpleMechOptions {
+export interface RunMechOptions {
+    /** The agent configuration */
     agent: SimpleAgent;
+    
+    /** The task to execute */
     task: string;
-    loop?: boolean;                   // Default: true (enable multi-turn conversation)
+    
+    /** Enable multi-turn conversation (default: true) */
+    loop?: boolean;
+    
+    /** Optional callback when history items are added */
+    onHistory?: (item: ResponseInputItem) => void;
+    
+    /** Optional callback for status updates */
+    onStatus?: (status: { type: string; [key: string]: unknown }) => void;
     
     /** Optional: Function to lookup memories by embedding */
     lookupMemories?: (embedding: number[]) => Promise<MemoryItem[]>;

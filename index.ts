@@ -41,7 +41,6 @@ export type {
     
     // Context types (for advanced users)
     MechContext,
-    SimpleMechOptions,
     
     // Helper types
     MemoryItem,
@@ -143,7 +142,7 @@ export {
     // Validation functions
     validateAgent,
     validateTask,
-    validateSimpleMechOptions,
+    validateRunMechOptions,
     validateModelScore,
     validateMetaFrequency,
     validateThoughtDelay,

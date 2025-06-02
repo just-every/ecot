@@ -6,7 +6,7 @@
 
 import { MechValidationError } from './errors.js';
 import { VALID_THOUGHT_DELAYS } from './constants.js';
-import type { MechAgent, SimpleMechOptions } from '../types.js';
+import type { MechAgent, RunMechOptions } from '../types.js';
 
 /**
  * Validate a MECH agent object
@@ -129,16 +129,16 @@ export function validateTask(task: unknown): asserts task is string {
 // validateRunAgent removed - MECH now uses ensemble directly
 
 /**
- * Validate SimpleMechOptions
+ * Validate RunMechOptions
  */
-export function validateSimpleMechOptions(options: unknown): asserts options is SimpleMechOptions {
+export function validateRunMechOptions(options: unknown): asserts options is RunMechOptions {
     if (!options || typeof options !== 'object') {
         throw new MechValidationError(
             'Options must be a valid object',
             {
                 metadata: { 
                     optionsType: typeof options,
-                    expectedType: 'SimpleMechOptions object'
+                    expectedType: 'RunMechOptions object'
                 }
             }
         );

@@ -8,7 +8,7 @@ import type { ResponseInput, ResponseInputItem } from '@just-every/ensemble';
 import { CostTracker, createToolFunction } from '@just-every/ensemble';
 import type { 
     MechContext, 
-    SimpleMechOptions,
+    RunMechOptions,
     MechAgent,
     ToolFunction,
     CommunicationManager,
@@ -138,7 +138,7 @@ export const globalCostTracker = new CostTracker();
  * Convert a simple context to a full MechContext
  * This provides all the defaults and adapters needed
  */
-export function createFullContext(options: SimpleMechOptions): MechContext {
+export function createFullContext(options: RunMechOptions): MechContext {
     const historyManager = createDefaultHistory();
     
     // Create communication manager that uses sendComms

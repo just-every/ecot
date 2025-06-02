@@ -10,12 +10,11 @@ import type {
     MechAgent, 
     MechResult, 
     SimpleAgent,
-    RunMechOptions,
-    SimpleMechOptions
+    RunMechOptions
 } from './types.js';
 import { createFullContext, globalCostTracker } from './utils/internal_utils.js';
 import { 
-    validateSimpleMechOptions, 
+    validateRunMechOptions, 
     sanitizeTextInput 
 } from './utils/validation.js';
 import { withErrorHandling } from './utils/errors.js';
@@ -69,20 +68,13 @@ function toMechAgent(agent: SimpleAgent): MechAgent {
 export const runMECH = withErrorHandling(
     async (options: RunMechOptions): Promise<MechResult> => {
         // Validate input
-        validateSimpleMechOptions(options);
+        validateRunMechOptions(options);
         
         // Sanitize task input
         const sanitizedTask = sanitizeTextInput(options.task);
         
         const mechAgent = toMechAgent(options.agent);
-        const context: SimpleMechOptions = {
-            onHistory: options.onHistory,
-            onStatus: options.onStatus,
-            lookupMemories: options.lookupMemories,
-            saveMemory: options.saveMemory
-        };
-        
-        const fullContext = createFullContext(context);
+        const fullContext = createFullContext(options);
         
         // Use memory wrapper if memory functions are provided
         if (options.lookupMemories && options.saveMemory) {
