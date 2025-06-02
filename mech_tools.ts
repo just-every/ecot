@@ -72,9 +72,20 @@ export async function runMECH(
 
     // Add MECH tools to the agent
     const mechTools = getMECHTools();
-    const allTools = [...mechTools, ...(agent.tools || [])];
 
     const comm = context.getCommunicationManager();
+    
+    // Get current messages
+    let messages = context.getHistory();
+    let currentAgent = agent;
+    
+    // Allow agent onRequest hook
+    if (agent.onRequest) {
+        [currentAgent, messages] = await agent.onRequest(agent, messages);
+    }
+    
+    // Combine MECH tools with agent tools
+    const allTools = [...mechTools, ...(currentAgent.tools || [])];
     
     // Create request context with state management
     const requestContext = createRequestContextWithState({
@@ -83,7 +94,7 @@ export async function runMECH(
             mechOutcome: {} as MechOutcome,
             mechStartTime: startTime
         },
-        messages: context.getHistory(),
+        messages,
         onHalt: () => {
             comm.send({ type: 'MECH_HALTED', timestamp: Date.now() });
         }
@@ -212,8 +223,8 @@ export async function runMECH(
                     const totalCost = context.costTracker.getTotalCost();
                     
                     // Record performance metrics
-                    if (agent.model) {
-                        requestContext.recordRequestTime(agent.model, duration);
+                    if (currentAgent.model) {
+                        requestContext.recordRequestTime(currentAgent.model, duration);
                     }
                     
                     return `${result}
@@ -244,15 +255,15 @@ Total cost: $${totalCost.toFixed(6)}`;
         // Send start status
         comm.send({
             type: MESSAGE_TYPES.AGENT_STATUS,
-            agent_id: agent.agent_id,
+            agent_id: currentAgent.agent_id,
             status: AGENT_STATUS.MECH_START,
             meta_data: {
-                model: agent.model,
+                model: currentAgent.model,
             },
         });
 
         // Select model if needed
-        let selectedModel = await rotateModel(agent);
+        let selectedModel = await rotateModel(currentAgent);
         
         // Check if model is disabled in state
         if (selectedModel && requestContext.isModelDisabled(selectedModel)) {
@@ -260,7 +271,7 @@ Total cost: $${totalCost.toFixed(6)}`;
             const disabledModels = requestContext.getDisabledModels();
             // Filter out disabled models and retry
             selectedModel = await rotateModel({
-                ...agent,
+                ...currentAgent,
                 excludeModels: disabledModels
             } as MechAgent);
         }
@@ -299,7 +310,7 @@ Total cost: $${totalCost.toFixed(6)}`;
         // Send completion status
         comm.send({
             type: MESSAGE_TYPES.AGENT_STATUS,
-            agent_id: agent.agent_id,
+            agent_id: currentAgent.agent_id,
             status: AGENT_STATUS.MECH_DONE,
             meta_data: {
                 model: selectedModel,

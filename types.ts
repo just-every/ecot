@@ -98,6 +98,9 @@ export interface MechAgent {
     args?: Record<string, any>;
     export(): Record<string, any>;
     getTools(): Promise<ToolFunction[]>;
+    
+    /** Optional hook called before each request to modify agent or messages */
+    onRequest?: (agent: MechAgent, messages: ResponseInput) => Promise<[MechAgent, ResponseInput]>;
 }
 
 // ============================================================================
@@ -329,6 +332,9 @@ export interface SimpleAgent {
     modelClass?: string;        // Recommended: "reasoning", "standard", "code", "metacognition"
     tools?: ToolFunction[];     // Functional tools that can be executed
     instructions?: string;
+    
+    /** Optional hook called before each request to modify agent or messages */
+    onRequest?: (agent: MechAgent, messages: ResponseInput) => Promise<[MechAgent, ResponseInput]>;
 }
 
 /**

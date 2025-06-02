@@ -38,6 +38,7 @@ function toMechAgent(agent: SimpleAgent): MechAgent {
         modelClass: agent.modelClass,
         tools: agent.tools || [],  // Preserve tools if provided
         instructions: agent.instructions,
+        onRequest: agent.onRequest,  // Preserve onRequest hook if provided
         export: () => ({ ...agent } as Record<string, unknown>),
         getTools: async () => agent.tools || []  // Return the agent's tools
     };
