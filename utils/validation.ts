@@ -5,6 +5,7 @@
  */
 
 import { MechValidationError } from './errors.js';
+import { VALID_THOUGHT_DELAYS } from './constants.js';
 import type { MechAgent, SimpleMechOptions } from '../types.js';
 
 /**
@@ -279,16 +280,14 @@ export function validateMetaFrequency(frequency: unknown): void {
  * Validate thought delay input
  */
 export function validateThoughtDelay(delay: unknown): void {
-    const validDelays = ['0', '1', '2', '4', '8', '16', '32', '64', '128'];
-    
-    if (typeof delay !== 'string' || !validDelays.includes(delay)) {
+    if (typeof delay !== 'string' || !VALID_THOUGHT_DELAYS.includes(delay as any)) {
         throw new MechValidationError(
-            `Thought delay must be one of: ${validDelays.join(', ')} (seconds)`,
+            `Thought delay must be one of: ${VALID_THOUGHT_DELAYS.join(', ')} (seconds)`,
             {
                 metadata: { 
                     delayValue: delay,
                     delayType: typeof delay,
-                    validDelays: validDelays
+                    validDelays: VALID_THOUGHT_DELAYS
                 }
             }
         );

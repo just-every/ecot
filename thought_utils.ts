@@ -170,9 +170,14 @@ export function getThoughtTools(context: MechContext): ToolFunction[] {
         return [];
     }
     
+    // Create named function for better tool identification
+    function setThoughtDelayTool(params: { delay: string }) {
+        return setThoughtDelay(params.delay, context);
+    }
+    
     return [
         context.createToolFunction(
-            (params: { delay: string }) => setThoughtDelay(params.delay, context),
+            setThoughtDelayTool,
             'Sets the Thought Delay for your next set of thoughts. Can be changed any time. Extend your Delay to think slower while waiting.',
             {
                 delay: {

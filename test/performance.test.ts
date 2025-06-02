@@ -188,7 +188,7 @@ describe('MECH Performance Tests', () => {
         });
 
         it('should demonstrate delay batching efficiency', async () => {
-            setThoughtDelay('1'); // 1 second delay
+            setThoughtDelay('2'); // 2 second delay
             
             const startTime = Date.now();
             
@@ -203,7 +203,7 @@ describe('MECH Performance Tests', () => {
             const duration = Date.now() - startTime;
             
             // All delays should run concurrently, not sequentially
-            expect(duration).toBeLessThan(2000); // Much less than 5 seconds
+            expect(duration).toBeLessThan(2500); // Should complete close to 2 seconds, not 10 (5x2)
             
             console.log(`5 concurrent delays completed in ${duration}ms`);
         });
