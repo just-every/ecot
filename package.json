@@ -64,11 +64,11 @@
     "release:quick": "./scripts/release-quick.sh"
   },
   "dependencies": {
-    "@just-every/ensemble": "^0.1.25"
+    "@just-every/ensemble": "^0.1.32"
   },
   "peerDependencies": {
-    "openai": ">=4.0.0",
-    "anthropic": ">=0.20.0"
+    "anthropic": ">=0.20.0",
+    "openai": ">=4.0.0"
   },
   "peerDependenciesMeta": {
     "openai": {

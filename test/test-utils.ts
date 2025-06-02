@@ -4,7 +4,8 @@
  */
 
 import { vi } from 'vitest';
-import { ToolCallAction, EnhancedRequestMock } from '@just-every/ensemble';
+import { ToolCallAction } from '@just-every/ensemble';
+import { EnhancedRequestMock } from '@just-every/ensemble/dist/utils/test_utils.js';
 
 export interface MockToolCall {
     name: string;
