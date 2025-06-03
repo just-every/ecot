@@ -63,6 +63,13 @@ export async function runMECH(
 ): Promise<MechResult> {
     const startTime = Date.now();
     
+    // Add system prompt first to guide tool usage
+    context.addHistory({
+        type: 'message',
+        role: 'system',
+        content: 'You must complete tasks by using the provided tools. When you have finished a task, you MUST call the task_complete tool with a comprehensive result. If you cannot complete the task, you MUST call the task_fatal_error tool with an explanation. Do not just provide an answer without using these tools.'
+    });
+    
     // Add initial prompt to history
     context.addHistory({
         type: 'message',

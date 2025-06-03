@@ -54,9 +54,15 @@ export async function rotateModel(
     
     debugTrace('model_rotation', 'start', { agentName: agent.name, modelClass });
     
-    // Store last model used to ensure rotation
-    const lastModel = agent.model;
-    mechState.lastModelUsed = lastModel;
+    // If agent already has a specific model, use it
+    if (agent.model) {
+        debugTrace('model_rotation', 'end', { selectedModel: agent.model, reason: 'pre-specified' });
+        mechState.lastModelUsed = agent.model;
+        return agent.model;
+    }
+    
+    // Use the global lastModelUsed for rotation, not the agent's model
+    const lastModel = mechState.lastModelUsed;
     let model: string | undefined;
     let selectionReason = 'unknown';
 
@@ -95,6 +101,12 @@ export async function rotateModel(
 
                 return true;
             });
+
+            // If no models available after filtering, return undefined
+            if (models.length === 0) {
+                console.warn(`[MECH] No models available for class ${modelClassStr} after filtering`);
+                return undefined;
+            }
 
             if (models.length > 0) {
                 // Use cached weighted selection based on model scores

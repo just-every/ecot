@@ -65,7 +65,7 @@ describe('Model Rotation', () => {
         });
 
         it('should avoid selecting the last used model', async () => {
-            mockAgent.model = 'gpt-4-turbo';
+            // Set lastModelUsed but not agent.model (so rotation happens)
             mechState.lastModelUsed = 'gpt-4-turbo';
             
             const model = await rotateModel(mockAgent);
@@ -171,7 +171,6 @@ describe('Model Rotation', () => {
 
         it('should handle edge cases gracefully', async () => {
             // All models disabled except last used
-            mockAgent.model = 'gpt-4-turbo';
             mechState.lastModelUsed = 'gpt-4-turbo';
             disableModel('claude-3-opus');
             disableModel('gemini-pro');
