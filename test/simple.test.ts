@@ -166,6 +166,27 @@ describe('Simple MECH API', () => {
     });
 
     it('should track costs', async () => {
+        mockedRequest.mockImplementation((model, messages, options) => {
+            return (async function* () {
+                yield { type: 'message_delta', content: 'Tracking costs' };
+                
+                const toolCall = {
+                    id: 'test-cost',
+                    type: 'function' as const,
+                    function: {
+                        name: 'task_complete',
+                        arguments: JSON.stringify({ result: 'Cost tracked' })
+                    }
+                };
+                
+                if (options?.toolHandler?.onToolCall) {
+                    const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
+                    if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
+                        await options.toolHandler.onToolComplete(toolCall, 'Cost tracked', options.toolHandler.context);
+                    }
+                }
+            })();
+        });
 
         // Run a task
         await runMECH({

@@ -5,7 +5,6 @@
 
 import { vi } from 'vitest';
 import { ToolCallAction } from '@just-every/ensemble';
-import { EnhancedRequestMock } from '@just-every/ensemble/dist/utils/test_utils.js';
 
 export interface MockToolCall {
     name: string;
@@ -25,7 +24,7 @@ export function createMockEnhancedRequest(responses: MockResponse | MockResponse
     const responseArray = Array.isArray(responses) ? responses : [responses];
     let responseIndex = 0;
     
-    return vi.fn((_model, _messages, options, context) => {
+    return vi.fn((_model, _messages, options) => {
         return (async function* () {
             const response = responseArray[responseIndex % responseArray.length];
             responseIndex++;
@@ -33,6 +32,9 @@ export function createMockEnhancedRequest(responses: MockResponse | MockResponse
             if (response.error) {
                 throw response.error;
             }
+            
+            // Use the context from toolHandler if available
+            const context = options?.toolHandler?.context;
             
             // Yield message if provided
             if (response.message) {
@@ -69,17 +71,29 @@ export function createMockEnhancedRequest(responses: MockResponse | MockResponse
 }
 
 /**
- * Creates a simple success response mock using ensemble's EnhancedRequestMock
+ * Creates a simple success response mock
  */
 export function mockSuccessResponse(message = 'Task completed', result = 'Success') {
-    return EnhancedRequestMock.success(message, result).getMock();
+    return createMockEnhancedRequest({
+        message,
+        toolCalls: [{
+            name: 'task_complete',
+            arguments: { result }
+        }]
+    });
 }
 
 /**
- * Creates a simple error response mock using ensemble's EnhancedRequestMock
+ * Creates a simple error response mock
  */
 export function mockErrorResponse(message = 'Task failed', error = 'Error occurred') {
-    return EnhancedRequestMock.error(message, error).getMock();
+    return createMockEnhancedRequest({
+        message,
+        toolCalls: [{
+            name: 'task_fatal_error',
+            arguments: { error }
+        }]
+    });
 }
 
 /**

@@ -4,26 +4,54 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runMECH } from '../simple';
-import { mockSuccessResponse } from './test-utils';
+import { mockSuccessResponse, createMockEnhancedRequest } from './test-utils';
+import { mechState } from '../mech_state';
 import type { MechAgent, ResponseInput } from '../types';
 
-// Mock ensemble's request
+// Mock ensemble's request and getModelFromClass
 vi.mock('@just-every/ensemble', async () => {
     const actual = await vi.importActual('@just-every/ensemble');
     return {
         ...actual,
-        request: vi.fn()
+        request: vi.fn(),
+        getModelFromClass: vi.fn((modelClass) => {
+            // Return appropriate model based on class
+            const models: Record<string, string> = {
+                'reasoning': 'gpt-4-turbo',
+                'standard': 'gpt-3.5-turbo',
+                'code': 'gpt-4-turbo',
+                'metacognition': 'gpt-4-turbo'
+            };
+            // Always resolve successfully with a model
+            const model = models[modelClass] || 'gpt-3.5-turbo';
+            return Promise.resolve(model);
+        }),
+        MODEL_CLASSES: {
+            reasoning: ['gpt-4-turbo', 'claude-3-opus', 'o1-mini'],
+            standard: ['gpt-3.5-turbo', 'claude-3-haiku', 'gemini-1.5-flash'],
+            code: ['gpt-4-turbo', 'claude-3-opus', 'grok-beta'],
+            metacognition: ['gpt-4-turbo', 'claude-3-opus']
+        },
+        // Keep these from actual implementation to ensure proper context handling
+        createRequestContextWithState: actual.createRequestContextWithState,
+        ToolCallAction: actual.ToolCallAction
     };
 });
 
 describe('onRequest Hook', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // Reset mech state
+        mechState.modelScores = {};
+        mechState.disabledModels = [];
+        mechState.lastUsedModel = null;
+        mechState.llmRequestCount = 0;
     });
 
     it('should call onRequest hook before making request', async () => {
         const { request } = await import('@just-every/ensemble');
-        vi.mocked(request).mockImplementation(mockSuccessResponse());
+        // Use the mock that properly calls task_complete
+        vi.mocked(request).mockImplementation(mockSuccessResponse('I will complete this task', 'Task completed successfully'));
         
         const onRequestMock = vi.fn(async (agent: MechAgent, messages: ResponseInput) => {
             // Verify original agent is passed
@@ -44,6 +72,7 @@ describe('onRequest Hook', () => {
         const result = await runMECH({
             agent: {
                 name: 'TestAgent',
+                modelClass: 'standard',
                 onRequest: onRequestMock
             },
             task: 'Test task'
@@ -68,11 +97,12 @@ describe('onRequest Hook', () => {
 
     it('should work without onRequest hook', async () => {
         const { request } = await import('@just-every/ensemble');
-        vi.mocked(request).mockImplementation(mockSuccessResponse());
+        vi.mocked(request).mockImplementation(mockSuccessResponse('Completing the task', 'Task completed'));
 
         const result = await runMECH({
             agent: {
-                name: 'TestAgent'
+                name: 'TestAgent',
+                modelClass: 'standard'
             },
             task: 'Test task'
         });
@@ -82,6 +112,9 @@ describe('onRequest Hook', () => {
     });
 
     it('should handle errors in onRequest hook', async () => {
+        const { request } = await import('@just-every/ensemble');
+        vi.mocked(request).mockImplementation(mockSuccessResponse());
+        
         const onRequestMock = vi.fn(async () => {
             throw new Error('onRequest failed');
         });
@@ -165,6 +198,7 @@ describe('onRequest Hook', () => {
         await runMECH({
             agent: {
                 name: 'TestAgent',
+                modelClass: 'standard',
                 onRequest: onRequestMock
             },
             task: 'Test task'
