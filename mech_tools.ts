@@ -64,10 +64,17 @@ export async function runMECH(
     const startTime = Date.now();
     
     // Add system prompt first to guide tool usage
+    const toolGuidance = 'You must complete tasks by using the provided tools. When you have finished a task, you MUST call the task_complete tool with a comprehensive result. If you cannot complete the task, you MUST call the task_fatal_error tool with an explanation. Do not just provide a final answer without using these tools.';
+    
+    // Combine agent instructions with tool guidance if provided
+    const systemContent = agent.instructions 
+        ? `${agent.instructions}\n\n${toolGuidance}`
+        : toolGuidance;
+    
     context.addHistory({
         type: 'message',
         role: 'system',
-        content: 'You must complete tasks by using the provided tools. When you have finished a task, you MUST call the task_complete tool with a comprehensive result. If you cannot complete the task, you MUST call the task_fatal_error tool with an explanation. Do not just provide an answer without using these tools.'
+        content: systemContent
     });
     
     // Add initial prompt to history
@@ -293,6 +300,12 @@ Total cost: $${totalCost.toFixed(6)}`;
         // Increment LLM request count for initial request
         const requestCount = requestContext.incrementCounter('llmRequestCount');
         mechState.llmRequestCount = requestCount;
+        
+        // Log the system message to verify instructions are included
+        const systemMessage = requestContext.messages.find(m => m.role === 'system');
+        if (systemMessage) {
+            console.log('[MECH] System message:', systemMessage.content);
+        }
         
         // Run the request
         for await (const event of request(
