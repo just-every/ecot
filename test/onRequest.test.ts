@@ -8,12 +8,12 @@ import { mockSuccessResponse, createMockEnhancedRequest } from './test-utils';
 import { mechState } from '../mech_state';
 import type { MechAgent, ResponseInput } from '../types';
 
-// Mock ensemble's request and getModelFromClass
+// Mock ensemble's ensembleRequest and getModelFromClass
 vi.mock('@just-every/ensemble', async () => {
     const actual = await vi.importActual('@just-every/ensemble');
     return {
         ...actual,
-        request: vi.fn(),
+        ensembleRequest: vi.fn(),
         getModelFromClass: vi.fn((modelClass) => {
             // Return appropriate model based on class
             const models: Record<string, string> = {
@@ -49,9 +49,9 @@ describe('onRequest Hook', () => {
     });
 
     it('should call onRequest hook before making request', async () => {
-        const { request } = await import('@just-every/ensemble');
+        const { ensembleRequest } = await import('@just-every/ensemble');
         // Use the mock that properly calls task_complete
-        vi.mocked(request).mockImplementation(mockSuccessResponse('I will complete this task', 'Task completed successfully'));
+        vi.mocked(ensembleRequest).mockImplementation(mockSuccessResponse('I will complete this task', 'Task completed successfully'));
         
         const onRequestMock = vi.fn(async (agent: MechAgent, messages: ResponseInput) => {
             // Verify original agent is passed
@@ -82,9 +82,9 @@ describe('onRequest Hook', () => {
         expect(onRequestMock).toHaveBeenCalledOnce();
         
         // Verify the request was made with modified messages
-        expect(request).toHaveBeenCalled();
-        const requestCall = vi.mocked(request).mock.calls[0];
-        const messages = requestCall[1];
+        expect(ensembleRequest).toHaveBeenCalled();
+        const requestCall = vi.mocked(ensembleRequest).mock.calls[0];
+        const messages = requestCall[0]; // messages are now the first parameter
         
         // Should have system message added by onRequest
         expect(messages[0]).toEqual({
@@ -96,8 +96,8 @@ describe('onRequest Hook', () => {
     });
 
     it('should work without onRequest hook', async () => {
-        const { request } = await import('@just-every/ensemble');
-        vi.mocked(request).mockImplementation(mockSuccessResponse('Completing the task', 'Task completed'));
+        const { ensembleRequest } = await import('@just-every/ensemble');
+        vi.mocked(ensembleRequest).mockImplementation(mockSuccessResponse('Completing the task', 'Task completed'));
 
         const result = await runMECH({
             agent: {
@@ -107,13 +107,13 @@ describe('onRequest Hook', () => {
             task: 'Test task'
         });
 
-        expect(request).toHaveBeenCalled();
+        expect(ensembleRequest).toHaveBeenCalled();
         expect(result.status).toBe('complete');
     });
 
     it('should handle errors in onRequest hook', async () => {
-        const { request } = await import('@just-every/ensemble');
-        vi.mocked(request).mockImplementation(mockSuccessResponse());
+        const { ensembleRequest } = await import('@just-every/ensemble');
+        vi.mocked(ensembleRequest).mockImplementation(mockSuccessResponse());
         
         const onRequestMock = vi.fn(async () => {
             throw new Error('onRequest failed');
@@ -129,8 +129,8 @@ describe('onRequest Hook', () => {
     });
 
     it('should pass modified agent properties through pipeline', async () => {
-        const { request } = await import('@just-every/ensemble');
-        vi.mocked(request).mockImplementation(mockSuccessResponse());
+        const { ensembleRequest } = await import('@just-every/ensemble');
+        vi.mocked(ensembleRequest).mockImplementation(mockSuccessResponse());
         
         const onRequestMock = vi.fn(async (agent: MechAgent, messages: ResponseInput) => {
             // Modify agent to use a different model
@@ -161,17 +161,17 @@ describe('onRequest Hook', () => {
         });
 
         // Verify the modified agent properties were used
-        expect(request).toHaveBeenCalled();
-        const requestCall = vi.mocked(request).mock.calls[0];
-        const modelUsed = requestCall[0];
+        expect(ensembleRequest).toHaveBeenCalled();
+        const requestCall = vi.mocked(ensembleRequest).mock.calls[0];
+        const agentUsed = requestCall[1]; // agent is now the second parameter
         
         // Should use the model selected by rotation, but agent properties should be updated
         expect(capturedAgentId).toContain('TestAgent');
     });
 
     it('should allow onRequest to add tools dynamically', async () => {
-        const { request } = await import('@just-every/ensemble');
-        vi.mocked(request).mockImplementation(mockSuccessResponse());
+        const { ensembleRequest } = await import('@just-every/ensemble');
+        vi.mocked(ensembleRequest).mockImplementation(mockSuccessResponse());
         
         const customTool = {
             function: vi.fn(() => 'Custom tool result'),
@@ -205,12 +205,12 @@ describe('onRequest Hook', () => {
         });
 
         // Verify request was made with tools
-        expect(request).toHaveBeenCalled();
-        const requestCall = vi.mocked(request).mock.calls[0];
-        const options = requestCall[2];
+        expect(ensembleRequest).toHaveBeenCalled();
+        const requestCall = vi.mocked(ensembleRequest).mock.calls[0];
+        const agent = requestCall[1]; // agent is now the second parameter
         
         // Should include the dynamically added tool
-        expect(options.tools).toContainEqual(expect.objectContaining({
+        expect(agent.tools).toContainEqual(expect.objectContaining({
             definition: expect.objectContaining({
                 function: expect.objectContaining({
                     name: 'custom_tool'

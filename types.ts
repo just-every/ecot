@@ -6,7 +6,7 @@
  */
 
 import type { 
-    EnsembleStreamEvent, 
+    ProviderStreamEvent, 
     ResponseInput, 
     ResponseInputItem,
     ToolFunction
@@ -23,7 +23,7 @@ export interface MechOutcome {
     status?: 'complete' | 'fatal_error';
     result?: string;
     error?: string;
-    event?: EnsembleStreamEvent;
+    event?: ProviderStreamEvent;
 }
 
 /**
@@ -234,7 +234,7 @@ export interface MechContext {
     /**
      * Send streaming events
      */
-    sendStreamEvent?: (event: EnsembleStreamEvent) => void;
+    sendStreamEvent?: (event: ProviderStreamEvent) => void;
     
     /**
      * Create a tool function

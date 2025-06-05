@@ -1,41 +1,121 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runMECH } from '../index.js';
-import { request, ToolCallAction } from '@just-every/ensemble';
+import * as ensemble from '@just-every/ensemble';
 import { resetLLMRequestCount, mechState } from '../index.js';
 import type { MechAgent } from '../types.js';
 
-// Mock the ensemble request function
+// Mock the ensemble module
 vi.mock('@just-every/ensemble', async () => {
-    const actual = await vi.importActual('@just-every/ensemble');
+    const actual = await vi.importActual<typeof ensemble>('@just-every/ensemble');
     return {
         ...actual,
-        request: vi.fn(),
-        MODEL_CLASSES: {
-            coding: ['grok-beta', 'claude-3-5-sonnet-20241022', 'gpt-4o'],
-            reasoning: ['o1-preview', 'o1-mini', 'claude-3-5-sonnet-20241022'],
-            creative: ['claude-3-5-sonnet-20241022', 'gpt-4o', 'gemini-1.5-pro'],
-            speed: ['gpt-4o-mini', 'claude-3-5-haiku-20241022', 'gemini-1.5-flash']
-        },
+        ensembleRequest: vi.fn(),
+        ensembleEmbed: vi.fn(() => Promise.resolve(new Array(1536).fill(0.1))),
         getModelFromClass: vi.fn((modelClass) => {
             const models = {
                 coding: ['grok-beta', 'claude-3-5-sonnet-20241022', 'gpt-4o'],
                 reasoning: ['o1-preview', 'o1-mini', 'claude-3-5-sonnet-20241022'],
                 creative: ['claude-3-5-sonnet-20241022', 'gpt-4o', 'gemini-1.5-pro'],
-                speed: ['gpt-4o-mini', 'claude-3-5-haiku-20241022', 'gemini-1.5-flash']
+                speed: ['gpt-4o-mini', 'claude-3-5-haiku-20241022', 'gemini-1.5-flash'],
+                standard: ['gpt-4o', 'claude-3-5-sonnet-20241022', 'gemini-1.5-pro']
             };
             const modelList = models[modelClass] || models.reasoning;
             return modelList[0];
         }),
+        createToolFunction: vi.fn((fn, description, params, returns, name) => ({
+            function: fn,
+            definition: {
+                type: 'function',
+                function: {
+                    name: name || fn.name,
+                    description,
+                    parameters: params
+                }
+            }
+        })),
+        ToolCallAction: {
+            EXECUTE: 'execute',
+            SKIP: 'skip',
+            HALT: 'halt',
+            DEFER: 'defer',
+            RETRY: 'retry',
+            REPLACE: 'replace'
+        },
+        createRequestContextWithState: vi.fn((options) => {
+            const state = {
+                messages: options.messages || [],
+                metadata: { ...options.metadata } || {},
+                halted: false,
+                incrementCounter: vi.fn((key) => {
+                    if (key === 'llmRequestCount') return 1;
+                    return 0;
+                }),
+                updateScore: vi.fn(),
+                disableModel: vi.fn(),
+                isModelDisabled: vi.fn(() => false),
+                getDisabledModels: vi.fn(() => []),
+                getAllScores: vi.fn(() => ({})),
+                setMetadata: vi.fn((key, value) => {
+                    state.metadata[key] = value;
+                }),
+                getMetadata: vi.fn((key) => state.metadata[key]),
+                halt: vi.fn(() => {
+                    state.halted = true;
+                }),
+                get isHalted() {
+                    return state.halted;
+                }
+            };
+            return state;
+        })
     };
 });
 
+// Helper to create mock responses
+function createMockResponse(content: string, toolCall?: { name: string; args: any }) {
+    return async function* (messages: any, agent: any) {
+        yield { type: 'message_delta', content } as any;
+        
+        if (toolCall) {
+            const toolCallObj = {
+                id: 'call_' + Date.now(),
+                type: 'function' as const,
+                function: {
+                    name: toolCall.name,
+                    arguments: JSON.stringify(toolCall.args)
+                }
+            };
+            
+            yield {
+                type: 'tool_call',
+                tool_calls: [toolCallObj]
+            } as any;
+            
+            // Simulate tool execution
+            if (agent.onToolCall) {
+                const action = await agent.onToolCall(toolCallObj);
+                if (action === 'execute' && agent.onToolResult) {
+                    const result = toolCall.name === 'task_complete' 
+                        ? `Task completed: ${toolCall.args.result}`
+                        : `Task failed: ${toolCall.args.error}`;
+                    await agent.onToolResult({
+                        toolCall: toolCallObj,
+                        output: result,
+                        error: null
+                    });
+                }
+            }
+        }
+    };
+}
+
 describe('Agent Instructions Simple Test', () => {
-    let mockedRequest: ReturnType<typeof vi.fn>;
+    let mockEnsembleRequest: ReturnType<typeof vi.fn>;
     let consoleLogSpy: ReturnType<typeof vi.spyOn>;
     
     beforeEach(() => {
-        mockedRequest = request as ReturnType<typeof vi.fn>;
-        mockedRequest.mockClear();
+        mockEnsembleRequest = vi.mocked(ensemble.ensembleRequest);
+        mockEnsembleRequest.mockClear();
         resetLLMRequestCount();
         mechState.disabledModels.clear();
         mechState.modelScores = {};
@@ -57,28 +137,11 @@ describe('Agent Instructions Simple Test', () => {
             modelClass: 'reasoning'
         };
 
-        // Mock the request to return a completion
-        mockedRequest.mockImplementation((model, messages, options) => {
-            return (async function* () {
-                yield { type: 'message_delta', content: 'Task done in haiku' };
-                
-                const toolCall = {
-                    id: 'test-1',
-                    type: 'function' as const,
-                    function: {
-                        name: 'task_complete',
-                        arguments: JSON.stringify({ result: 'Haiku task complete' })
-                    }
-                };
-                
-                if (options?.toolHandler?.onToolCall) {
-                    const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
-                    if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
-                        await options.toolHandler.onToolComplete(toolCall, 'Haiku task complete', options.toolHandler.context);
-                    }
-                }
-            })();
-        });
+        // Mock the ensembleRequest to return a completion
+        mockEnsembleRequest.mockImplementation(createMockResponse(
+            'Task done in haiku',
+            { name: 'task_complete', args: { result: 'Haiku task complete' } }
+        ));
 
         const result = await runMECH({
             agent,
@@ -101,7 +164,7 @@ describe('Agent Instructions Simple Test', () => {
         expect(instructionsIndex).toBeLessThan(toolGuidanceIndex);
         
         expect(result.status).toBe('complete');
-        expect(result.mechOutcome?.result).toBe('Haiku task complete');
+        expect(result.mechOutcome?.result).toBe('Task completed: Haiku task complete');
     });
 
     it('should work without instructions', async () => {
@@ -110,27 +173,10 @@ describe('Agent Instructions Simple Test', () => {
             modelClass: 'reasoning'
         };
 
-        mockedRequest.mockImplementation((model, messages, options) => {
-            return (async function* () {
-                yield { type: 'message_delta', content: 'Task done' };
-                
-                const toolCall = {
-                    id: 'test-2',
-                    type: 'function' as const,
-                    function: {
-                        name: 'task_complete',
-                        arguments: JSON.stringify({ result: 'Done' })
-                    }
-                };
-                
-                if (options?.toolHandler?.onToolCall) {
-                    const action = await options.toolHandler.onToolCall(toolCall, options.toolHandler.context);
-                    if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
-                        await options.toolHandler.onToolComplete(toolCall, 'Done', options.toolHandler.context);
-                    }
-                }
-            })();
-        });
+        mockEnsembleRequest.mockImplementation(createMockResponse(
+            'Task done',
+            { name: 'task_complete', args: { result: 'Done' } }
+        ));
 
         await runMECH({
             agent,

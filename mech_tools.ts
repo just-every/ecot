@@ -11,43 +11,52 @@ import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
 import { rotateModel } from './model_rotation.js';
 import { 
-    request,
+    ensembleRequest,
     ToolCallAction,
     createRequestContextWithState,
-    tool,
-    type EnhancedToolFunction,
-    type RequestContext
+    createToolFunction,
+    type ToolFunction,
+    type AgentDefinition,
+    type ModelClassID
 } from '@just-every/ensemble';
 import { MESSAGE_TYPES, AGENT_STATUS } from './utils/constants.js';
 
 /**
- * Get MECH control tools using ensemble's ToolBuilder
+ * Get MECH control tools
  */
-export function getMECHTools(): EnhancedToolFunction[] {
+export function getMECHTools(): ToolFunction[] {
     return [
-        tool('task_complete')
-            .description('Report that the task has completed successfully')
-            .category('control')
-            .constraints({ priority: 100 })
-            .hasSideEffects()
-            .string('result', 'A few paragraphs describing the result. Be thorough and comprehensive.', true)
-            .implement((args: { result: string }) => {
+        createToolFunction(
+            (args: { result: string }) => {
                 console.log('[MECH] Task completed:', args.result);
                 return `Task completed: ${args.result}`;
-            })
-            .build(),
-            
-        tool('task_fatal_error')
-            .description('Report that you were not able to complete the task')
-            .category('control')
-            .constraints({ priority: 100 })
-            .hasSideEffects()
-            .string('error', 'Describe the error that occurred in a few sentences', true)
-            .implement((args: { error: string }) => {
+            },
+            'Report that the task has completed successfully',
+            {
+                result: {
+                    type: 'string',
+                    description: 'A few paragraphs describing the result. Be thorough and comprehensive.'
+                }
+            },
+            undefined, // returns parameter (not used)
+            'task_complete' // explicit function name
+        ),
+        
+        createToolFunction(
+            (args: { error: string }) => {
                 console.error('[MECH] Task failed:', args.error);
                 return `Task failed: ${args.error}`;
-            })
-            .build()
+            },
+            'Report that you were not able to complete the task',
+            {
+                error: {
+                    type: 'string',
+                    description: 'Describe the error that occurred in a few sentences'
+                }
+            },
+            undefined, // returns parameter (not used)
+            'task_fatal_error' // explicit function name
+        )
     ];
 }
 
@@ -133,137 +142,6 @@ export async function runMECH(
         requestContext.disableModel(model);
     });
 
-    // Configure request options
-    const requestOptions: any = {
-        tools: allTools,
-        
-        // Tool handler configuration
-        toolHandler: {
-            context: requestContext,
-            
-            // Hook for controlling tool execution
-            onToolCall: async (toolCall: any, _ctx: any) => {
-                // Check for MECH control tools
-                const toolName = toolCall.function?.name;
-                if (toolName === 'task_complete' || toolName === 'task_fatal_error') {
-                    return ToolCallAction.EXECUTE;
-                }
-                
-                // Allow all other tools
-                return ToolCallAction.EXECUTE;
-            },
-            
-            // Hook after tool completion
-            onToolComplete: async (toolCall: any, result: any, ctx: any) => {
-                const reqCtx = ctx as RequestContext;
-                
-                const toolName = toolCall.function?.name;
-                if (toolName === 'task_complete') {
-                    reqCtx.setMetadata('mechOutcome', {
-                        status: 'complete',
-                        result: result
-                    });
-                    reqCtx.halt();
-                } else if (toolName === 'task_fatal_error') {
-                    reqCtx.setMetadata('mechOutcome', {
-                        status: 'fatal_error',
-                        error: result
-                    });
-                    reqCtx.halt();
-                }
-            },
-            
-            executionMode: 'sequential',
-            errorStrategy: 'return-error'
-        },
-        
-        // Loop configuration
-        loop: loop ? {
-            maxIterations: 100,
-            continueCondition: async (ctx: any) => {
-                // Check if we should continue
-                if (!ctx.shouldContinue || ctx.isHalted) {
-                    return false;
-                }
-                
-                // Check communication channel
-                if (comm.isClosed()) {
-                    return false;
-                }
-                
-                return true;
-            },
-            onIteration: async (_iteration: any, _ctx: any) => {
-                // Track LLM requests using context counter
-                const requestCount = requestContext.incrementCounter('llmRequestCount');
-                // Also update global mechState
-                mechState.llmRequestCount = requestCount;
-                const metaFrequency = parseInt(mechState.metaFrequency);
-                
-                if (requestCount % metaFrequency === 0) {
-                    console.log(
-                        `[MECH] Triggering meta-cognition after ${requestCount} LLM requests`
-                    );
-                    try {
-                        await spawnMetaThought(agent, context, new Date(startTime));
-                        
-                        // Update model scores based on meta-cognition results
-                        const scores = requestContext.getAllScores();
-                        Object.entries(scores).forEach(([model, score]) => {
-                            mechState.modelScores[model] = score;
-                        });
-                    } catch (error) {
-                        console.error('[MECH] Error in meta-cognition:', error);
-                    }
-                }
-                
-                // Process pending history threads
-                await context.processPendingHistoryThreads();
-                
-                // Apply thought delay
-                const delay = getThoughtDelay();
-                const delayNum = parseInt(delay);
-                if (delayNum > 0) {
-                    await runThoughtDelay(context);
-                }
-            }
-        } : false,
-        
-        // Tool result transformation
-        toolResultTransformer: {
-            augment: (toolName: any, result: any, _metrics: any) => {
-                if (toolName === 'task_complete' || toolName === 'task_fatal_error') {
-                    const duration = Date.now() - startTime;
-                    const totalCost = context.costTracker.getTotalCost();
-                    
-                    // Record performance metrics
-                    if (currentAgent.model) {
-                        requestContext.recordRequestTime(currentAgent.model, duration);
-                    }
-                    
-                    return `${result}
-
-=== METRICS ===
-Duration  : ${Math.round(duration / 1000)}s
-Total cost: $${totalCost.toFixed(6)}`;
-                }
-                return result;
-            }
-        },
-        
-        // Event handling
-        eventEmitter: async (event: any, _ctx: any) => {
-            if (context.sendStreamEvent) {
-                context.sendStreamEvent(event);
-            }
-        },
-        
-        // Debugging
-        debug: {
-            logToolCalls: true,
-            logToolResults: true
-        }
-    };
 
     try {
         // Send start status
@@ -307,17 +185,107 @@ Total cost: $${totalCost.toFixed(6)}`;
             console.log('[MECH] System message:', systemMessage.content);
         }
         
-        // Run the request
-        for await (const event of request(
-            selectedModel,
-            requestContext.messages,
-            requestOptions
-        )) {
-            // Events are handled by eventEmitter
-            // Just need to check for text content to log
-            if (event.type === 'message_delta' && 'content' in event) {
-                // Log response content if needed
-                console.log('[MECH] ', { response: event.content });
+        // Create agent definition for ensemble
+        const ensembleAgent: AgentDefinition = {
+            agent_id: currentAgent.agent_id,
+            name: currentAgent.name,
+            model: selectedModel,
+            modelClass: currentAgent.modelClass as ModelClassID | undefined,
+            tools: allTools,
+            maxToolCalls: 10, // Default max tool calls
+            instructions: currentAgent.instructions,
+            modelSettings: {
+                tool_choice: 'required'
+            },
+            // Handle tool calls
+            onToolCall: async (toolCall) => {
+                const toolName = toolCall.function?.name;
+                if (toolName === 'task_complete' || toolName === 'task_fatal_error') {
+                    return ToolCallAction.EXECUTE;
+                }
+                return ToolCallAction.EXECUTE;
+            },
+            onToolResult: async (toolCallResult) => {
+                const toolName = toolCallResult.toolCall.function.name;
+                if (toolName === 'task_complete') {
+                    requestContext.setMetadata('mechOutcome', {
+                        status: 'complete',
+                        result: toolCallResult.output
+                    });
+                    requestContext.halt();
+                } else if (toolName === 'task_fatal_error') {
+                    requestContext.setMetadata('mechOutcome', {
+                        status: 'fatal_error',
+                        error: toolCallResult.output
+                    });
+                    requestContext.halt();
+                }
+            }
+        };
+        
+        // Run the request with loop handling
+        let iteration = 0;
+        let shouldContinue = true;
+        
+        while (shouldContinue && iteration < 100) {
+            iteration++;
+            
+            // Track LLM requests
+            const requestCount = requestContext.incrementCounter('llmRequestCount');
+            mechState.llmRequestCount = requestCount;
+            
+            // Check meta-cognition trigger
+            const metaFrequency = parseInt(mechState.metaFrequency);
+            if (requestCount % metaFrequency === 0) {
+                console.log(`[MECH] Triggering meta-cognition after ${requestCount} LLM requests`);
+                try {
+                    await spawnMetaThought(agent, context, new Date(startTime));
+                    
+                    // Update model scores
+                    const scores = requestContext.getAllScores();
+                    Object.entries(scores).forEach(([model, score]) => {
+                        mechState.modelScores[model] = score;
+                    });
+                } catch (error) {
+                    console.error('[MECH] Error in meta-cognition:', error);
+                }
+            }
+            
+            // Process pending history threads
+            await context.processPendingHistoryThreads();
+            
+            // Apply thought delay
+            const delay = getThoughtDelay();
+            const delayNum = parseInt(delay);
+            if (delayNum > 0) {
+                await runThoughtDelay(context);
+            }
+            
+            // Run the request
+            for await (const event of ensembleRequest(
+                requestContext.messages,
+                ensembleAgent
+            )) {
+                // Send stream events if handler is available
+                if (context.sendStreamEvent) {
+                    context.sendStreamEvent(event);
+                }
+                
+                // Log message content
+                if (event.type === 'message_delta' && 'content' in event) {
+                    console.log('[MECH] ', { response: event.content });
+                }
+            }
+            
+            // Check if we should continue or if task is complete
+            if (!loop || requestContext.isHalted || comm.isClosed()) {
+                shouldContinue = false;
+            }
+            
+            // Check if we have an outcome
+            const currentOutcome = requestContext.getMetadata<MechOutcome>('mechOutcome');
+            if (currentOutcome && (currentOutcome.status === 'complete' || currentOutcome.status === 'fatal_error')) {
+                shouldContinue = false;
             }
         }
 

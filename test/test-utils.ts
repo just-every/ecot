@@ -18,13 +18,13 @@ export interface MockResponse {
 }
 
 /**
- * Creates a mock request implementation
+ * Creates a mock request implementation for ensembleRequest
  */
 export function createMockEnhancedRequest(responses: MockResponse | MockResponse[]) {
     const responseArray = Array.isArray(responses) ? responses : [responses];
     let responseIndex = 0;
     
-    return vi.fn((_model, _messages, options) => {
+    return vi.fn((_messages, agent) => {
         return (async function* () {
             const response = responseArray[responseIndex % responseArray.length];
             responseIndex++;
@@ -33,15 +33,12 @@ export function createMockEnhancedRequest(responses: MockResponse | MockResponse
                 throw response.error;
             }
             
-            // Use the context from toolHandler if available
-            const context = options?.toolHandler?.context;
-            
             // Yield message if provided
             if (response.message) {
                 yield { type: 'message_delta', content: response.message };
             }
             
-            // Process tool calls if provided
+            // Process tool calls if provided - using new ensemble API pattern
             if (response.toolCalls) {
                 for (const toolCall of response.toolCalls) {
                     const fullToolCall = {
@@ -53,15 +50,35 @@ export function createMockEnhancedRequest(responses: MockResponse | MockResponse
                         }
                     };
                     
-                    if (options?.toolHandler?.onToolCall) {
-                        const action = await options.toolHandler.onToolCall(fullToolCall, context);
+                    // Yield the tool call event
+                    yield {
+                        type: 'tool_call',
+                        tool_calls: [fullToolCall]
+                    };
+                    
+                    // Execute the tool through the agent's callbacks
+                    if (agent?.onToolCall) {
+                        const action = await agent.onToolCall(fullToolCall);
                         
-                        if (action === ToolCallAction.EXECUTE && options?.toolHandler?.onToolComplete) {
-                            const result = toolCall.name === 'task_fatal_error' 
-                                ? toolCall.arguments.error 
-                                : toolCall.arguments.result || 'Tool executed';
+                        if (action === ToolCallAction.EXECUTE || action === 'execute') {
+                            // Find the tool in the agent's tools
+                            const tool = agent.tools?.find((t: any) => 
+                                t.definition?.function?.name === toolCall.name
+                            );
+                            
+                            if (tool?.function) {
+                                // Execute the tool
+                                const result = await tool.function(toolCall.arguments);
                                 
-                            await options.toolHandler.onToolComplete(fullToolCall, result, context);
+                                // Call the result handler
+                                if (agent?.onToolResult) {
+                                    await agent.onToolResult({
+                                        toolCall: fullToolCall,
+                                        output: result,
+                                        error: null
+                                    });
+                                }
+                            }
                         }
                     }
                 }
