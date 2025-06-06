@@ -6,7 +6,7 @@
 
 import { MODEL_CLASSES, ModelClassID, getModelFromClass } from '@just-every/ensemble';
 import { mechState, getModelScore } from './mech_state.js';
-import type { MechAgent } from './types.js';
+import type { Agent } from './types.js';
 import { globalPerformanceCache } from './utils/performance.js';
 // MechModelError available if needed for error handling
 import { debugModelSelection, debugTrace } from './utils/debug.js';
@@ -44,7 +44,7 @@ import { debugModelSelection, debugTrace } from './utils/debug.js';
  * ```
  */
 export async function rotateModel(
-    agent: MechAgent,
+    agent: Agent,
     modelClass?: ModelClassID
 ): Promise<string | undefined> {
     // Validate agent first

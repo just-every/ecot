@@ -15,7 +15,7 @@ import {
     resetLLMRequestCount,
     getTotalCost,
     resetCostTracker,
-    type MechAgent,
+    type Agent,
     type RunMechOptions
 } from '../index.js';
 import { createFullContext } from '../utils/internal_utils.js';
@@ -94,7 +94,7 @@ async function* createMockStream(response: string, toolCalls: Array<{ name: stri
 }
 
 describe('MECH Integration Tests', () => {
-    let mockAgent: MechAgent;
+    let mockAgent: Agent;
     let mockedEnsembleRequest: ReturnType<typeof vi.fn>;
     
     beforeEach(() => {

@@ -1,7 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawnMetaThought } from '../meta_cognition.js';
 import { mechState } from '../mech_state.js';
-import type { MechAgent, MechContext } from '../types.js';
+import type { Agent, MechContext } from '../types.js';
+
+// Mock mech_tools
+vi.mock('../mech_tools.js', () => ({
+    runMECH: vi.fn().mockResolvedValue({
+        status: 'complete',
+        durationSec: 1,
+        totalCost: 0.01,
+        history: [],
+        mechOutcome: { status: 'complete', result: 'Meta-cognition complete' }
+    })
+}));
 
 // Mock ensemble imports
 vi.mock('@just-every/ensemble', () => ({
@@ -30,11 +41,19 @@ vi.mock('@just-every/ensemble', () => ({
                 }
             }
         }
+    })),
+    Agent: vi.fn().mockImplementation((definition) => ({
+        ...definition,
+        agent_id: definition.agent_id || 'test-agent',
+        name: definition.name || 'TestAgent',
+        export: () => definition,
+        getTools: async () => definition.tools || [],
+        asTool: () => ({})
     }))
 }));
 
 describe('Meta-cognition', () => {
-    let mockAgent: MechAgent;
+    let mockAgent: Agent;
     let mockContext: MechContext;
     let consoleLogSpy: any;
     let consoleErrorSpy: any;

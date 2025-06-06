@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runMECH } from '../index.js';
 import * as ensemble from '@just-every/ensemble';
 import { resetLLMRequestCount, mechState } from '../index.js';
-import type { MechAgent } from '../types.js';
+import type { Agent } from '../types.js';
 
 // Mock the ensemble module
 vi.mock('@just-every/ensemble', async () => {
@@ -104,7 +104,7 @@ describe('Agent Instructions Simple Test', () => {
     it('should include agent instructions in system message', async () => {
         const testInstructions = 'You are a helpful assistant who always responds in haiku format.';
         
-        const agent: MechAgent = {
+        const agent: Agent = {
             name: 'HaikuAgent',
             instructions: testInstructions,
             modelClass: 'reasoning'
@@ -141,7 +141,7 @@ describe('Agent Instructions Simple Test', () => {
     });
 
     it('should work without instructions', async () => {
-        const agent: MechAgent = {
+        const agent: Agent = {
             name: 'BasicAgent',
             modelClass: 'reasoning'
         };

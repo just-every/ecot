@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { rotateModel } from '../model_rotation.js';
 import { mechState, disableModel, setModelScore, enableModel } from '../mech_state.js';
-import type { MechAgent } from '../types.js';
+import type { Agent } from '../types.js';
 
 // Mock ensemble imports
 vi.mock('@just-every/ensemble', () => ({
@@ -37,7 +37,7 @@ vi.mock('@just-every/ensemble', () => ({
 }));
 
 describe('Model Rotation', () => {
-    let mockAgent: MechAgent;
+    let mockAgent: Agent;
 
     beforeEach(() => {
         // Reset state

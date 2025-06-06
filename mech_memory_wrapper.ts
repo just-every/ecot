@@ -11,7 +11,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import type { MechAgent, MechContext, MechResult } from './types.js';
+import type { Agent, MechContext, MechResult } from './types.js';
 import { runMECH } from './mech_tools.js';
 import { ResponseInput, ensembleEmbed } from '@just-every/ensemble';
 
@@ -27,7 +27,7 @@ import { ResponseInput, ensembleEmbed } from '@just-every/ensemble';
  * @returns Promise that resolves to a MechResult containing status, cost, and metrics
  */
 export async function runMECHWithMemory(
-    agent: MechAgent,
+    agent: Agent,
     content: string,
     context: MechContext,
     loop: boolean = true
@@ -226,7 +226,7 @@ ${formattedMemories}`,
  * @param memories - Previously retrieved memories
  */
 async function extractAndStoreMemories(
-    agent: MechAgent,
+    agent: Agent,
     context: MechContext,
     taskId: string,
     status: 'complete' | 'fatal_error',
@@ -234,7 +234,7 @@ async function extractAndStoreMemories(
     memories: any[]
 ): Promise<void> {
     // Skip MemoryAgent for project_update processes
-    if (agent.args?.tool === 'project_update') {
+    if ((agent as any).args?.tool === 'project_update') {
         console.log(
             'MemoryAgent disabled for project_update; skipping learnings extraction.'
         );

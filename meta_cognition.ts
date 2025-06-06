@@ -6,7 +6,7 @@
  * parameters to improve performance.
  */
 
-import type { MechAgent, MechContext } from './types.js';
+import type { Agent, MechContext } from './types.js';
 import {
     mechState,
     getMetaCognitionTools,
@@ -14,7 +14,7 @@ import {
     listModelScores,
 } from './mech_state.js';
 import { getThoughtDelay, getThoughtTools } from './thought_utils.js';
-import { ResponseInput, getModelFromClass } from '@just-every/ensemble';
+import { ResponseInput, getModelFromClass, Agent as EnsembleAgent } from '@just-every/ensemble';
 
 /**
  * Spawn a metacognition process to analyze and optimize agent performance
@@ -47,7 +47,7 @@ import { ResponseInput, getModelFromClass } from '@just-every/ensemble';
  * ```
  */
 export async function spawnMetaThought(
-    agent: MechAgent, 
+    agent: Agent, 
     context: MechContext,
     startTime: Date
 ): Promise<void> {
@@ -68,7 +68,7 @@ export async function spawnMetaThought(
 
     try {
         // Create a metacognition agent using provided Agent constructor
-        const metaAgent: MechAgent = {
+        const metaAgent = new EnsembleAgent({
             name: 'MetacognitionAgent',
             agent_id: agent.agent_id,
             instructions: `Your role is to perform **Metacognition** for the agent named **${agent.name}**.
@@ -109,15 +109,9 @@ ${context.MAGI_CONTEXT || ''}
 - You will see the results next time you run after the Meta Frequency.
 `,
             tools: [...getMetaCognitionTools(context), ...getThoughtTools(context)],
-            modelClass: 'metacognition',
-            historyThread: [],
-            export: () => ({
-                name: 'MetacognitionAgent',
-                agent_id: agent.agent_id,
-                modelClass: 'metacognition',
-            }),
-            getTools: async () => [...getMetaCognitionTools(context), ...getThoughtTools(context)],
-        };
+            modelClass: 'metacognition' as any,
+            historyThread: []
+        });
 
         // Use a high-quality reasoning model
         try {

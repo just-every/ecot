@@ -9,7 +9,8 @@ import type {
     ProviderStreamEvent, 
     ResponseInput, 
     ResponseInputItem,
-    ToolFunction
+    ToolFunction,
+    Agent
 } from '@just-every/ensemble';
 
 // ============================================================================
@@ -70,9 +71,9 @@ export interface MECHState {
 // ============================================================================
 
 /**
- * Re-export tool types from ensemble for consistency
+ * Re-export tool and agent types from ensemble for consistency
  */
-export type { ToolFunction } from '@just-every/ensemble';
+export type { ToolFunction, Agent } from '@just-every/ensemble';
 
 /**
  * Simple tool definition for the simple API
@@ -81,32 +82,6 @@ export interface AgentTool {
     name: string;
     description: string;
     parameters?: Record<string, unknown>;
-}
-
-/**
- * Agent interface for MECH
- * 
- * All fields are optional for ease of use. The system will:
- * - Default name to "Agent" if not provided
- * - Auto-generate agent_id as "{name}-{timestamp}" if not provided
- * - Add export() and getTools() methods if not present
- */
-export interface MechAgent {
-    name?: string;              // Defaults to "Agent"
-    agent_id?: string;          // Auto-generated if not provided
-    model?: string;             // Specific model to use
-    modelClass?: string;        // "reasoning", "standard", "code", "metacognition"
-    tools?: ToolFunction[];     // Agent's available tools
-    instructions?: string;      // System instructions for the agent
-    historyThread?: ResponseInputItem[];
-    args?: Record<string, any>;
-    
-    // These methods are optional - will be added by toMechAgent if missing
-    export?: () => Record<string, any>;
-    getTools?: () => Promise<ToolFunction[]>;
-    
-    /** Optional hook called before each request to modify agent or messages */
-    onRequest?: (agent: MechAgent, messages: ResponseInput) => Promise<[MechAgent, ResponseInput]>;
 }
 
 // ============================================================================
@@ -220,7 +195,7 @@ export interface MechContext {
     /**
      * Describe history for an agent
      */
-    describeHistory: (agent: MechAgent, messages: ResponseInput, showCount: number) => ResponseInput;
+    describeHistory: (agent: Agent, messages: ResponseInput, showCount: number) => ResponseInput;
     
     /**
      * Cost tracking instance
@@ -275,7 +250,7 @@ export interface MechContext {
     /**
      * Plan and commit changes for a project
      */
-    planAndCommitChanges?: (agent: MechAgent, projectId: string) => Promise<void>;
+    planAndCommitChanges?: (agent: Agent, projectId: string) => Promise<void>;
     
     /**
      * List active projects
@@ -311,7 +286,7 @@ export interface MechContext {
     /**
      * Register relevant custom tools based on embedding
      */
-    registerRelevantCustomTools?: (embedding: number[], agent: MechAgent) => Promise<void>;
+    registerRelevantCustomTools?: (embedding: number[], agent: Agent) => Promise<void>;
     
     /**
      * Quick LLM call for internal use
@@ -328,14 +303,14 @@ export interface MechContext {
 // Simple API Types
 // ============================================================================
 
-// SimpleAgent removed - use MechAgent for all cases
+// SimpleAgent removed - use Agent from ensemble for all cases
 
 /**
  * Options for running MECH with the simple API
  */
 export interface RunMechOptions {
     /** The agent configuration */
-    agent: MechAgent;
+    agent: Agent;
     
     /** The task to execute */
     task: string;

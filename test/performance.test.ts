@@ -17,12 +17,12 @@ import {
     MechPerformanceCache,
     globalPerformanceCache,
     OptimizedThoughtDelay,
-    type MechAgent,
+    type Agent,
     type MechContext
 } from '../index.js';
 
 describe('MECH Performance Tests', () => {
-    let mockAgent: MechAgent;
+    let mockAgent: Agent;
     let mockContext: MechContext;
 
     beforeEach(() => {

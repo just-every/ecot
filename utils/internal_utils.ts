@@ -9,7 +9,7 @@ import { CostTracker, createToolFunction } from '@just-every/ensemble';
 import type { 
     MechContext, 
     RunMechOptions,
-    MechAgent,
+    Agent,
     ToolFunction,
     CommunicationManager,
     MemoryItem
@@ -108,7 +108,7 @@ export function createDefaultCommunicationManager(): CommunicationManager {
  * Default history description
  */
 export function defaultDescribeHistory(
-    _agent: MechAgent,
+    _agent: Agent,
     messages: ResponseInput,
     showCount: number
 ): ResponseInput {

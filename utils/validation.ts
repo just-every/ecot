@@ -6,12 +6,12 @@
 
 import { MechValidationError } from './errors.js';
 import { VALID_THOUGHT_DELAYS } from './constants.js';
-import type { MechAgent, RunMechOptions } from '../types.js';
+import type { Agent, RunMechOptions } from '../types.js';
 
 /**
  * Validate a MECH agent object
  */
-export function validateAgent(agent: unknown): asserts agent is MechAgent {
+export function validateAgent(agent: unknown): asserts agent is Agent {
     if (!agent || typeof agent !== 'object') {
         throw new MechValidationError(
             'Agent must be a valid object with at least a "name" property',

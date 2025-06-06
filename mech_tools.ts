@@ -5,7 +5,7 @@
  * This version uses ensemble's enhancedRequest for streamlined tool handling.
  */
 
-import type { MechAgent, MechContext, MechOutcome, MechResult } from './types.js';
+import type { MechContext, MechOutcome, MechResult, Agent } from './types.js';
 import { mechState } from './mech_state.js';
 import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
@@ -66,7 +66,7 @@ export function getMECHTools(): ToolFunction[] {
  */
 export async function runMECH(
     content: string,
-    agent: MechAgent,
+    agent: Agent,
     context: MechContext,
     loop = true,
     _metadata?: Record<string, any>  // Currently unused, kept for API compatibility
@@ -139,10 +139,8 @@ export async function runMECH(
         if (selectedModel && mechState.disabledModels.has(selectedModel)) {
             console.log(`[MECH] Model ${selectedModel} is disabled, selecting alternative`);
             // Filter out disabled models and retry
-            selectedModel = await rotateModel({
-                ...currentAgent,
-                excludeModels: Array.from(mechState.disabledModels)
-            } as MechAgent);
+            // Pass the agent as-is with disabled models in state
+            selectedModel = await rotateModel(currentAgent);
         }
         
         if (!selectedModel) {

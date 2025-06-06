@@ -35,7 +35,7 @@ export type {
     MechConfig,
     
     // Agent types
-    MechAgent,
+    Agent,
     AgentTool,
     
     // Context types (for advanced users)

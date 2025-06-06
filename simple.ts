@@ -7,7 +7,6 @@
 import { runMECH as internalRunMECH } from './mech_tools.js';
 import { runMECHWithMemory as internalRunMECHWithMemory } from './mech_memory_wrapper.js';
 import type { 
-    MechAgent, 
     MechResult, 
     RunMechOptions
 } from './types.js';
@@ -18,28 +17,6 @@ import {
 } from './utils/validation.js';
 import { withErrorHandling } from './utils/errors.js';
 
-/**
- * Ensure agent has all required methods and fields
- * 
- * This internal helper adds the required export() and getTools() methods
- * if they're not already present, and ensures name and agent_id are set.
- * 
- * @param agent - Agent configuration (all fields optional)
- * @returns Agent with all required methods and fields
- * @internal
- */
-function toMechAgent(agent: MechAgent): MechAgent {
-    const agentName = agent.name || 'Agent';
-    const agentId = agent.agent_id || `${agentName}-${Date.now()}`;
-    
-    return {
-        ...agent,
-        name: agentName,
-        agent_id: agentId,
-        export: agent.export || (() => ({ ...agent } as Record<string, unknown>)),
-        getTools: agent.getTools || (async () => agent.tools || [])
-    };
-}
 
 /**
  * Run MECH with a simple interface
@@ -71,14 +48,13 @@ export const runMECH = withErrorHandling(
         // Sanitize task input
         const sanitizedTask = sanitizeTextInput(options.task);
         
-        const mechAgent = toMechAgent(options.agent);
         const fullContext = createFullContext(options);
         
         // Use memory wrapper if memory functions are provided
         if (options.lookupMemories && options.saveMemory) {
-            return internalRunMECHWithMemory(mechAgent, sanitizedTask, fullContext, options.loop);
+            return internalRunMECHWithMemory(options.agent, sanitizedTask, fullContext, options.loop);
         } else {
-            return internalRunMECH(sanitizedTask, mechAgent, fullContext, options.loop);
+            return internalRunMECH(sanitizedTask, options.agent, fullContext, options.loop);
         }
     },
     'simple_api'
@@ -134,7 +110,7 @@ export function resetCostTracker(): void {
 export type { 
     MechResult, 
     MechOutcome,
-    MechAgent,
+    Agent,
     RunMechOptions 
 } from './types.js';
 

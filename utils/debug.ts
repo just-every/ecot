@@ -4,8 +4,8 @@
  * Enhanced debugging capabilities for development and troubleshooting
  */
 
-import type { MechAgent } from '../types.js';
 import { globalPerformanceCache } from './performance.js';
+import type { Agent } from '../types.js';
 
 /**
  * Debug configuration
@@ -267,7 +267,7 @@ class MechDebugger {
      * Log model selection
      */
     logModelSelection(
-        agent: MechAgent,
+        agent: Agent,
         availableModels: string[],
         selectedModel: string | undefined,
         scores: Record<string, number>,
