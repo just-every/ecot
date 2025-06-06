@@ -4,7 +4,6 @@
  */
 
 import { vi } from 'vitest';
-import { ToolCallAction } from '@just-every/ensemble';
 
 export interface MockToolCall {
     name: string;
@@ -56,30 +55,23 @@ export function createMockEnhancedRequest(responses: MockResponse | MockResponse
                         tool_calls: [fullToolCall]
                     };
                     
-                    // Execute the tool through the agent's callbacks
-                    if (agent?.onToolCall) {
-                        const action = await agent.onToolCall(fullToolCall);
+                    // Find and execute the tool
+                    const tool = agent?.tools?.find((t: any) => 
+                        t.definition?.function?.name === toolCall.name
+                    );
+                    
+                    if (tool && agent?.onToolResult) {
+                        // Execute the tool function
+                        const result = await tool.function(toolCall.arguments);
                         
-                        if (action === ToolCallAction.EXECUTE || action === 'execute') {
-                            // Find the tool in the agent's tools
-                            const tool = agent.tools?.find((t: any) => 
-                                t.definition?.function?.name === toolCall.name
-                            );
-                            
-                            if (tool?.function) {
-                                // Execute the tool
-                                const result = await tool.function(toolCall.arguments);
-                                
-                                // Call the result handler
-                                if (agent?.onToolResult) {
-                                    await agent.onToolResult({
-                                        toolCall: fullToolCall,
-                                        output: result,
-                                        error: null
-                                    });
-                                }
-                            }
-                        }
+                        // Call onToolResult with the result
+                        await agent.onToolResult({
+                            toolCall: fullToolCall,
+                            id: fullToolCall.id,
+                            call_id: fullToolCall.id,
+                            output: result,
+                            error: undefined
+                        });
                     }
                 }
             }

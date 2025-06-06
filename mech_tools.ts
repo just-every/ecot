@@ -12,14 +12,13 @@ import { spawnMetaThought } from './meta_cognition.js';
 import { rotateModel } from './model_rotation.js';
 import { 
     ensembleRequest,
-    ToolCallAction,
-    createRequestContextWithState,
     createToolFunction,
     type ToolFunction,
     type AgentDefinition,
     type ModelClassID
 } from '@just-every/ensemble';
 import { MESSAGE_TYPES, AGENT_STATUS } from './utils/constants.js';
+import { createRequestContext } from './utils/request_context.js';
 
 /**
  * Get MECH control tools
@@ -111,7 +110,7 @@ export async function runMECH(
     const allTools = [...mechTools, ...(currentAgent.tools || [])];
     
     // Create request context with state management
-    const requestContext = createRequestContextWithState({
+    const requestContext = createRequestContext({
         metadata: {
             ...metadata,
             mechOutcome: {} as MechOutcome,
@@ -180,8 +179,10 @@ export async function runMECH(
         mechState.llmRequestCount = requestCount;
         
         // Log the system message to verify instructions are included
-        const systemMessage = requestContext.messages.find(m => m.role === 'system');
-        if (systemMessage) {
+        const systemMessage = requestContext.messages.find(m => 
+            m.type === 'message' && m.role === 'system'
+        );
+        if (systemMessage && systemMessage.type === 'message') {
             console.log('[MECH] System message:', systemMessage.content);
         }
         
@@ -198,13 +199,6 @@ export async function runMECH(
                 tool_choice: 'required'
             },
             // Handle tool calls
-            onToolCall: async (toolCall) => {
-                const toolName = toolCall.function?.name;
-                if (toolName === 'task_complete' || toolName === 'task_fatal_error') {
-                    return ToolCallAction.EXECUTE;
-                }
-                return ToolCallAction.EXECUTE;
-            },
             onToolResult: async (toolCallResult) => {
                 const toolName = toolCallResult.toolCall.function.name;
                 if (toolName === 'task_complete') {
@@ -230,6 +224,13 @@ export async function runMECH(
         while (shouldContinue && iteration < 100) {
             iteration++;
             
+            // Check if task is already complete before applying delay
+            const existingOutcome = requestContext.getMetadata<MechOutcome>('mechOutcome');
+            if (existingOutcome && (existingOutcome.status === 'complete' || existingOutcome.status === 'fatal_error')) {
+                shouldContinue = false;
+                break;
+            }
+            
             // Track LLM requests
             const requestCount = requestContext.incrementCounter('llmRequestCount');
             mechState.llmRequestCount = requestCount;
@@ -254,11 +255,13 @@ export async function runMECH(
             // Process pending history threads
             await context.processPendingHistoryThreads();
             
-            // Apply thought delay
-            const delay = getThoughtDelay();
-            const delayNum = parseInt(delay);
-            if (delayNum > 0) {
-                await runThoughtDelay(context);
+            // Apply thought delay only if not first iteration
+            if (iteration > 1) {
+                const delay = getThoughtDelay();
+                const delayNum = parseInt(delay);
+                if (delayNum > 0) {
+                    await runThoughtDelay(context);
+                }
             }
             
             // Run the request

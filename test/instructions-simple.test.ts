@@ -40,34 +40,7 @@ vi.mock('@just-every/ensemble', async () => {
             DEFER: 'defer',
             RETRY: 'retry',
             REPLACE: 'replace'
-        },
-        createRequestContextWithState: vi.fn((options) => {
-            const state = {
-                messages: options.messages || [],
-                metadata: { ...options.metadata } || {},
-                halted: false,
-                incrementCounter: vi.fn((key) => {
-                    if (key === 'llmRequestCount') return 1;
-                    return 0;
-                }),
-                updateScore: vi.fn(),
-                disableModel: vi.fn(),
-                isModelDisabled: vi.fn(() => false),
-                getDisabledModels: vi.fn(() => []),
-                getAllScores: vi.fn(() => ({})),
-                setMetadata: vi.fn((key, value) => {
-                    state.metadata[key] = value;
-                }),
-                getMetadata: vi.fn((key) => state.metadata[key]),
-                halt: vi.fn(() => {
-                    state.halted = true;
-                }),
-                get isHalted() {
-                    return state.halted;
-                }
-            };
-            return state;
-        })
+        }
     };
 });
 
@@ -91,19 +64,19 @@ function createMockResponse(content: string, toolCall?: { name: string; args: an
                 tool_calls: [toolCallObj]
             } as any;
             
-            // Simulate tool execution
-            if (agent.onToolCall) {
-                const action = await agent.onToolCall(toolCallObj);
-                if (action === 'execute' && agent.onToolResult) {
-                    const result = toolCall.name === 'task_complete' 
-                        ? `Task completed: ${toolCall.args.result}`
-                        : `Task failed: ${toolCall.args.error}`;
-                    await agent.onToolResult({
-                        toolCall: toolCallObj,
-                        output: result,
-                        error: null
-                    });
-                }
+            // Find and execute the tool
+            const tool = agent.tools?.find((t: any) => 
+                t.definition?.function?.name === toolCall.name
+            );
+            if (tool && agent.onToolResult) {
+                const toolResult = await tool.function(toolCall.args);
+                await agent.onToolResult({
+                    toolCall: toolCallObj,
+                    id: toolCallObj.id,
+                    call_id: toolCallObj.id,
+                    output: toolResult,
+                    error: undefined
+                });
             }
         }
     };

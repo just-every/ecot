@@ -32,8 +32,7 @@ vi.mock('@just-every/ensemble', async () => {
             code: ['gpt-4-turbo', 'claude-3-opus', 'grok-beta'],
             metacognition: ['gpt-4-turbo', 'claude-3-opus']
         },
-        // Keep these from actual implementation to ensure proper context handling
-        createRequestContextWithState: actual.createRequestContextWithState,
+        // Keep these from actual implementation
         ToolCallAction: actual.ToolCallAction
     };
 });

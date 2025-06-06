@@ -80,26 +80,19 @@ describe('Integration Tests', () => {
                 }
             };
             
-            // Execute tool through agent callbacks
-            if (agent.onToolCall) {
-                const action = await agent.onToolCall(toolCall);
-                if (action === 'execute' || action === ensemble.ToolCallAction.EXECUTE) {
-                    const tool = agent.tools?.find((t: any) => 
-                        t.definition.function.name === 'task_complete'
-                    );
-                    if (tool) {
-                        const result = await tool.function({ result: 'The answer is 4' });
-                        if (agent.onToolResult) {
-                            await agent.onToolResult({
-                                toolCall,
-                                id: toolCall.id,
-                                call_id: toolCall.id,
-                                output: result,
-                                error: undefined
-                            });
-                        }
-                    }
-                }
+            // Find and execute the tool
+            const tool = agent.tools?.find((t: any) => 
+                t.definition.function.name === 'task_complete'
+            );
+            if (tool && agent.onToolResult) {
+                const result = await tool.function({ result: 'The answer is 4' });
+                await agent.onToolResult({
+                    toolCall,
+                    id: toolCall.id,
+                    call_id: toolCall.id,
+                    output: result,
+                    error: undefined
+                });
             }
             
             yield { 
@@ -139,26 +132,19 @@ describe('Integration Tests', () => {
                 }
             };
             
-            // Execute tool through agent callbacks
-            if (agent.onToolCall) {
-                const action = await agent.onToolCall(toolCall);
-                if (action === 'execute' || action === ensemble.ToolCallAction.EXECUTE) {
-                    const tool = agent.tools?.find((t: any) => 
-                        t.definition.function.name === 'task_fatal_error'
-                    );
-                    if (tool) {
-                        const result = await tool.function({ error: 'test error occurred' });
-                        if (agent.onToolResult) {
-                            await agent.onToolResult({
-                                toolCall,
-                                id: toolCall.id,
-                                call_id: toolCall.id,
-                                output: result,
-                                error: undefined
-                            });
-                        }
-                    }
-                }
+            // Find and execute the tool
+            const tool = agent.tools?.find((t: any) => 
+                t.definition.function.name === 'task_fatal_error'
+            );
+            if (tool && agent.onToolResult) {
+                const result = await tool.function({ error: 'test error occurred' });
+                await agent.onToolResult({
+                    toolCall,
+                    id: toolCall.id,
+                    call_id: toolCall.id,
+                    output: result,
+                    error: undefined
+                });
             }
             
             yield { 

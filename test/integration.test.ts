@@ -151,28 +151,25 @@ describe('MECH Integration Tests', () => {
                     }
                 };
                 
-                // Execute the tool through the agent's callbacks
-                if (ensembleAgent?.onToolCall) {
-                    const action = await ensembleAgent.onToolCall(toolCall);
+                // Execute the tool directly - ensemble would handle this internally
+                // Find the tool in the agent's tools
+                const tool = ensembleAgent.tools?.find(t => 
+                    t.definition?.function?.name === toolName
+                );
+                
+                if (tool?.function) {
+                    // Execute the tool
+                    const result = await tool.function(toolArgs);
                     
-                    if (action === ToolCallAction.EXECUTE) {
-                        // Find the tool in the agent's tools
-                        const tool = ensembleAgent.tools?.find(t => 
-                            t.definition?.function?.name === toolName
-                        );
-                        
-                        if (tool?.function) {
-                            // Execute the tool
-                            const result = await tool.function(toolArgs);
-                            
-                            // Call the result handler
-                            if (ensembleAgent?.onToolResult) {
-                                await ensembleAgent.onToolResult({
-                                    toolCall: toolCall,
-                                    output: result
-                                });
-                            }
-                        }
+                    // Call the result handler
+                    if (ensembleAgent?.onToolResult) {
+                        await ensembleAgent.onToolResult({
+                            toolCall: toolCall,
+                            output: result,
+                            id: toolCall.id,
+                            call_id: toolCall.id,
+                            error: undefined
+                        });
                     }
                 }
             })();

@@ -68,29 +68,21 @@ function createMockImplementation(response: string, toolCall?: { name: string; a
                 }
             };
             
-            // Simulate the agent's onToolCall
-            if (agent.onToolCall) {
-                const action = await agent.onToolCall(tc);
-                if (action === 'execute' || action === ensemble.ToolCallAction.EXECUTE) {
-                    // Find and execute the tool
-                    const tool = agent.tools?.find((t: any) => 
-                        t.definition.function.name === toolCall.name
-                    );
-                    if (tool) {
-                        const result = await tool.function(toolCall.args);
-                        
-                        // Simulate onToolResult
-                        if (agent.onToolResult) {
-                            await agent.onToolResult({
-                                toolCall: tc,
-                                id: tc.id,
-                                call_id: tc.id,
-                                output: result,
-                                error: undefined
-                            });
-                        }
-                    }
-                }
+            // Find and execute the tool
+            const tool = agent.tools?.find((t: any) => 
+                t.definition.function.name === toolCall.name
+            );
+            if (tool && agent.onToolResult) {
+                const result = await tool.function(toolCall.args);
+                
+                // Call onToolResult with the result
+                await agent.onToolResult({
+                    toolCall: tc,
+                    id: tc.id,
+                    call_id: tc.id,
+                    output: result,
+                    error: undefined
+                });
             }
             
             yield {
@@ -200,17 +192,19 @@ describe('Simple MECH API', () => {
                 }
             };
             
-            if (agent.onToolCall) {
-                await agent.onToolCall(toolCall);
-                if (agent.onToolResult) {
-                    await agent.onToolResult({
-                        toolCall,
-                        id: toolCall.id,
-                        call_id: toolCall.id,
-                        output: 'Task completed: Done',
-                        error: undefined
-                    });
-                }
+            // Find and execute the tool
+            const tool = agent.tools?.find((t: any) => 
+                t.definition.function.name === 'task_complete'
+            );
+            if (tool && agent.onToolResult) {
+                const result = await tool.function({ result: 'Done' });
+                await agent.onToolResult({
+                    toolCall,
+                    id: toolCall.id,
+                    call_id: toolCall.id,
+                    output: result,
+                    error: undefined
+                });
             }
             
             yield { type: 'tool_call', tool_calls: [toolCall] } as any;
@@ -251,13 +245,17 @@ describe('Simple MECH API', () => {
                     }
                 };
                 
-                if (agent.onToolCall && agent.onToolResult) {
-                    await agent.onToolCall(toolCall);
+                // Find and execute the tool
+                const tool = agent.tools?.find((t: any) => 
+                    t.definition.function.name === 'task_complete'
+                );
+                if (tool && agent.onToolResult) {
+                    const result = await tool.function({ result: 'Multi-turn complete' });
                     await agent.onToolResult({
                         toolCall,
                         id: toolCall.id,
                         call_id: toolCall.id,
-                        output: 'Task completed: Multi-turn complete',
+                        output: result,
                         error: undefined
                     });
                 }
