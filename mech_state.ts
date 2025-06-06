@@ -120,13 +120,7 @@ export const setMetaFrequency = withErrorHandling(
     'state_management'
 );
 
-/**
- * Get the current meta-cognition frequency
- * @returns The current frequency
- */
-export function getMetaFrequency(): string {
-    return mechState.metaFrequency;
-}
+// getMetaFrequency removed - only used in tests, frequency can be accessed via mechState.metaFrequency
 
 /**
  * Set the score for a specific model
@@ -185,26 +179,16 @@ export function disableModel(modelId: string, disabled?: boolean): string {
     }
     
     if (disabled === false) {
-        return enableModel(modelId);
+        // Inline enableModel functionality
+        const wasDisabled = mechState.disabledModels.has(modelId);
+        mechState.disabledModels.delete(modelId);
+        return wasDisabled ? `Model ${modelId} enabled` : `Model ${modelId} was not disabled`;
     }
     mechState.disabledModels.add(modelId);
     return `Model ${modelId} disabled`;
 }
 
-/**
- * Enable a previously disabled model
- * @param modelId - The model ID to enable
- * @returns Status message
- */
-export function enableModel(modelId: string): string {
-    if (!modelId || typeof modelId !== 'string') {
-        return `Invalid modelId: ${modelId}. Must be a non-empty string.`;
-    }
-    
-    const wasDisabled = mechState.disabledModels.has(modelId);
-    mechState.disabledModels.delete(modelId);
-    return wasDisabled ? `Model ${modelId} enabled` : `Model ${modelId} was not disabled`;
-}
+// enableModel function inlined into disableModel since it was only used there
 
 /**
  * Get the score for a model, optionally for a specific model class

@@ -2,11 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
     mechState,
     setMetaFrequency,
-    getMetaFrequency,
     setModelScore,
     getModelScore,
     disableModel,
-    enableModel,
     listDisabledModels,
     listModelScores,
     incrementLLMRequestCount,
@@ -28,14 +26,13 @@ describe('MECH State Management', () => {
     describe('Meta-cognition frequency', () => {
         it('should set and get meta frequency', () => {
             setMetaFrequency('10');
-            expect(getMetaFrequency()).toBe('10');
             expect(mechState.metaFrequency).toBe('10');
 
             setMetaFrequency('20');
-            expect(getMetaFrequency()).toBe('20');
+            expect(mechState.metaFrequency).toBe('20');
 
             setMetaFrequency('40');
-            expect(getMetaFrequency()).toBe('40');
+            expect(mechState.metaFrequency).toBe('40');
         });
 
         it('should handle invalid frequency values', () => {
@@ -126,7 +123,7 @@ describe('MECH State Management', () => {
             disableModel('gpt-4');
             expect(mechState.disabledModels.has('gpt-4')).toBe(true);
             
-            enableModel('gpt-4');
+            disableModel('gpt-4', false); // Enable by passing false
             expect(mechState.disabledModels.has('gpt-4')).toBe(false);
         });
 
@@ -140,7 +137,7 @@ describe('MECH State Management', () => {
             expect(mechState.disabledModels.has('claude-3')).toBe(true);
             expect(mechState.disabledModels.has('gemini')).toBe(true);
             
-            enableModel('claude-3');
+            disableModel('claude-3', false); // Enable by passing false
             expect(mechState.disabledModels.size).toBe(2);
             expect(mechState.disabledModels.has('claude-3')).toBe(false);
         });
@@ -165,8 +162,8 @@ describe('MECH State Management', () => {
             disableModel('gpt-4'); // Duplicate
             expect(mechState.disabledModels.size).toBe(1);
             
-            enableModel('gpt-4');
-            enableModel('gpt-4'); // Already enabled
+            disableModel('gpt-4', false); // Enable by passing false
+            disableModel('gpt-4', false); // Already enabled
             expect(mechState.disabledModels.size).toBe(0);
         });
     });

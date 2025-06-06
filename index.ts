@@ -16,10 +16,6 @@
 export {
     // The one and only function you need
     runMECH,
-    
-    // Cost tracking utilities
-    getTotalCost,
-    resetCostTracker,
 } from './simple.js';
 
 // ============================================================================

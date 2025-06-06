@@ -156,66 +156,8 @@ export class MechValidationError extends MechError {
     }
 }
 
-/**
- * Model rotation error - thrown when model selection fails
- */
-export class MechModelError extends MechError {
-    constructor(
-        message: string,
-        context: Omit<MechErrorContext, 'component'>,
-        originalError?: Error
-    ) {
-        super(message, { ...context, component: 'model_rotation' }, originalError);
-        this.name = 'MechModelError';
-    }
-}
-
-/**
- * Memory error - thrown when memory operations fail
- */
-export class MechMemoryError extends MechError {
-    constructor(
-        message: string,
-        context: Omit<MechErrorContext, 'component'>,
-        originalError?: Error
-    ) {
-        super(message, { ...context, component: 'memory' }, originalError);
-        this.name = 'MechMemoryError';
-    }
-}
-
-/**
- * Create a validation error for invalid agents
- */
-export function createAgentValidationError(agent: unknown): MechValidationError {
-    if (!agent || typeof agent !== 'object') {
-        return new MechValidationError(
-            'Agent must be a valid object with at least a "name" property',
-            {
-                metadata: { receivedType: typeof agent, receivedValue: agent }
-            }
-        );
-    }
-    
-    if (!('name' in agent) || typeof agent.name !== 'string' || !agent.name.trim()) {
-        return new MechValidationError(
-            'Agent must have a non-empty string "name" property',
-            {
-                metadata: { 
-                    hasName: 'name' in agent,
-                    nameType: 'name' in agent ? typeof agent.name : 'missing',
-                    nameValue: 'name' in agent ? agent.name : undefined
-                }
-            }
-        );
-    }
-    
-    // This shouldn't be reached if validation logic is correct
-    return new MechValidationError(
-        'Unknown agent validation error',
-        { metadata: { agent } }
-    );
-}
+// Specialized error classes and validation functions removed
+// Only MechError and MechValidationError are used in the simplified API
 
 /**
  * Utility to wrap functions with error handling
