@@ -5,11 +5,11 @@
  */
 
 import { MODEL_CLASSES, ModelClassID, getModelFromClass } from '@just-every/ensemble';
-import { mechState, getModelScore } from './mech_state.js';
-import type { Agent } from './types.js';
-import { globalPerformanceCache } from './utils/performance.js';
+import { mechState, getModelScore } from '../state/state.js';
+import type { Agent } from '../state/types.js';
+import { globalPerformanceCache } from '../utils/performance.js';
 // MechModelError available if needed for error handling
-import { debugModelSelection, debugTrace } from './utils/debug.js';
+import { debugModelSelection, debugTrace } from '../utils/debug.js';
 
 /**
  * Intelligent model selection using hierarchical scoring and rotation

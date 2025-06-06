@@ -4,7 +4,7 @@
  * Minimal debug utilities for MECH
  */
 
-import type { Agent } from '../types.js';
+import type { Agent } from '../state/types.js';
 
 /**
  * Simple debug trace function

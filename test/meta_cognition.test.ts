@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { spawnMetaThought } from '../meta_cognition.js';
-import { mechState } from '../mech_state.js';
-import type { Agent, MechContext } from '../types.js';
+import { spawnMetaThought } from '../src/core/meta_cognition.js';
+import { mechState } from '../src/state/state.js';
+import type { Agent, MechContext } from '../src/state/types.js';
 
 // Mock mech_tools
-vi.mock('../mech_tools.js', () => ({
+vi.mock('../src/core/engine.js', () => ({
     runMECH: vi.fn().mockResolvedValue({
         status: 'complete',
         durationSec: 1,

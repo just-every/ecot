@@ -9,7 +9,7 @@ import {
     listModelScores,
     incrementLLMRequestCount,
     resetLLMRequestCount
-} from '../mech_state.js';
+} from '../src/state/state.js';
 
 describe('MECH State Management', () => {
     beforeEach(() => {

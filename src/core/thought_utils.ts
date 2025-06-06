@@ -2,11 +2,11 @@
  * Helper for thought delay processing
  */
 import { ToolFunction } from '@just-every/ensemble';
-import type { MechContext } from './types.js';
-import { VALID_THOUGHT_DELAYS, DEFAULT_THOUGHT_DELAY, MESSAGE_TYPES, type ThoughtDelay } from './utils/constants.js';
-import { OptimizedThoughtDelay } from './utils/performance.js';
-import { validateThoughtDelay } from './utils/validation.js';
-import { withErrorHandling } from './utils/errors.js';
+import type { MechContext } from '../state/types.js';
+import { VALID_THOUGHT_DELAYS, DEFAULT_THOUGHT_DELAY, MESSAGE_TYPES, type ThoughtDelay } from '../utils/constants.js';
+import { OptimizedThoughtDelay } from '../utils/performance.js';
+import { validateThoughtDelay } from '../utils/validation.js';
+import { withErrorHandling } from '../utils/errors.js';
 
 // Thought utilities for managing thought delay and related tools
 

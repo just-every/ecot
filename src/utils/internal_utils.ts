@@ -9,7 +9,7 @@ import { CostTracker, createToolFunction } from '@just-every/ensemble';
 import type { 
     MechContext, 
     CommunicationManager
-} from '../types.js';
+} from '../state/types.js';
 
 /**
  * Default history management implementation

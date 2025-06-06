@@ -16,7 +16,7 @@
 export {
     // The one and only function you need
     runMECH,
-} from './simple.js';
+} from './api.js';
 
 // ============================================================================
 // Core Types
@@ -25,7 +25,7 @@ export type {
     // Result types
     MechResult,
     MechOutcome,
-} from './types.js';
+} from './src/state/types.js';
 
 // Re-export Agent from ensemble
 export type { Agent } from '@just-every/ensemble';
@@ -36,7 +36,7 @@ export type { Agent } from '@just-every/ensemble';
 export { 
     mechState, 
     resetLLMRequestCount 
-} from './mech_state.js';
+} from './src/state/state.js';
 
 export { 
     setThoughtDelay,
@@ -46,12 +46,12 @@ export {
     runThoughtDelay,
     getDelayAbortSignal,
     getThoughtTools
-} from './thought_utils.js';
+} from './src/core/thought_utils.js';
 
 // ============================================================================
 // Constants (for testing and advanced usage)
 // ============================================================================
-export { MESSAGE_TYPES } from './utils/constants.js';
+export { MESSAGE_TYPES } from './src/utils/constants.js';
 
 // That's it! Just use runMECH(agent, content) and everything else is automatic.
 

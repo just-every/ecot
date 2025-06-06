@@ -5,8 +5,8 @@
  * This version uses ensemble's enhancedRequest for streamlined tool handling.
  */
 
-import type { MechContext, MechOutcome, MechResult, Agent } from './types.js';
-import { mechState } from './mech_state.js';
+import type { MechContext, MechOutcome, MechResult, Agent } from '../state/types.js';
+import { mechState } from '../state/state.js';
 import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
 import { rotateModel } from './model_rotation.js';
@@ -17,7 +17,7 @@ import {
     type AgentDefinition,
     type ModelClassID
 } from '@just-every/ensemble';
-import { MESSAGE_TYPES, AGENT_STATUS } from './utils/constants.js';
+import { MESSAGE_TYPES, AGENT_STATUS } from '../utils/constants.js';
 
 /**
  * Get MECH control tools

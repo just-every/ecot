@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { rotateModel } from '../model_rotation.js';
-import { mechState, disableModel, setModelScore } from '../mech_state.js';
-import type { Agent } from '../types.js';
+import { rotateModel } from '../src/core/model_rotation.js';
+import { mechState, disableModel, setModelScore } from '../src/state/state.js';
+import type { Agent } from '../src/state/types.js';
 
 // Mock ensemble imports
 vi.mock('@just-every/ensemble', () => ({

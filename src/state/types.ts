@@ -39,7 +39,7 @@ export interface MechResult {
 }
 
 // Import and re-export types from constants
-import type { MetaFrequency, ThoughtDelay } from './utils/constants.js';
+import type { MetaFrequency, ThoughtDelay } from '../utils/constants.js';
 export type { MetaFrequency, ThoughtDelay };
 
 // ============================================================================

@@ -4,12 +4,12 @@
  * Single entry point for all MECH functionality
  */
 
-import { runMECHCore } from './mech_tools.js';
+import { runMECHCore } from './src/core/engine.js';
 import type { Agent } from '@just-every/ensemble';
-import type { MechResult } from './types.js';
-import { createSimpleContext } from './utils/internal_utils.js';
-import { sanitizeTextInput } from './utils/validation.js';
-import { withErrorHandling } from './utils/errors.js';
+import type { MechResult } from './src/state/types.js';
+import { createSimpleContext } from './src/utils/internal_utils.js';
+import { sanitizeTextInput } from './src/utils/validation.js';
+import { withErrorHandling } from './src/utils/errors.js';
 
 
 /**
@@ -59,5 +59,5 @@ export const runMECH = withErrorHandling(
 
 
 // Re-export only essential types
-export type { MechResult, MechOutcome } from './types.js';
+export type { MechResult, MechOutcome } from './src/state/types.js';
 export type { Agent } from '@just-every/ensemble';

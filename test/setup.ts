@@ -3,7 +3,7 @@
  */
 
 import { vi, beforeAll } from 'vitest';
-import { mechState, setModelScore } from '../mech_state.js';
+import { mechState, setModelScore } from '../src/state/state.js';
 
 // Setup global mocks before all tests
 beforeAll(() => {

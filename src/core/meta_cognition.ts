@@ -6,13 +6,13 @@
  * parameters to improve performance.
  */
 
-import type { Agent, MechContext } from './types.js';
+import type { Agent, MechContext } from '../state/types.js';
 import {
     mechState,
     getMetaCognitionTools,
     listDisabledModels,
     listModelScores,
-} from './mech_state.js';
+} from '../state/state.js';
 import { getThoughtDelay, getThoughtTools } from './thought_utils.js';
 import { ResponseInput, getModelFromClass, Agent as EnsembleAgent } from '@just-every/ensemble';
 
@@ -187,7 +187,7 @@ ${listModelScores(agent.modelClass as any)}
         console.log('[MECH] Running metacognition agent with tools');
         
         // Import and run the core MECH function
-        const { runMECHCore } = await import('./mech_tools.js');
+        const { runMECHCore } = await import('./engine.js');
         await runMECHCore(`Analyze and optimize ${agent.name}'s performance`, metaAgent, context);
         
     } catch (error) {
