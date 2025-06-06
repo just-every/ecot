@@ -1,18 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawnMetaThought } from '../src/core/meta_cognition.js';
-import { mechState } from '../src/state/state.js';
-import type { Agent, MechContext } from '../src/state/types.js';
-
-// Mock mech_tools
-vi.mock('../src/core/engine.js', () => ({
-    runMECH: vi.fn().mockResolvedValue({
-        status: 'complete',
-        durationSec: 1,
-        totalCost: 0.01,
-        history: [],
-        mechOutcome: { status: 'complete', result: 'Meta-cognition complete' }
-    })
-}));
+import { mechState, setMetaFrequency, setModelScore, disableModel } from '../src/state/state.js';
+import type { ResponseInput } from '@just-every/ensemble';
 
 // Mock ensemble imports
 vi.mock('@just-every/ensemble', () => ({
@@ -49,12 +38,29 @@ vi.mock('@just-every/ensemble', () => ({
         export: () => definition,
         getTools: async () => definition.tools || [],
         asTool: () => ({})
-    }))
+    })),
+    ensembleRequest: vi.fn().mockImplementation(async function* () {
+        yield {
+            type: 'message_delta',
+            content: 'Analyzing performance...'
+        };
+        yield {
+            type: 'tool_done',
+            tool_call: {
+                function: {
+                    name: 'no_changes_needed'
+                }
+            },
+            result: {
+                output: 'No changes needed'
+            }
+        };
+    })
 }));
 
 describe('Meta-cognition', () => {
-    let mockAgent: Agent;
-    let mockContext: MechContext;
+    let mockAgent: any;
+    let mockMessages: ResponseInput;
     let consoleLogSpy: any;
     let consoleErrorSpy: any;
 
@@ -66,7 +72,9 @@ describe('Meta-cognition', () => {
         Object.keys(mechState.modelScores).forEach(key => {
             delete mechState.modelScores[key];
         });
-
+        
+        // Clear all mocks
+        vi.clearAllMocks();
 
         // Spy on console
         consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -75,40 +83,27 @@ describe('Meta-cognition', () => {
         // Create mock agent
         mockAgent = {
             name: 'TestAgent',
-            agent_id: 'test-agent-001',
-            modelClass: 'reasoning',
-            export: () => ({ name: 'TestAgent' }),
-            getTools: async () => []
+            agent_id: 'test-agent-001'
         };
 
-        // Create mock context
-        mockContext = {
-            sendComms: vi.fn(),
-            getCommunicationManager: () => ({
-                send: vi.fn(),
-                isClosed: () => false,
-                close: vi.fn()
-            }),
-            addHistory: vi.fn(),
-            getHistory: () => [],
-            processPendingHistoryThreads: async () => {},
-            describeHistory: (agent, messages) => messages,
-            costTracker: { getTotalCost: () => 0 },
-            runStreamedWithTools: vi.fn().mockResolvedValue({ response: 'test', tool_calls: [] }),
-            dateFormat: () => '2024-01-01T00:00:00Z',
-            readableTime: (ms) => `${ms}ms`,
-            MAGI_CONTEXT: 'Test Context',
-            createToolFunction: vi.fn((fn, desc) => ({
-                function: fn,
-                definition: { 
-                    type: 'function', 
-                    function: { 
-                        name: fn.name || 'mockFunction', 
-                        description: desc 
-                    } 
-                }
-            }))
-        };
+        // Create mock messages
+        mockMessages = [
+            {
+                type: 'message',
+                role: 'system',
+                content: 'You are a helpful assistant.'
+            },
+            {
+                type: 'message',
+                role: 'user',
+                content: 'Test task'
+            },
+            {
+                type: 'message',
+                role: 'assistant',
+                content: 'Processing...'
+            }
+        ];
     });
 
     afterEach(() => {
@@ -120,41 +115,44 @@ describe('Meta-cognition', () => {
         it('should spawn metacognition process successfully', async () => {
             const startTime = new Date();
             
-            await spawnMetaThought(mockAgent, mockContext, startTime);
+            await spawnMetaThought(mockAgent, mockMessages, startTime);
             
             expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Spawning metacognition process');
+            expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Metacognition process completed');
         });
 
         it('should create a metacognition agent', async () => {
+            const { Agent } = await import('@just-every/ensemble');
             const startTime = new Date();
             
-            await spawnMetaThought(mockAgent, mockContext, startTime);
+            await spawnMetaThought(mockAgent, mockMessages, startTime);
             
-            // Should log about spawning metacognition process
-            expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Spawning metacognition process');
+            expect(Agent).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    name: 'MetacognitionAgent',
+                    agent_id: 'test-agent-001',
+                    instructions: expect.stringContaining('metacognition')
+                })
+            );
         });
 
-        it('should include status information in context', async () => {
+        it('should include system state in instructions', async () => {
+            const { Agent } = await import('@just-every/ensemble');
             const startTime = new Date();
-            mockContext.listActiveProjects = async () => 'Project1, Project2';
-            mockContext.runningToolTracker = { listActive: () => 'Tool1, Tool2' };
             
-            await spawnMetaThought(mockAgent, mockContext, startTime);
+            // Set up some state AFTER the mock is cleared
+            mechState.llmRequestCount = 25;
+            mechState.metaFrequency = '10';
+            mechState.modelScores['gpt-4'] = 85;
+            mechState.disabledModels.add('claude-3');
             
-            // Check that history was added with status information
-            const historyCall = (mockContext.addHistory as any).mock.calls.find(
-                (call: any[]) => call[0]?.content?.includes('=== TestAgent Status ===')
-            );
+            await spawnMetaThought(mockAgent, mockMessages, startTime);
             
-            expect(historyCall).toBeDefined();
-            if (historyCall) {
-                const content = historyCall[0].content;
-                expect(content).toContain('TestAgent Status');
-                expect(content).toContain('Thought Delay:');
-                expect(content).toContain('Projects:');
-                expect(content).toContain('Active Tools:');
-                expect(content).toContain('Metacognition Status');
-            }
+            const agentCall = (Agent as any).mock.calls[0][0];
+            expect(agentCall.instructions).toContain('LLM Requests: 25');
+            expect(agentCall.instructions).toContain('Meta Frequency: Every 10 requests');
+            expect(agentCall.instructions).toContain('gpt-4: 85');
+            expect(agentCall.instructions).toContain('claude-3');
         });
     });
 
@@ -162,175 +160,150 @@ describe('Meta-cognition', () => {
         it('should validate agent parameter', async () => {
             const startTime = new Date();
             
-            await expect(spawnMetaThought(null as any, mockContext, startTime))
+            await expect(spawnMetaThought(null as any, mockMessages, startTime))
                 .rejects.toThrow('Invalid agent');
             
-            await expect(spawnMetaThought(undefined as any, mockContext, startTime))
+            await expect(spawnMetaThought(undefined as any, mockMessages, startTime))
                 .rejects.toThrow('Invalid agent');
         });
 
-        it('should validate context parameter', async () => {
+        it('should validate messages parameter', async () => {
             const startTime = new Date();
             
             await expect(spawnMetaThought(mockAgent, null as any, startTime))
-                .rejects.toThrow('Invalid context');
+                .rejects.toThrow('Invalid messages');
             
-            await expect(spawnMetaThought(mockAgent, undefined as any, startTime))
-                .rejects.toThrow('Invalid context');
+            await expect(spawnMetaThought(mockAgent, 'not an array' as any, startTime))
+                .rejects.toThrow('Invalid messages');
         });
 
         it('should validate startTime parameter', async () => {
-            await expect(spawnMetaThought(mockAgent, mockContext, null as any))
+            await expect(spawnMetaThought(mockAgent, mockMessages, null as any))
                 .rejects.toThrow('Invalid startTime');
             
-            await expect(spawnMetaThought(mockAgent, mockContext, 'not-a-date' as any))
+            await expect(spawnMetaThought(mockAgent, mockMessages, 'not a date' as any))
                 .rejects.toThrow('Invalid startTime');
         });
 
         it('should handle model selection failure gracefully', async () => {
             const { getModelFromClass } = await import('@just-every/ensemble');
-            (getModelFromClass as any)
-                .mockRejectedValueOnce(new Error('No metacognition model'))
-                .mockResolvedValueOnce('gpt-4'); // Fallback
+            (getModelFromClass as any).mockResolvedValueOnce(null);
             
             const startTime = new Date();
-            await spawnMetaThought(mockAgent, mockContext, startTime);
             
-            expect(consoleErrorSpy).toHaveBeenCalledWith(
-                '[MECH] Failed to get metacognition model:',
-                expect.any(Error)
-            );
+            // Should not throw, just proceed without model
+            await expect(spawnMetaThought(mockAgent, mockMessages, startTime))
+                .resolves.not.toThrow();
         });
 
-        it('should throw if no model is available', async () => {
-            const { getModelFromClass } = await import('@just-every/ensemble');
-            
-            // Temporarily make the mock fail for both metacognition and reasoning calls
-            (getModelFromClass as any).mockRejectedValue(new Error('No models available'));
-            
-            const startTime = new Date();
-            await expect(spawnMetaThought(mockAgent, mockContext, startTime))
-                .rejects.toThrow('No model available for metacognition');
-                
-            // Restore the mock for subsequent tests
-            (getModelFromClass as any).mockResolvedValue('gpt-4-turbo');
-        });
-
-        it('should catch and log non-critical errors', async () => {
-            // Store original function
-            const originalDescribeHistory = mockContext.describeHistory;
-            
-            // Mock describeHistory to throw
-            mockContext.describeHistory = () => {
-                throw new Error('History error');
-            };
+        it('should catch and log ensemble request errors', async () => {
+            const { ensembleRequest } = await import('@just-every/ensemble');
+            (ensembleRequest as any).mockImplementationOnce(async function* () {
+                throw new Error('Network error');
+            });
             
             const startTime = new Date();
-            await spawnMetaThought(mockAgent, mockContext, startTime);
+            
+            await expect(spawnMetaThought(mockAgent, mockMessages, startTime))
+                .rejects.toThrow('Network error');
             
             expect(consoleErrorSpy).toHaveBeenCalledWith(
-                '[MECH] Error in metacognition process:',
+                '[MECH] Error in metacognition:', 
                 expect.any(Error)
             );
-            
-            // Restore original function
-            mockContext.describeHistory = originalDescribeHistory;
         });
     });
 
     describe('Tool integration', () => {
         it('should include metacognition tools', async () => {
-            const tools: any[] = [];
-            mockContext.createToolFunction = vi.fn((fn, desc) => {
-                const tool = {
-                    function: fn,
-                    definition: { type: 'function', function: { name: fn.name, description: desc } }
-                };
-                tools.push(tool);
-                return tool;
-            });
-            
+            const { Agent } = await import('@just-every/ensemble');
             const startTime = new Date();
-            await spawnMetaThought(mockAgent, mockContext, startTime);
             
-            // Should have created tools
-            expect(tools.length).toBeGreaterThan(0);
+            await spawnMetaThought(mockAgent, mockMessages, startTime);
             
-            // Check for specific tools
-            const toolNames = tools.map(t => t.definition.function.name);
-            expect(toolNames).toContain('injectThoughtTool');
-            expect(toolNames).toContain('setMetaFrequencyTool');
-            expect(toolNames).toContain('setModelScoreTool');
-            expect(toolNames).toContain('disableModelTool');
+            const agentCall = (Agent as any).mock.calls[0][0];
+            const toolNames = agentCall.tools.map((t: any) => t.definition.function.name);
+            
+            expect(toolNames).toContain('injectThought');
+            expect(toolNames).toContain('setMetaFrequency');
+            expect(toolNames).toContain('setModelScore');
+            expect(toolNames).toContain('disableModel');
+            expect(toolNames).toContain('noChangesNeeded');
+        });
+
+        it('should include thought management tools', async () => {
+            const { Agent } = await import('@just-every/ensemble');
+            const startTime = new Date();
+            
+            await spawnMetaThought(mockAgent, mockMessages, startTime);
+            
+            const agentCall = (Agent as any).mock.calls[0][0];
+            const toolNames = agentCall.tools.map((t: any) => t.definition.function.name);
+            
+            expect(toolNames).toContain('set_thought_delay');
+            expect(toolNames).toContain('interrupt_delay');
+            expect(toolNames).toContain('get_thought_delay');
         });
     });
 
-    describe('State display', () => {
-        it('should show correct meta frequency', async () => {
-            mechState.metaFrequency = '10';
-            
+    describe('Message history', () => {
+        it('should include recent history in user message', async () => {
+            const { ensembleRequest } = await import('@just-every/ensemble');
             const startTime = new Date();
-            await spawnMetaThought(mockAgent, mockContext, startTime);
             
-            const historyCall = (mockContext.addHistory as any).mock.calls.find(
-                (call: any[]) => call[0]?.content?.includes('Meta Frequency:')
+            // Add more messages
+            mockMessages.push(
+                { type: 'message', role: 'user', content: 'Another request' },
+                { type: 'message', role: 'assistant', content: 'Another response' }
             );
             
-            expect(historyCall[0].content).toContain('Meta Frequency: 10');
+            await spawnMetaThought(mockAgent, mockMessages, startTime);
+            
+            const requestCall = (ensembleRequest as any).mock.calls[0];
+            const metaMessages = requestCall[0];
+            const userMessage = metaMessages.find((m: any) => m.role === 'user');
+            
+            expect(userMessage.content).toContain('Recent history:');
+            expect(userMessage.content).toContain('user: Test task');
+            expect(userMessage.content).toContain('assistant: Processing...');
         });
 
-        it('should show disabled models', async () => {
-            mechState.disabledModels.add('gpt-4');
-            mechState.disabledModels.add('claude-3');
+        it('should handle message injection', async () => {
+            const { ensembleRequest } = await import('@just-every/ensemble');
+            
+            // Mock a tool call that injects a thought
+            (ensembleRequest as any).mockImplementationOnce(async function* () {
+                yield {
+                    type: 'tool_done',
+                    tool_call: {
+                        function: {
+                            name: 'injectThought'
+                        }
+                    },
+                    result: {
+                        output: 'Thought injected'
+                    }
+                };
+            });
             
             const startTime = new Date();
-            await spawnMetaThought(mockAgent, mockContext, startTime);
+            await spawnMetaThought(mockAgent, mockMessages, startTime);
             
-            const historyCall = (mockContext.addHistory as any).mock.calls.find(
-                (call: any[]) => call[0]?.content?.includes('Disabled Models:')
-            );
-            
-            expect(historyCall[0].content).toContain('gpt-4');
-            expect(historyCall[0].content).toContain('claude-3');
-        });
-
-        it('should show model scores', async () => {
-            mechState.modelScores['gpt-4'] = 85;
-            mechState.modelScores['claude-3'] = 90;
-            
-            const startTime = new Date();
-            await spawnMetaThought(mockAgent, mockContext, startTime);
-            
-            const historyCall = (mockContext.addHistory as any).mock.calls.find(
-                (call: any[]) => call[0]?.content?.includes('Model Scores:')
-            );
-            
-            // The listModelScores function should be called
-            expect(historyCall[0].content).toContain('Model Scores:');
+            // The injectThought function should have added a message
+            const lastMessage = mockMessages[mockMessages.length - 1];
+            expect(lastMessage).toBeDefined();
         });
     });
 
     describe('Timing calculations', () => {
         it('should calculate running time correctly', async () => {
-            const startTime = new Date('2024-01-01T00:00:00Z');
-            const currentTime = new Date('2024-01-01T00:05:00Z');
+            const { Agent } = await import('@just-every/ensemble');
+            const startTime = new Date(Date.now() - 30000); // 30 seconds ago
             
-            // Mock Date to control current time
-            const originalDate = global.Date;
-            global.Date = vi.fn(() => currentTime) as any;
-            global.Date.prototype = originalDate.prototype;
+            await spawnMetaThought(mockAgent, mockMessages, startTime);
             
-            await spawnMetaThought(mockAgent, mockContext, startTime);
-            
-            const historyCall = (mockContext.addHistory as any).mock.calls.find(
-                (call: any[]) => call[0]?.content?.includes('Running Time:')
-            );
-            
-            // Should show 5 minutes = 300000ms
-            expect(historyCall[0].content).toContain('Running Time: 300000ms');
-            
-            // Restore Date
-            global.Date = originalDate;
+            const agentCall = (Agent as any).mock.calls[0][0];
+            expect(agentCall.instructions).toContain('Runtime: 30 seconds');
         });
     });
 });

@@ -56,7 +56,9 @@ function getMetaCognitionTools(messages: ResponseInput): ToolFunction[] {
             'Your core tool for altering the thought process of the agent. Injects a thought with high priority into the next loop for the agent. The agent will see this before choosing their next thought or action.',
             {
                 content: 'The thought to inject. Be detailed and explain why this is important.',
-            }
+            },
+            undefined,
+            'injectThought'
         ),
         createToolFunction(
             setMetaFrequency,
@@ -68,7 +70,8 @@ function getMetaCognitionTools(messages: ResponseInput): ToolFunction[] {
                     enum: VALID_FREQUENCIES as unknown as string[],
                 },
             },
-            'Confirmation message'
+            'Confirmation message',
+            'setMetaFrequency'
         ),
         createToolFunction(
             setModelScore,
@@ -77,7 +80,8 @@ function getMetaCognitionTools(messages: ResponseInput): ToolFunction[] {
                 modelId: 'The model ID to score',
                 score: 'Score between 0-100, higher means the model is selected more often',
             },
-            'The new score for the model'
+            'The new score for the model',
+            'setModelScore'
         ),
         createToolFunction(
             disableModel,
@@ -90,11 +94,16 @@ function getMetaCognitionTools(messages: ResponseInput): ToolFunction[] {
                     optional: true,
                     default: true,
                 },
-            }
+            },
+            undefined,
+            'disableModel'
         ),
         createToolFunction(
             noChangesNeeded,
-            'Everything is perfect. Use when no other tools are needed.'
+            'Everything is perfect. Use when no other tools are needed.',
+            {},
+            undefined,
+            'noChangesNeeded'
         ),
     );
     
