@@ -18,7 +18,6 @@ import {
     type ModelClassID
 } from '@just-every/ensemble';
 import { MESSAGE_TYPES, AGENT_STATUS } from './utils/constants.js';
-import { createRequestContext } from './utils/request_context.js';
 
 /**
  * Get MECH control tools
@@ -59,6 +58,9 @@ export function getMECHTools(): ToolFunction[] {
     ];
 }
 
+// Note: Ensemble request count is tracked in mechState.llmRequestCount
+// to persist across MECH runs
+
 /**
  * Enhanced MECH execution using ensemble's enhancedRequest
  */
@@ -67,7 +69,7 @@ export async function runMECH(
     agent: MechAgent,
     context: MechContext,
     loop = true,
-    metadata?: Record<string, any>
+    _metadata?: Record<string, any>  // Currently unused, kept for API compatibility
 ): Promise<MechResult> {
     const startTime = Date.now();
     
@@ -109,37 +111,14 @@ export async function runMECH(
     // Combine MECH tools with agent tools
     const allTools = [...mechTools, ...(currentAgent.tools || [])];
     
-    // Create request context with state management
-    const requestContext = createRequestContext({
-        metadata: {
-            ...metadata,
-            mechOutcome: {} as MechOutcome,
-            mechStartTime: startTime
-        },
-        messages,
-        onHalt: () => {
-            comm.send({ type: 'MECH_HALTED', timestamp: Date.now() });
-        }
-    });
+    // Track outcome and halt state locally
+    let mechOutcome: MechOutcome | undefined;
+    let isHalted = false;
     
-    // Initialize counter with current global count
-    if (mechState.llmRequestCount > 0) {
-        for (let i = 0; i < mechState.llmRequestCount; i++) {
-            requestContext.incrementCounter('llmRequestCount');
-        }
-    }
-    
-    // Load existing model scores from mechState if available
-    Object.entries(mechState.modelScores).forEach(([model, score]) => {
-        if (typeof score === 'number') {
-            requestContext.updateScore(model, score);
-        }
-    });
-    
-    // Load disabled models
-    mechState.disabledModels.forEach(model => {
-        requestContext.disableModel(model);
-    });
+    const halt = () => {
+        isHalted = true;
+        comm.send({ type: 'MECH_HALTED', timestamp: Date.now() });
+    };
 
 
     try {
@@ -157,13 +136,12 @@ export async function runMECH(
         let selectedModel = await rotateModel(currentAgent);
         
         // Check if model is disabled in state
-        if (selectedModel && requestContext.isModelDisabled(selectedModel)) {
+        if (selectedModel && mechState.disabledModels.has(selectedModel)) {
             console.log(`[MECH] Model ${selectedModel} is disabled, selecting alternative`);
-            const disabledModels = requestContext.getDisabledModels();
             // Filter out disabled models and retry
             selectedModel = await rotateModel({
                 ...currentAgent,
-                excludeModels: disabledModels
+                excludeModels: Array.from(mechState.disabledModels)
             } as MechAgent);
         }
         
@@ -171,15 +149,11 @@ export async function runMECH(
             throw new Error('No model available for execution');
         }
         
-        // Track model usage
-        requestContext.incrementCounter(`modelUsage:${selectedModel}`);
-        
-        // Increment LLM request count for initial request
-        const requestCount = requestContext.incrementCounter('llmRequestCount');
-        mechState.llmRequestCount = requestCount;
+        // Track last used model for rotation
+        mechState.lastModelUsed = selectedModel;
         
         // Log the system message to verify instructions are included
-        const systemMessage = requestContext.messages.find(m => 
+        const systemMessage = messages.find(m => 
             m.type === 'message' && m.role === 'system'
         );
         if (systemMessage && systemMessage.type === 'message') {
@@ -198,21 +172,30 @@ export async function runMECH(
             modelSettings: {
                 tool_choice: 'required'
             },
+            // Pass model state to ensemble (flatten nested scores)
+            modelScores: Object.entries(mechState.modelScores).reduce((acc, [key, value]) => {
+                if (typeof value === 'number') {
+                    acc[key] = value;
+                }
+                // Skip class-specific scores as ensemble doesn't need them
+                return acc;
+            }, {} as Record<string, number>),
+            disabledModels: Array.from(mechState.disabledModels),
             // Handle tool calls
             onToolResult: async (toolCallResult) => {
                 const toolName = toolCallResult.toolCall.function.name;
                 if (toolName === 'task_complete') {
-                    requestContext.setMetadata('mechOutcome', {
+                    mechOutcome = {
                         status: 'complete',
                         result: toolCallResult.output
-                    });
-                    requestContext.halt();
+                    };
+                    halt();
                 } else if (toolName === 'task_fatal_error') {
-                    requestContext.setMetadata('mechOutcome', {
+                    mechOutcome = {
                         status: 'fatal_error',
                         error: toolCallResult.output
-                    });
-                    requestContext.halt();
+                    };
+                    halt();
                 }
             }
         };
@@ -225,28 +208,20 @@ export async function runMECH(
             iteration++;
             
             // Check if task is already complete before applying delay
-            const existingOutcome = requestContext.getMetadata<MechOutcome>('mechOutcome');
-            if (existingOutcome && (existingOutcome.status === 'complete' || existingOutcome.status === 'fatal_error')) {
+            if (mechOutcome && (mechOutcome.status === 'complete' || mechOutcome.status === 'fatal_error')) {
                 shouldContinue = false;
                 break;
             }
             
-            // Track LLM requests
-            const requestCount = requestContext.incrementCounter('llmRequestCount');
-            mechState.llmRequestCount = requestCount;
+            // Increment ensemble request counter
+            mechState.llmRequestCount++;
             
             // Check meta-cognition trigger
             const metaFrequency = parseInt(mechState.metaFrequency);
-            if (requestCount % metaFrequency === 0) {
-                console.log(`[MECH] Triggering meta-cognition after ${requestCount} LLM requests`);
+            if (mechState.llmRequestCount % metaFrequency === 0) {
+                console.log(`[MECH] Triggering meta-cognition after ${mechState.llmRequestCount} ensemble requests`);
                 try {
                     await spawnMetaThought(agent, context, new Date(startTime));
-                    
-                    // Update model scores
-                    const scores = requestContext.getAllScores();
-                    Object.entries(scores).forEach(([model, score]) => {
-                        mechState.modelScores[model] = score;
-                    });
                 } catch (error) {
                     console.error('[MECH] Error in meta-cognition:', error);
                 }
@@ -266,7 +241,7 @@ export async function runMECH(
             
             // Run the request
             for await (const event of ensembleRequest(
-                requestContext.messages,
+                messages,
                 ensembleAgent
             )) {
                 // Send stream events if handler is available
@@ -281,19 +256,18 @@ export async function runMECH(
             }
             
             // Check if we should continue or if task is complete
-            if (!loop || requestContext.isHalted || comm.isClosed()) {
+            if (!loop || isHalted || comm.isClosed()) {
                 shouldContinue = false;
             }
             
             // Check if we have an outcome
-            const currentOutcome = requestContext.getMetadata<MechOutcome>('mechOutcome');
-            if (currentOutcome && (currentOutcome.status === 'complete' || currentOutcome.status === 'fatal_error')) {
+            if (mechOutcome && (mechOutcome.status === 'complete' || mechOutcome.status === 'fatal_error')) {
                 shouldContinue = false;
             }
         }
 
-        // Get outcome from context
-        const outcome = requestContext.getMetadata<MechOutcome>('mechOutcome') || {
+        // Get final outcome
+        const outcome = mechOutcome || {
             status: 'incomplete',
             error: 'Task did not complete'
         };
@@ -305,8 +279,8 @@ export async function runMECH(
             status: AGENT_STATUS.MECH_DONE,
             meta_data: {
                 model: selectedModel,
-                modelScores: requestContext.getAllScores(),
-                disabledModels: requestContext.getDisabledModels()
+                modelScores: mechState.modelScores,
+                disabledModels: Array.from(mechState.disabledModels)
             },
         });
 

@@ -42,8 +42,8 @@ describe('onRequest Hook', () => {
         vi.clearAllMocks();
         // Reset mech state
         mechState.modelScores = {};
-        mechState.disabledModels = [];
-        mechState.lastUsedModel = null;
+        mechState.disabledModels.clear();
+        mechState.lastModelUsed = undefined;
         mechState.llmRequestCount = 0;
     });
 
