@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { runMECH } from '../api.js';
+import { runMECH } from '../src/core/engine.js';
 import { Agent } from '@just-every/ensemble';
 
 // Mock ensemble

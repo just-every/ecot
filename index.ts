@@ -16,7 +16,7 @@
 export {
     // The one and only function you need
     runMECH,
-} from './api.js';
+} from './src/core/engine.js';
 
 // ============================================================================
 // Core Types

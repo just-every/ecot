@@ -60,12 +60,36 @@ function getMECHTools(): ToolFunction[] {
 }
 
 /**
- * Core MECH execution loop - simplified version
+ * Run MECH with automatic everything
+ * 
+ * @param agent - The agent from ensemble
+ * @param content - The task/prompt to execute
+ * @returns Result with status, history, cost, and duration
+ * 
+ * @example
+ * ```typescript
+ * import { Agent } from '@just-every/ensemble';
+ * import { runMECH } from '@just-every/mech';
+ * 
+ * const agent = new Agent({ 
+ *     name: 'MyAgent',
+ *     modelClass: 'reasoning' 
+ * });
+ * 
+ * const result = await runMECH(agent, 'Analyze this code');
+ * ```
  */
-export async function runMECHCore(
-    content: string,
-    agent: Agent
+export async function runMECH(
+    agent: Agent,
+    content: string
 ): Promise<MechResult> {
+    // Basic validation
+    if (!agent || typeof agent !== 'object') {
+        throw new Error('Agent must be a valid Agent instance');
+    }
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        throw new Error('Content must be a non-empty string');
+    }
     const startTime = Date.now();
     const costTracker = new CostTracker();
     
