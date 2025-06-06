@@ -8,7 +8,6 @@ import type { ResponseInput, ResponseInputItem } from '@just-every/ensemble';
 import { CostTracker, createToolFunction } from '@just-every/ensemble';
 import type { 
     MechContext, 
-    RunMechOptions,
     Agent,
     ToolFunction,
     CommunicationManager,
@@ -135,71 +134,36 @@ export function defaultFormatMemories(memories: MemoryItem[]): string {
 export const globalCostTracker = new CostTracker();
 
 /**
- * Convert a simple context to a full MechContext
- * This provides all the defaults and adapters needed
+ * Create a minimal context for the simplified API
+ * Everything is automatic - no configuration needed
  */
-export function createFullContext(options: RunMechOptions): MechContext {
+export function createSimpleContext(): MechContext {
     const historyManager = createDefaultHistory();
-    
-    // Create communication manager that uses sendComms
     let closed = false;
-    let sendCommsFunc: ((msg: unknown) => void) | undefined;
     
     const commManager: CommunicationManager = {
         send: (message: any) => {
-            if (sendCommsFunc) {
-                sendCommsFunc(message);
-            } else {
-                console.log('[MECH]', message);
-            }
+            console.log('[MECH]', message);
         },
         isClosed: () => closed,
         close: () => { closed = true; }
     };
     
-    // Build the full context with defaults
-    const fullContext: MechContext = {
-        // ========================================================================
-        // Required Core Functions
-        // ========================================================================
-        sendComms: (msg) => {
-            console.log('[MECH Status]', msg);
-            if (typeof msg === 'object' && msg !== null && 'type' in msg) {
-                options.onStatus?.(msg as { type: string; [key: string]: any });
-            }
-        },
+    return {
+        // Core functions
+        sendComms: (msg) => console.log('[MECH Status]', msg),
         getCommunicationManager: () => commManager,
-        addHistory: (item) => {
-            historyManager.addHistory(item);
-            options.onHistory?.(item);
-        },
+        addHistory: historyManager.addHistory,
         getHistory: historyManager.getHistory,
         processPendingHistoryThreads: defaultProcessPendingHistoryThreads,
         describeHistory: defaultDescribeHistory,
         costTracker: globalCostTracker,
         
-        // ========================================================================
-        // Optional Core Functions (with defaults)
-        // ========================================================================
-        createToolFunction: wrapEnsembleCreateToolFunction, // Deprecated - use tool() builder instead
-        dateFormat: defaultDateFormat,
+        // Optional functions with defaults
+        createToolFunction: wrapEnsembleCreateToolFunction,
+        dateFormat: () => new Date().toISOString(),
         readableTime: defaultReadableTime,
-        MAGI_CONTEXT: 'MECH System Context',
-        
-        // ========================================================================
-        // Memory Features (only if provided)
-        // ========================================================================
-        ...(options.lookupMemories && { 
-            lookupMemoriesEmbedding: options.lookupMemories 
-        }),
-        ...(options.saveMemory && { 
-            insertMemories: options.saveMemory 
-        }),
-        formatMemories: defaultFormatMemories,
+        MAGI_CONTEXT: 'MECH Context'
     };
-    
-    // Set sendCommsFunc to use the context's sendComms
-    sendCommsFunc = fullContext.sendComms;
-    
-    return fullContext;
 }
+

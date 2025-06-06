@@ -6,26 +6,20 @@
  */
 
 import { runMECH } from '../simple.js';
-import type { RunMechOptions } from '../types.js';
+import { Agent } from '@just-every/ensemble';
 
 async function main() {
     console.log('🤖 Simple MECH Example\n');
     console.log('Note: This example requires API keys to be configured in your environment.\n');
     
-    // Configure MECH with minimal options
-    const options: RunMechOptions = {
-        agent: {
-            name: 'SimpleBot',
-            instructions: 'You are a helpful assistant that provides clear, concise answers.'
-        },
-        task: 'What is the meaning of life?',
-        onHistory: (item) => {
-            console.log('\n📝 History:', item.type, item.role || '');
-        },
-        onStatus: (status) => {
-            console.log('\n📊 Status:', status.type);
-        }
-    };
+    // Create agent using ensemble's Agent class
+    const agent = new Agent({
+        name: 'SimpleBot',
+        instructions: 'You are a helpful assistant that provides clear, concise answers.',
+        modelClass: 'reasoning'
+    });
+    
+    const task = 'What is the meaning of life?';
     
     try {
         console.log('Starting MECH...\n');
@@ -35,7 +29,7 @@ async function main() {
         console.log('   • Cost monitoring');
         console.log('   • Thought management\n');
         
-        const result = await runMECH(options);
+        const result = await runMECH(agent, task);
         
         console.log('\n\n✅ MECH Result:');
         console.log('-'.repeat(50));
@@ -51,7 +45,7 @@ async function main() {
         console.log('\n💡 Tips:');
         console.log('   • Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY in your environment');
         console.log('   • MECH will automatically select the best available model');
-        console.log('   • Use the onHistory callback to see the agent\'s thought process');
+        console.log('   • Check the console output to see the agent\'s thought process');
         
     } catch (error) {
         console.error('❌ Error:', error);

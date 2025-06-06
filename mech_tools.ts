@@ -62,14 +62,13 @@ export function getMECHTools(): ToolFunction[] {
 // to persist across MECH runs
 
 /**
- * Enhanced MECH execution using ensemble's enhancedRequest
+ * Core MECH execution loop
+ * Internal function used by the simplified API
  */
-export async function runMECH(
+export async function runMECHCore(
     content: string,
     agent: Agent,
-    context: MechContext,
-    loop = true,
-    _metadata?: Record<string, any>  // Currently unused, kept for API compatibility
+    context: MechContext
 ): Promise<MechResult> {
     const startTime = Date.now();
     
@@ -253,7 +252,7 @@ export async function runMECH(
                 }
                 
                 // Add response to history for multi-turn conversations
-                if (event.type === 'response_output' && loop) {
+                if (event.type === 'response_output') {
                     const responseEvent = event as any; // TODO: Import ResponseOutputEvent type
                     if (responseEvent.message) {
                         context.addHistory(responseEvent.message);
@@ -263,7 +262,7 @@ export async function runMECH(
             }
             
             // Check if we should continue or if task is complete
-            if (!loop || isHalted || comm.isClosed()) {
+            if (isHalted || comm.isClosed()) {
                 shouldContinue = false;
             }
             

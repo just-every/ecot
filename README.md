@@ -3,18 +3,18 @@
 [![npm version](https://badge.fury.io/js/@just-every%2Fmech.svg)](https://www.npmjs.com/package/@just-every/mech)
 [![GitHub Actions](https://github.com/just-every/MECH/workflows/Release/badge.svg)](https://github.com/just-every/MECH/actions)
 
-**MECH** - Advanced LLM orchestration with meta-cognition, ensemble model rotation, and intelligent thought management.
+**MECH** - The simplest way to add meta-cognition and model rotation to your LLM agents.
 
 ## 🚀 What is MECH?
 
-MECH is a sophisticated orchestration system for LLM agents that goes beyond simple API calls. It provides:
+MECH is a minimal orchestration layer that adds advanced capabilities to @just-every/ensemble:
 
-- **🤖 Intelligent Model Rotation**: Automatically selects the best model for each task based on performance scores
-- **🧠 Meta-cognition**: The system "thinks about its thinking" and adapts its strategy
-- **⚡ Ensemble Power**: Leverages multiple models for higher reliability and better results
-- **💭 Thought Management**: Paces reasoning with configurable delays and interruption handling
-- **📚 Memory Integration**: Optional long-term memory with vector similarity search
-- **💰 Cost Tracking**: Built-in cost monitoring across all operations
+- **🤖 Automatic Model Rotation**: Intelligent model selection based on performance
+- **🧠 Meta-cognition**: Self-reflection and strategy adjustment  
+- **🔄 Continuous Loop**: Multi-turn conversations until task completion
+- **🛠️ Tool Management**: Automatic tool integration and execution
+- **💰 Cost Tracking**: Built-in monitoring across all operations
+- **📊 State Management**: Performance tracking and model scoring
 
 ## 📦 Installation
 
@@ -22,7 +22,7 @@ MECH is a sophisticated orchestration system for LLM agents that goes beyond sim
 npm install @just-every/mech
 ```
 
-**Note:** MECH requires `@just-every/ensemble` v0.1.27 or later for optimal performance.
+**Note:** MECH requires `@just-every/ensemble` v0.2.11 or later.
 
 ## 🔑 Setup
 
@@ -35,13 +35,7 @@ export ANTHROPIC_API_KEY="your-anthropic-key"
 export GOOGLE_API_KEY="your-google-key"
 ```
 
-That's it! MECH will automatically route to the appropriate provider based on the model you specify.
-
-### 🆕 New in v0.1.11+
-- Simplified tool creation with ensemble's `tool()` builder
-- Enhanced state management with `RequestContextWithState`
-- Improved test utilities with `EnhancedRequestMock`
-- 40% less boilerplate code
+That's it! MECH will automatically route to the appropriate provider.
 
 ## 🧠 Model Classes
 
@@ -58,66 +52,58 @@ MECH's **model classes** automatically select the best models for different type
 
 ## ⚡ Quick Start
 
-MECH automatically handles LLM communication using the `@just-every/ensemble` package. Just configure your API keys and start building!
-
-### 🎯 Basic Usage
+MECH has one simple function that does everything automatically!
 
 ```typescript
 import { runMECH } from '@just-every/mech';
+import { Agent } from '@just-every/ensemble';
 
 // Set API keys via environment variables:
 // OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY
 
-const result = await runMECH({
-    agent: { 
-        modelClass: 'reasoning'  // Recommended: let MECH choose the best model
-    },
-    task: 'Review this function for potential improvements: function add(a, b) { return a + b; }'
+// Create an agent
+const agent = new Agent({
+    name: 'CodeReviewer',
+    modelClass: 'reasoning'
 });
+
+// Run MECH - everything is automatic!
+const result = await runMECH(agent, 'Review this function: function add(a, b) { return a + b; }');
 
 console.log(result.status);        // 'complete' or 'fatal_error'
 console.log(result.mechOutcome);   // The agent's response
 ```
 
-### 🧠 Using Model Classes (Recommended)
-
-Model classes let MECH automatically select the best model for your task:
+### 🧠 Different Model Classes
 
 ```typescript
-// For complex reasoning tasks
-const result = await runMECH({
-    agent: { modelClass: 'reasoning' },
-    task: 'Solve this multi-step logic problem...'
-});
+import { runMECH } from '@just-every/mech';
+import { Agent } from '@just-every/ensemble';
 
-// For code-related tasks  
-const result = await runMECH({
-    agent: { modelClass: 'code' },
-    task: 'Write a React component for user authentication'
-});
+// For complex reasoning
+const reasoningAgent = new Agent({ modelClass: 'reasoning' });
+await runMECH(reasoningAgent, 'Solve this multi-step logic problem...');
 
-// For standard tasks
-const result = await runMECH({
-    agent: { modelClass: 'standard' },
-    task: 'Summarize this article in 3 bullet points'
-});
+// For code tasks
+const codeAgent = new Agent({ modelClass: 'code' });
+await runMECH(codeAgent, 'Write a React component for authentication');
 
-// For meta-analysis and self-reflection
-const result = await runMECH({
-    agent: { modelClass: 'metacognition' },
-    task: 'Analyze the effectiveness of my previous AI interactions'
-});
+// For general tasks  
+const generalAgent = new Agent({ modelClass: 'standard' });
+await runMECH(generalAgent, 'Summarize this article in 3 bullet points');
+
+// For meta-analysis (used internally by MECH)
+const metaAgent = new Agent({ modelClass: 'metacognition' });
+await runMECH(metaAgent, 'Analyze agent performance and suggest improvements');
 ```
 
 ### 🎛️ With Specific Models (Alternative)
 
 ```typescript
-const result = await runMECH({
-    agent: { 
-        model: 'claude-3-5-sonnet-20241022'  // Override automatic selection
-    },
-    task: 'Explain quantum computing in simple terms'
+const agent = new Agent({ 
+    model: 'claude-3-5-sonnet-20241022'  // Override automatic selection
 });
+await runMECH(agent, 'Explain quantum computing in simple terms');
 ```
 
 ### 🚀 With Status Monitoring

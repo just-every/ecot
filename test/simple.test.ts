@@ -108,14 +108,12 @@ describe('Simple MECH API', () => {
             { name: 'task_complete', args: { result: 'Task completed successfully' } }
         ));
 
-        const result = await runMECH({
-            agent: { 
-                name: 'SimpleAgent',
-                model: 'gpt-4'  // Specify model directly to bypass rotation
-            },
-            task: 'Say hello',
-            loop: false
+        const agent = new ensemble.Agent({ 
+            name: 'SimpleAgent',
+            model: 'gpt-4'  // Specify model directly to bypass rotation
         });
+        
+        const result = await runMECH(agent, 'Say hello');
 
         expect(result.status).toBe('complete');
         expect(result.mechOutcome?.result).toContain('Task completed');

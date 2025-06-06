@@ -6,7 +6,7 @@
 
 import { MechValidationError } from './errors.js';
 import { VALID_THOUGHT_DELAYS } from './constants.js';
-import type { Agent, RunMechOptions } from '../types.js';
+import type { Agent } from '../types.js';
 
 /**
  * Validate a MECH agent object
@@ -127,83 +127,7 @@ export function validateTask(task: unknown): asserts task is string {
 }
 
 // validateRunAgent removed - MECH now uses ensemble directly
-
-/**
- * Validate RunMechOptions
- */
-export function validateRunMechOptions(options: unknown): asserts options is RunMechOptions {
-    if (!options || typeof options !== 'object') {
-        throw new MechValidationError(
-            'Options must be a valid object',
-            {
-                metadata: { 
-                    optionsType: typeof options,
-                    expectedType: 'RunMechOptions object'
-                }
-            }
-        );
-    }
-
-    const opts = options as any;
-
-    // Validate required properties  
-    if (!('agent' in opts)) {
-        throw new MechValidationError(
-            'Options must include an "agent" property',
-            {
-                metadata: { 
-                    providedKeys: Object.keys(opts),
-                    missingRequired: 'agent'
-                }
-            }
-        );
-    }
-
-    if (!('task' in opts)) {
-        throw new MechValidationError(
-            'Options must include a "task" property',
-            {
-                metadata: { 
-                    providedKeys: Object.keys(opts),
-                    missingRequired: 'task'
-                }
-            }
-        );
-    }
-
-    // Validate each property
-    validateAgent(opts.agent);
-    validateTask(opts.task);
-
-    // Validate optional callbacks
-    if ('onHistory' in opts && opts.onHistory !== undefined) {
-        if (typeof opts.onHistory !== 'function') {
-            throw new MechValidationError(
-                'onHistory callback must be a function if provided',
-                {
-                    metadata: { 
-                        onHistoryType: typeof opts.onHistory,
-                        expectedType: 'function'
-                    }
-                }
-            );
-        }
-    }
-
-    if ('onStatus' in opts && opts.onStatus !== undefined) {
-        if (typeof opts.onStatus !== 'function') {
-            throw new MechValidationError(
-                'onStatus callback must be a function if provided',
-                {
-                    metadata: { 
-                        onStatusType: typeof opts.onStatus,
-                        expectedType: 'function'
-                    }
-                }
-            );
-        }
-    }
-}
+// validateRunMechOptions removed - simplified API doesn't need complex validation
 
 
 /**

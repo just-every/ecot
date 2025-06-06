@@ -1,61 +1,58 @@
 /**
- * Simplified MECH API
+ * MECH - Simplified API
  * 
- * Easy-to-use functions that require minimal setup
+ * Single entry point for all MECH functionality
  */
 
-import { runMECH as internalRunMECH } from './mech_tools.js';
-import { runMECHWithMemory as internalRunMECHWithMemory } from './mech_memory_wrapper.js';
-import type { 
-    MechResult, 
-    RunMechOptions
-} from './types.js';
-import { createFullContext, globalCostTracker } from './utils/internal_utils.js';
-import { 
-    validateRunMechOptions, 
-    sanitizeTextInput 
-} from './utils/validation.js';
+import { runMECHCore } from './mech_tools.js';
+import type { Agent } from '@just-every/ensemble';
+import type { MechResult } from './types.js';
+import { createSimpleContext, globalCostTracker } from './utils/internal_utils.js';
+import { sanitizeTextInput } from './utils/validation.js';
 import { withErrorHandling } from './utils/errors.js';
 
 
 /**
- * Run MECH with a simple interface
+ * Run MECH with automatic everything
+ * 
+ * @param agent - The agent from ensemble
+ * @param content - The task/prompt to execute
+ * @returns Result with status, history, cost, and duration
  * 
  * @example
  * ```typescript
- * // Basic usage
- * const result = await runMECH({
- *     agent: { name: 'MyAgent' },
- *     task: 'Analyze this code and suggest improvements'
+ * import { Agent } from '@just-every/ensemble';
+ * import { runMECH } from '@just-every/mech';
+ * 
+ * const agent = new Agent({ 
+ *     name: 'MyAgent',
+ *     modelClass: 'reasoning' 
  * });
  * 
- * // With memory
- * const result = await runMECH({
- *     agent: { name: 'MyAgent' },
- *     task: 'Build a web app',
- *     // Optional memory functions
- *     embed: async (text) => embeddings.create(text),
- *     lookupMemories: async (embedding) => db.findSimilar(embedding),
- *     saveMemory: async (taskId, memories) => db.save(taskId, memories)
- * });
+ * const result = await runMECH(agent, 'Analyze this code');
  * ```
  */
 export const runMECH = withErrorHandling(
-    async (options: RunMechOptions): Promise<MechResult> => {
-        // Validate input
-        validateRunMechOptions(options);
-        
-        // Sanitize task input
-        const sanitizedTask = sanitizeTextInput(options.task);
-        
-        const fullContext = createFullContext(options);
-        
-        // Use memory wrapper if memory functions are provided
-        if (options.lookupMemories && options.saveMemory) {
-            return internalRunMECHWithMemory(options.agent, sanitizedTask, fullContext, options.loop);
-        } else {
-            return internalRunMECH(sanitizedTask, options.agent, fullContext, options.loop);
+    async (agent: Agent, content: string): Promise<MechResult> => {
+        // Simple validation
+        if (!agent || typeof agent !== 'object') {
+            throw new Error('Agent must be a valid Agent instance');
         }
+        if (!content || typeof content !== 'string') {
+            throw new Error('Content must be a non-empty string');
+        }
+        
+        // Sanitize input
+        const sanitizedContent = sanitizeTextInput(content);
+        if (!sanitizedContent || sanitizedContent.trim().length === 0) {
+            throw new Error('Content cannot be empty after sanitization');
+        }
+        
+        // Create minimal context - everything is automatic
+        const context = createSimpleContext();
+        
+        // Run MECH with all features enabled by default
+        return runMECHCore(sanitizedContent, agent, context);
     },
     'simple_api'
 );
@@ -106,13 +103,9 @@ export function resetCostTracker(): void {
     globalCostTracker.reset();
 }
 
-// Re-export useful types and state management
-export type { 
-    MechResult, 
-    MechOutcome,
-    Agent,
-    RunMechOptions 
-} from './types.js';
+// Re-export only essential types
+export type { MechResult, MechOutcome } from './types.js';
+export type { Agent } from '@just-every/ensemble';
 
-export { mechState, setMetaFrequency } from './mech_state.js';
-export { setThoughtDelay } from './thought_utils.js';
+// State management - kept simple
+export { mechState } from './mech_state.js';

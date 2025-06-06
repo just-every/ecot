@@ -183,12 +183,12 @@ ${listModelScores(agent.modelClass as any)}
             context.addHistory(messages[i]);
         }
 
-        // Run the metacognition agent with provided Runner
-        // This is where the actual execution happens via the context's runner
+        // Run the metacognition agent
         console.log('[MECH] Running metacognition agent with tools');
         
-        // Note: The actual execution of the metacognition agent is handled by the
-        // MECH system itself when it detects the shouldTriggerMeta flag
+        // Import and run the core MECH function
+        const { runMECHCore } = await import('./mech_tools.js');
+        await runMECHCore(`Analyze and optimize ${agent.name}'s performance`, metaAgent, context);
         
     } catch (error) {
         console.error('[MECH] Error in metacognition process:', error);
