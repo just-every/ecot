@@ -5,7 +5,7 @@
  * MECH now handles LLM communication internally through the @just-every/ensemble package.
  */
 
-import { runMECH } from '../simple.js';
+import { runMECH } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
@@ -26,26 +26,38 @@ async function main() {
         console.log('ℹ️  MECH will automatically handle:');
         console.log('   • LLM selection and rotation');
         console.log('   • Model performance tracking');
-        console.log('   • Cost monitoring');
+        console.log('   • Meta-cognition');
         console.log('   • Thought management\n');
         
-        const result = await runMECH(agent, task);
+        let startTime = Date.now();
+        let completionResult = '';
         
-        console.log('\n\n✅ MECH Result:');
+        for await (const event of runMECH(agent, task)) {
+            // Handle different event types
+            if (event.type === 'message_delta' && 'content' in event) {
+                process.stdout.write(event.content);
+            } else if (event.type === 'tool_done' && 'tool_call' in event) {
+                const toolEvent = event as any;
+                if (toolEvent.tool_call?.function?.name === 'task_complete') {
+                    completionResult = toolEvent.result?.output || 'Task completed';
+                }
+            }
+        }
+        
+        const duration = (Date.now() - startTime) / 1000;
+        
+        console.log('\n\n✅ MECH Execution Complete:');
         console.log('-'.repeat(50));
-        console.log(`Status: ${result.status}`);
-        console.log(`Duration: ${result.durationSec}s`);
-        console.log(`Total Cost: $${result.totalCost.toFixed(4)}`);
-        console.log(`History items: ${result.history.length}`);
+        console.log(`Duration: ${duration.toFixed(2)}s`);
         
-        if (result.mechOutcome?.result) {
-            console.log(`\n📌 Final Result:\n${result.mechOutcome.result}`);
+        if (completionResult) {
+            console.log(`\n📌 Final Result:\n${completionResult}`);
         }
         
         console.log('\n💡 Tips:');
         console.log('   • Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY in your environment');
         console.log('   • MECH will automatically select the best available model');
-        console.log('   • Check the console output to see the agent\'s thought process');
+        console.log('   • The async generator yields all events for real-time processing');
         
     } catch (error) {
         console.error('❌ Error:', error);

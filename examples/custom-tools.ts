@@ -1,109 +1,100 @@
 /**
  * Custom Tools Example
  * 
- * This example shows how to create and use custom tools with MECH
- * using ensemble v0.1.27's tool builder API.
+ * This example demonstrates how to add custom tools to a MECH agent.
+ * Shows how to create tools using @just-every/ensemble's tool system.
  */
 
-import { runMECH } from '../simple.js';
-import { tool } from '@just-every/ensemble';
-import type { RunMechOptions } from '../types.js';
-
-// Create custom tools using the builder pattern
-const calculateTool = tool('calculate')
-    .description('Perform mathematical calculations')
-    .string('expression', 'Mathematical expression to evaluate', true)
-    .implement(async (args) => {
-        const { expression } = args;
-        try {
-            // In production, use a safe math parser
-            const result = eval(expression);
-            return `Result: ${expression} = ${result}`;
-        } catch (error) {
-            return `Error: Invalid expression "${expression}"`;
-        }
-    })
-    .build();
-
-const searchTool = tool('search_knowledge')
-    .description('Search internal knowledge base')
-    .string('query', 'Search query', true)
-    .number('limit', 'Maximum results to return', false)
-    .implement(async (args) => {
-        const { query, limit = 5 } = args;
-        // Simulate knowledge base search
-        const results = [
-            'MECH uses meta-cognition for self-improvement',
-            'Model rotation optimizes performance across tasks',
-            'Thought delays improve reasoning quality',
-            'ensemble handles all LLM communication',
-            'Cost tracking helps monitor expenses'
-        ].filter(item => 
-            item.toLowerCase().includes(query.toLowerCase())
-        ).slice(0, limit);
-        
-        return results.length > 0 
-            ? `Found ${results.length} results:\n${results.map((r, i) => `${i+1}. ${r}`).join('\n')}`
-            : `No results found for "${query}"`;
-    })
-    .build();
-
-const dataAnalysisTool = tool('analyze_data')
-    .description('Analyze data and provide insights')
-    .category('analysis')
-    .constraints({ priority: 80 })
-    .array('data', 'number', 'Array of numbers to analyze', true)
-    .implement(async (args) => {
-        const { data } = args;
-        const sum = data.reduce((a, b) => a + b, 0);
-        const avg = sum / data.length;
-        const max = Math.max(...data);
-        const min = Math.min(...data);
-        
-        return `Data Analysis:
-- Count: ${data.length}
-- Sum: ${sum}
-- Average: ${avg.toFixed(2)}
-- Max: ${max}
-- Min: ${min}`;
-    })
-    .build();
+import { runMECH } from '../index.js';
+import { Agent, createToolFunction } from '@just-every/ensemble';
 
 async function main() {
-    console.log('🔧 Custom Tools MECH Example\n');
+    console.log('🔧 MECH Custom Tools Example\n');
     
-    const options: RunMechOptions = {
-        agent: {
-            name: 'ToolBot',
-            modelClass: 'reasoning',
-            instructions: 'You are a helpful assistant with access to calculation, search, and data analysis tools.',
-            tools: [calculateTool, searchTool, dataAnalysisTool]
-        },
-        task: `Please help me with the following tasks:
-1. Calculate the compound interest on $10,000 at 5% for 3 years
-2. Search for information about MECH meta-cognition
-3. Analyze this dataset: [15, 22, 18, 25, 30, 19, 21]`,
-        onStatus: (status) => {
-            console.log(`📊 Status: ${status.type}`);
-            if (status.type === 'tool_use' && status.tool_name) {
-                console.log(`   🔧 Using tool: ${status.tool_name}`);
+    // Create custom tools
+    const calculateTool = createToolFunction(
+        (args: { expression: string }) => {
+            try {
+                // Simple calculator (eval is dangerous in production, this is just for demo)
+                const result = eval(args.expression);
+                return `The result of ${args.expression} is ${result}`;
+            } catch (error) {
+                return `Error calculating ${args.expression}: ${error}`;
             }
-        }
-    };
+        },
+        'Calculate mathematical expressions',
+        {
+            expression: {
+                type: 'string',
+                description: 'Mathematical expression to evaluate (e.g., "2 + 2", "Math.sqrt(16)")'
+            }
+        },
+        undefined,
+        'calculate'
+    );
+    
+    const weatherTool = createToolFunction(
+        (args: { city: string }) => {
+            // Mock weather data (in production, call a real weather API)
+            const mockWeather = {
+                'New York': 'Sunny, 22°C',
+                'London': 'Cloudy, 15°C',
+                'Tokyo': 'Rainy, 18°C',
+                'Sydney': 'Partly cloudy, 25°C'
+            };
+            
+            const weather = mockWeather[args.city as keyof typeof mockWeather] || 'Weather data not available';
+            return `Weather in ${args.city}: ${weather}`;
+        },
+        'Get weather information for a city',
+        {
+            city: {
+                type: 'string',
+                description: 'Name of the city to get weather for'
+            }
+        },
+        undefined,
+        'get_weather'
+    );
+    
+    // Create agent with custom tools
+    const agent = new Agent({
+        name: 'ToolBot',
+        instructions: 'You are a helpful assistant with access to calculation and weather tools. Use these tools when needed to provide accurate information.',
+        modelClass: 'reasoning',
+        tools: [calculateTool, weatherTool]
+    });
+    
+    const task = 'I need to plan a trip. Can you calculate how much 3 nights at $150 per night would cost, and also tell me the weather in Tokyo?';
     
     try {
         console.log('Starting MECH with custom tools...\n');
         
-        const result = await runMECH(options);
-        
-        console.log('\n✅ MECH Result:');
-        console.log('-'.repeat(50));
-        console.log(`Status: ${result.status}`);
-        console.log(`Duration: ${result.durationSec}s`);
-        console.log(`Cost: $${result.totalCost.toFixed(4)}`);
-        
-        if (result.mechOutcome?.result) {
-            console.log(`\n📌 Final Result:\n${result.mechOutcome.result}`);
+        for await (const event of runMECH(agent, task)) {
+            // Show message content
+            if (event.type === 'message_delta' && 'content' in event) {
+                process.stdout.write(event.content);
+            }
+            
+            // Show tool calls
+            if (event.type === 'tool_start' && 'tool_call' in event) {
+                const toolEvent = event as any;
+                console.log(`\n🔧 Calling tool: ${toolEvent.tool_call?.function?.name}`);
+                console.log(`   Arguments: ${JSON.stringify(toolEvent.tool_call?.function?.arguments)}`);
+            }
+            
+            if (event.type === 'tool_done' && 'result' in event) {
+                const toolEvent = event as any;
+                const toolName = toolEvent.tool_call?.function?.name;
+                
+                if (toolName === 'task_complete') {
+                    console.log('\n\n✅ Task completed!');
+                    console.log(`Result: ${toolEvent.result?.output}`);
+                    break;
+                } else {
+                    console.log(`   Result: ${toolEvent.result?.output}\n`);
+                }
+            }
         }
         
     } catch (error) {
@@ -111,5 +102,6 @@ async function main() {
     }
 }
 
-// Run the example
-main().catch(console.error);
+if (import.meta.url === `file://${process.argv[1]}`) {
+    main().catch(console.error);
+}

@@ -10,7 +10,6 @@ import { MODEL_CLASSES, findModel, ModelClassID } from '@just-every/ensemble';
 import { DEFAULT_MODEL_SCORE, DEFAULT_META_FREQUENCY, type MetaFrequency } from '../utils/constants.js';
 import { validateModelScore, validateMetaFrequency } from '../utils/validation.js';
 import { withErrorHandling } from '../utils/errors.js';
-import { globalPerformanceCache } from '../utils/performance.js';
 
 /**
  * Global state container for the MECH system
@@ -159,8 +158,6 @@ export const setModelScore = withErrorHandling(
             console.log(`[MECH] Model ${modelId} score set to ${score}`);
         }
         
-        // Invalidate cache for this model
-        globalPerformanceCache.invalidateModel(modelId);
         
         return `Score set to ${score}`;
     },

@@ -3,7 +3,6 @@
  */
 import { ToolFunction, createToolFunction } from '@just-every/ensemble';
 import { VALID_THOUGHT_DELAYS, DEFAULT_THOUGHT_DELAY, type ThoughtDelay } from '../utils/constants.js';
-import { OptimizedThoughtDelay } from '../utils/performance.js';
 import { validateThoughtDelay } from '../utils/validation.js';
 import { withErrorHandling } from '../utils/errors.js';
 
@@ -80,12 +79,18 @@ export async function runThoughtDelay(): Promise<void> {
         delayAbortController = new AbortController();
         const signal = delayAbortController.signal;
 
-        // Use optimized delay implementation
+        // Simple delay implementation
         try {
-            await OptimizedThoughtDelay.runDelay(
-                delayMs * 1000, // Convert to milliseconds
-                signal
-            );
+            await new Promise<void>((resolve, reject) => {
+                const timeoutId = setTimeout(resolve, delayMs * 1000);
+                
+                signal.addEventListener('abort', () => {
+                    clearTimeout(timeoutId);
+                    const error = new Error('Delay was aborted');
+                    error.name = 'AbortError';
+                    reject(error);
+                }, { once: true });
+            });
         } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') {
                 console.log('[MECH] Thought delay interrupted');

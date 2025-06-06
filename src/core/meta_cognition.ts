@@ -17,8 +17,7 @@ import {
 import { getThoughtDelay, getThoughtTools } from './thought_utils.js';
 import { 
     ResponseInput, 
-    getModelFromClass, 
-    Agent as EnsembleAgent,
+    Agent,
     ensembleRequest,
     createToolFunction,
     type ToolFunction,
@@ -30,13 +29,13 @@ import { VALID_FREQUENCIES } from '../utils/constants.js';
  * Get all metacognition tools as an array of tool definitions
  * These are available only to the metacognition agent, not the main agent
  */
-function getMetaCognitionTools(messages: ResponseInput): ToolFunction[] {
+function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
     const tools: ToolFunction[] = [];
     
     // Create named functions for better debugging and testing
     function injectThought(content: string) { 
-        // Add thought to messages for next iteration
-        messages.push({
+        // Add thought to the main messages array for next iteration
+        mainMessages.push({
             type: 'message',
             role: 'developer',
             content: `**IMPORTANT - METACOGNITION:** ${content}`,
@@ -141,7 +140,7 @@ function getMetaCognitionTools(messages: ResponseInput): ToolFunction[] {
  * ```
  */
 export async function spawnMetaThought(
-    agent: Pick<AgentDefinition, 'agent_id' | 'name'>, 
+    agent: { agent_id?: string; name?: string }, 
     messages: ResponseInput,
     startTime: Date
 ): Promise<void> {
@@ -161,15 +160,15 @@ export async function spawnMetaThought(
     console.log('[MECH] Spawning metacognition process');
 
     try {
-        // Create a metacognition agent using provided Agent constructor
-        const metaAgent = new EnsembleAgent({
+        // Create a metacognition agent
+        const metaAgent = new Agent({
             name: 'MetacognitionAgent',
             agent_id: agent.agent_id,
-            instructions: `Your role is to perform **Metacognition** for the agent named **${agent.name}**.
+            instructions: `Your role is to perform **Metacognition** for the agent named **${agent.name || 'Unknown'}**.
 
 You "think about thinking"! Studies show that the best problem solvers in the world use metacognition frequently. The ability to think about one's own thinking processes, allows individuals to plan, monitor, and regulate their approach to problem-solving, leading to more successful outcomes. Metacognition helps you improve your problem-solving skills by making you more aware, reflective, and strategic.
 
-Though metacognition, you continuously improve ${agent.name}'s performance, analyzing recent activity and adjusting to its configuration or reasoning strategy.
+Though metacognition, you continuously improve ${agent.name || 'the agent'}'s performance, analyzing recent activity and adjusting to its configuration or reasoning strategy.
 
 System State:
 - Runtime: ${Math.round((Date.now() - startTime.getTime()) / 1000)} seconds
@@ -192,14 +191,9 @@ Be concise and strategic in your analysis.`,
             modelClass: 'reasoning',
             modelSettings: {
                 tool_choice: 'required'
-            }
+            },
+            maxToolCallRoundsPerTurn: 1
         });
-
-        // Get model for metacognition
-        const metaModel = await getModelFromClass('reasoning');
-        if (metaModel) {
-            metaAgent.model = metaModel;
-        }
 
         // Create meta messages with recent history summary
         const recentHistory = messages.slice(-10).map((msg: any) => {
@@ -212,28 +206,13 @@ Be concise and strategic in your analysis.`,
         const metaMessages: ResponseInput = [
             {
                 type: 'message',
-                role: 'system',
-                content: metaAgent.instructions || ''
-            },
-            {
-                type: 'message',
                 role: 'user',
                 content: `Analyze the recent agent activity and optimize performance. Recent history:\n\n${recentHistory}`
             }
         ];
 
-        // Run metacognition request with AgentDefinition
-        const metaAgentDef: AgentDefinition = {
-            agent_id: metaAgent.agent_id,
-            name: metaAgent.name,
-            instructions: metaAgent.instructions,
-            model: metaAgent.model,
-            modelClass: metaAgent.modelClass,
-            modelSettings: metaAgent.modelSettings,
-            tools: metaAgent.tools
-        };
-        
-        for await (const event of ensembleRequest(metaMessages, metaAgentDef)) {
+        // Run metacognition request - ensemble will handle model selection with modelClass
+        for await (const event of ensembleRequest(metaMessages, metaAgent.export() as AgentDefinition)) {
             // Log metacognition responses
             if (event.type === 'message_delta' && 'content' in event) {
                 console.log('[MECH:META]', event.content);

@@ -2,22 +2,21 @@
  * MECH Engine - Simplified Version
  *
  * Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) implementation.
- * Provides model rotation, meta-cognition, and thought delays on top of ensemble.
+ * Provides meta-cognition and thought delays on top of ensemble.
+ * Model rotation is handled by ensemble automatically.
  */
 
-import type { MechOutcome, MechResult } from '../state/types.js';
 import { mechState } from '../state/state.js';
 import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
-import { rotateModel } from './model_rotation.js';
 import { 
     ensembleRequest,
     createToolFunction,
+    cloneAgent,
     type ToolFunction,
     type Agent,
     type ResponseInput,
-    type AgentDefinition,
-    CostTracker
+    type ProviderStreamEvent
 } from '@just-every/ensemble';
 
 /**
@@ -64,7 +63,7 @@ function getMECHTools(): ToolFunction[] {
  * 
  * @param agent - The agent from ensemble
  * @param content - The task/prompt to execute
- * @returns Result with status, history, cost, and duration
+ * @returns AsyncGenerator that yields all ProviderStreamEvents
  * 
  * @example
  * ```typescript
@@ -76,13 +75,15 @@ function getMECHTools(): ToolFunction[] {
  *     modelClass: 'reasoning' 
  * });
  * 
- * const result = await runMECH(agent, 'Analyze this code');
+ * for await (const event of runMECH(agent, 'Analyze this code')) {
+ *     console.log(event);
+ * }
  * ```
  */
-export async function runMECH(
+export async function* runMECH(
     agent: Agent,
     content: string
-): Promise<MechResult> {
+): AsyncGenerator<ProviderStreamEvent> {
     // Basic validation
     if (!agent || typeof agent !== 'object') {
         throw new Error('Agent must be a valid Agent instance');
@@ -91,7 +92,6 @@ export async function runMECH(
         throw new Error('Content must be a non-empty string');
     }
     const startTime = Date.now();
-    const costTracker = new CostTracker();
     
     // Build initial messages with tool guidance
     const toolGuidance = 'You must complete tasks by using the provided tools. When you have finished a task, you MUST call the task_complete tool with a comprehensive result. If you cannot complete the task, you MUST call the task_fatal_error tool with an explanation. Do not just provide a final answer without using these tools.';
@@ -113,35 +113,16 @@ export async function runMECH(
 
     // Add MECH tools to the agent
     const mechTools = getMECHTools();
-    const enhancedAgent: AgentDefinition = {
-        agent_id: agent.agent_id,
-        name: agent.name,
-        description: agent.description,
-        instructions: agent.instructions,
-        model: agent.model,
-        modelClass: agent.modelClass,
-        modelSettings: agent.modelSettings,
-        tools: [...mechTools, ...(agent.tools || [])],
-        maxToolCalls: agent.maxToolCalls,
-        onToolResult: agent.onToolResult
-    };
+    
+    // Clone agent to get AgentDefinition and add MECH tools
+    const agentDef = cloneAgent(agent);
+    agentDef.tools = [...mechTools, ...(agent.tools || [])];
 
-    // Track outcome locally
-    let mechOutcome: MechOutcome | undefined;
+    // Track completion state
     let isComplete = false;
     
     try {
-        // Select model if needed (MECH-specific feature)
-        if (!enhancedAgent.model) {
-            const selectedModel = await rotateModel(enhancedAgent);
-            if (!selectedModel) {
-                throw new Error('No model available for execution');
-            }
-            enhancedAgent.model = selectedModel;
-            mechState.lastModelUsed = selectedModel;
-        }
-
-        console.log(`[MECH] Starting with model: ${enhancedAgent.model}`);
+        console.log(`[MECH] Starting execution for agent: ${agent.name}`);
         
         // Run the request loop
         let iteration = 0;
@@ -165,18 +146,16 @@ export async function runMECH(
             if (mechState.llmRequestCount % metaFrequency === 0) {
                 console.log(`[MECH] Triggering meta-cognition after ${mechState.llmRequestCount} requests`);
                 try {
-                    await spawnMetaThought(enhancedAgent, messages, new Date(startTime));
+                    await spawnMetaThought(agentDef, messages, new Date(startTime));
                 } catch (error) {
                     console.error('[MECH] Error in meta-cognition:', error);
                 }
             }
             
-            // Run ensemble request
-            for await (const event of ensembleRequest(messages, enhancedAgent)) {
-                // Track costs
-                if (event.type === 'cost_update' && 'usage' in event) {
-                    costTracker.addUsage(event as any);
-                }
+            // Run ensemble request and yield all events
+            for await (const event of ensembleRequest(messages, agentDef)) {
+                // Yield the event to the caller
+                yield event;
                 
                 // Log responses
                 if (event.type === 'message_delta' && 'content' in event) {
@@ -189,16 +168,8 @@ export async function runMECH(
                     const toolName = toolEvent.tool_call?.function?.name;
                     
                     if (toolName === 'task_complete') {
-                        mechOutcome = {
-                            status: 'complete',
-                            result: toolEvent.result?.output
-                        };
                         isComplete = true;
                     } else if (toolName === 'task_fatal_error') {
-                        mechOutcome = {
-                            status: 'fatal_error',
-                            error: toolEvent.result?.output
-                        };
                         isComplete = true;
                     }
                 }
@@ -211,53 +182,16 @@ export async function runMECH(
                     }
                 }
             }
-            
-            // Check if we should continue
-            if (mechOutcome && (mechOutcome.status === 'complete' || mechOutcome.status === 'fatal_error')) {
-                isComplete = true;
-            }
         }
-
-        // Get final outcome
-        const outcome = mechOutcome || {
-            status: 'incomplete' as const,
-            error: 'Task did not complete'
-        };
-
-        // Calculate final metrics
-        const endTime = Date.now();
-        const durationSec = (endTime - startTime) / 1000;
-        const totalCost = costTracker.getTotalCost();
-
-        return {
-            status: outcome.status === 'complete' || outcome.status === 'fatal_error' 
-                ? outcome.status 
-                : 'fatal_error',
-            durationSec,
-            totalCost,
-            history: messages,
-            mechOutcome: outcome.status === 'complete' || outcome.status === 'fatal_error'
-                ? outcome
-                : { status: 'fatal_error', error: 'Task did not complete' }
-        };
 
     } catch (error) {
         console.error('[MECH] Error running agent:', error);
         
+        // Yield an error event
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const endTime = Date.now();
-        const durationSec = (endTime - startTime) / 1000;
-        const totalCost = costTracker.getTotalCost();
-
-        return {
-            status: 'fatal_error',
-            durationSec,
-            totalCost,
-            history: messages,
-            mechOutcome: {
-                status: 'fatal_error',
-                error: `Agent execution failed: ${errorMessage}`
-            }
-        };
+        yield {
+            type: 'error' as const,
+            error: new Error(`Agent execution failed: ${errorMessage}`)
+        } as ProviderStreamEvent;
     }
 }

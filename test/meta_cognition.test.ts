@@ -5,7 +5,6 @@ import type { ResponseInput } from '@just-every/ensemble';
 
 // Mock ensemble imports
 vi.mock('@just-every/ensemble', () => ({
-    getModelFromClass: vi.fn().mockResolvedValue('gpt-4-turbo'),
     ResponseInput: Array,
     MODEL_CLASSES: {
         reasoning: {
@@ -185,16 +184,6 @@ describe('Meta-cognition', () => {
                 .rejects.toThrow('Invalid startTime');
         });
 
-        it('should handle model selection failure gracefully', async () => {
-            const { getModelFromClass } = await import('@just-every/ensemble');
-            (getModelFromClass as any).mockResolvedValueOnce(null);
-            
-            const startTime = new Date();
-            
-            // Should not throw, just proceed without model
-            await expect(spawnMetaThought(mockAgent, mockMessages, startTime))
-                .resolves.not.toThrow();
-        });
 
         it('should catch and log ensemble request errors', async () => {
             const { ensembleRequest } = await import('@just-every/ensemble');

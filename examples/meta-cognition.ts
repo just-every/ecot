@@ -1,110 +1,71 @@
 /**
  * Meta-cognition Example
  * 
- * This example demonstrates MECH's meta-cognition capabilities,
- * including model rotation and self-reflection.
- * 
- * MECH now handles all LLM communication internally through @just-every/ensemble,
- * automatically rotating between models and tracking performance.
+ * This example demonstrates MECH's meta-cognition capabilities.
+ * Shows how to configure meta-cognition frequency and monitor model performance.
  */
 
-import { runMECH } from '../simple.js';
-import { mechState, setMetaFrequency, getModelScore } from '../mech_state.js';
-import type { RunMechOptions } from '../types.js';
+import { runMECH, setMetaFrequency, setModelScore, listModelScores } from '../index.js';
+import { Agent } from '@just-every/ensemble';
 
 async function main() {
-    console.log('🧠 Meta-cognition Example\n');
-    console.log('Note: This example requires API keys to be configured in your environment.\n');
+    console.log('🧠 MECH Meta-cognition Example\n');
     
-    // Track model usage through status callbacks
-    let llmCallCount = 0;
-    const modelUsage = new Map<string, number>();
+    // Configure meta-cognition to trigger every 5 LLM requests
+    setMetaFrequency('5');
+    console.log('Meta-cognition frequency set to every 5 LLM requests\n');
+    
+    // Set some model scores to influence selection
+    setModelScore('gpt-4', '85');
+    setModelScore('claude-3-5-sonnet-20241022', '90');
+    setModelScore('gpt-4o-mini', '60');
+    
+    console.log('Model scores:');
+    console.log(listModelScores());
+    console.log();
+    
+    // Create agent
+    const agent = new Agent({
+        name: 'MetaBot',
+        instructions: 'You are an assistant that demonstrates meta-cognition capabilities. Work through complex reasoning tasks step by step.',
+        modelClass: 'reasoning'
+    });
+    
+    const task = 'Solve this step by step: If a train travels 120 km in 2 hours, and then 180 km in the next 3 hours, what is the average speed for the entire journey?';
     
     try {
-        // Set meta-cognition to trigger frequently for demo
-        console.log('Setting meta-cognition frequency to 5 (every 5 LLM calls)\n');
-        setMetaFrequency('5');
+        console.log('Starting MECH with meta-cognition...\n');
         
-        // Run multiple tasks to trigger meta-cognition
-        const tasks = [
-            'Explain quantum computing',
-            'Solve a logic puzzle',
-            'Write a haiku about AI',
-            'Calculate fibonacci sequence',
-            'Explain machine learning',
-            'Debug a Python function',
-            'Design a REST API',
-            'Optimize an algorithm'
-        ];
+        let llmRequestCount = 0;
         
-        console.log('Running multiple tasks to demonstrate meta-cognition...');
-        console.log('ℹ️  MECH will automatically:');
-        console.log('   • Rotate between available models');
-        console.log('   • Track model performance');
-        console.log('   • Trigger meta-cognition analysis');
-        console.log('   • Adjust model scores based on performance\n');
-        
-        for (const task of tasks) {
-            console.log(`\n${'='.repeat(60)}`);
-            console.log(`TASK: ${task}`);
-            console.log('='.repeat(60));
+        for await (const event of runMECH(agent, task)) {
+            // Track LLM requests to show when meta-cognition triggers
+            if (event.type === 'response_start') {
+                llmRequestCount++;
+                console.log(`\n[Request #${llmRequestCount}] Starting LLM request...`);
+            }
             
-            const options: RunMechOptions = {
-                agent: {
-                    name: 'MetaBot',
-                    modelClass: 'reasoning',
-                    instructions: 'You are a reasoning agent that solves complex problems.'
-                },
-                task: task,
-                onStatus: (status) => {
-                    if (status.type === 'meta_cognition_triggered') {
-                        console.log('\n🔄 META-COGNITION TRIGGERED');
-                        console.log(`   Frequency: Every ${mechState.metaFrequency} calls`);
-                    } else if (status.type === 'model_selected') {
-                        llmCallCount++;
-                        const model = (status as any).model || 'unknown';
-                        modelUsage.set(model, (modelUsage.get(model) || 0) + 1);
-                        console.log(`\n🤖 LLM Call #${llmCallCount}`);
-                        console.log(`   Model: ${model}`);
-                        console.log(`   Score: ${getModelScore(model, 'reasoning')}`);
-                    }
-                },
-                onHistory: (item) => {
-                    if (item.type === 'thinking') {
-                        console.log('💭 Thinking:', item.content?.toString().substring(0, 60) + '...');
-                    }
+            // Show message content
+            if (event.type === 'message_delta' && 'content' in event) {
+                process.stdout.write(event.content);
+            }
+            
+            // Handle completion
+            if (event.type === 'tool_done' && 'tool_call' in event) {
+                const toolEvent = event as any;
+                if (toolEvent.tool_call?.function?.name === 'task_complete') {
+                    console.log('\n\n✅ Task completed!');
+                    console.log(`Result: ${toolEvent.result?.output}`);
+                    break;
                 }
-            };
-            
-            const result = await runMECH(options);
-            
-            console.log(`\n✅ Task completed: ${result.status}`);
-            console.log(`   Duration: ${result.durationSec}s`);
+            }
         }
         
-        // Show model usage statistics
-        console.log('\n\n📊 Model Usage Statistics:');
-        console.log('-'.repeat(50));
-        console.log(`Total LLM calls: ${llmCallCount}`);
-        console.log(`Meta-cognition triggers: ${Math.floor(llmCallCount / mechState.metaFrequency)}`);
-        console.log('\nModel distribution:');
-        
-        for (const [model, count] of modelUsage.entries()) {
-            const percentage = ((count / llmCallCount) * 100).toFixed(1);
-            console.log(`  ${model}: ${count} calls (${percentage}%)`);
-        }
-        
-        console.log('\n💡 Key Features Demonstrated:');
-        console.log('   • Automatic model rotation prevents over-reliance on single model');
-        console.log('   • Meta-cognition analyzes performance every N requests');
-        console.log('   • Model scores adjust based on observed performance');
-        console.log('   • Failed models are temporarily disabled');
+        console.log('\n📊 Final model scores:');
+        console.log(listModelScores());
         
     } catch (error) {
         console.error('❌ Error:', error);
-        console.log('\n🔧 Common issues:');
-        console.log('   • Ensure API keys are set in your environment');
-        console.log('   • Check that @just-every/ensemble is properly installed');
     }
 }
 

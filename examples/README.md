@@ -4,11 +4,11 @@ This directory contains examples demonstrating the Meta-cognition Ensemble Chain
 
 ## Important: API Keys Required
 
-MECH now uses `@just-every/ensemble` for LLM communication. Before running examples, ensure you have API keys configured in your environment:
+MECH uses `@just-every/ensemble` for LLM communication. Before running examples, ensure you have API keys configured in your environment:
 
 ```bash
 export OPENAI_API_KEY="your-openai-key"
-export ANTHROPIC_API_KEY="your-anthropic-key"
+export ANTHROPIC_API_KEY="your-anthropic-key" 
 export GOOGLE_API_KEY="your-google-key"
 ```
 
@@ -22,124 +22,146 @@ Build MECH first, then run examples:
 # From the mech directory
 npm run build
 node dist/examples/simple-mech.js
+node dist/examples/meta-cognition.js
+node dist/examples/thought-management.js
+node dist/examples/custom-tools.js
 ```
 
 ## Examples Overview
 
 ### 1. Simple MECH (`simple-mech.ts`)
-The simplest way to use MECH with minimal setup.
+The simplest way to use MECH with minimal setup. Demonstrates the basic async generator API.
 
 **Key concepts:**
-- Basic MECH configuration
-- Simple agent definition
-- Status and history callbacks
-- Automatic LLM integration via ensemble
+- Basic MECH configuration with `runMECH(agent, task)`
+- Event streaming with `AsyncGenerator<ProviderStreamEvent>`
+- Simple agent definition using ensemble's `Agent` class
+- Real-time event processing
 
-### 2. MECH with Memory (`mech-with-memory.ts`)
-Demonstrates memory features for context-aware task execution.
-
-**Key concepts:**
-- Embedding generation
-- Memory lookup and storage
-- Context enrichment
-- Memory-aware responses
-
-### 3. Meta-cognition (`meta-cognition.ts`)
+### 2. Meta-cognition (`meta-cognition.ts`)
 Shows MECH's self-reflection and model rotation capabilities.
 
 **Key concepts:**
-- Meta-cognition frequency
-- Model scoring and rotation
-- Automatic model selection
-- Performance tracking
+- Meta-cognition frequency configuration
+- Model scoring and performance tracking
+- Automatic model selection optimization
+- State management with `setMetaFrequency` and model scores
 
-### 4. Thought Management (`thought-management.ts`)
-Demonstrates thought delays and interruption handling.
+### 3. Thought Management (`thought-management.ts`)
+Demonstrates thought delays and timing control.
 
 **Key concepts:**
-- Configurable thought delays
-- Thought interruption
-- Timing and performance
-- Reasoning flow control
+- Configurable thought delays between agent iterations
+- Timing control with `setThoughtDelay`
+- Flow control for reasoning processes
+- Performance monitoring
 
-## Core Concepts
+### 4. Custom Tools (`custom-tools.ts`)
+Shows how to add custom tools to MECH agents.
 
-### Simple API
+**Key concepts:**
+- Creating tools with `createToolFunction` from ensemble
+- Adding tools to agent definitions
+- Tool call tracking in event streams
+- Custom functionality integration
+
+## Core API
+
+### Basic Usage
 ```typescript
 import { runMECH } from '@just-every/mech';
+import { Agent } from '@just-every/ensemble';
 
-const result = await runMECH({
-    agent: { name: 'MyBot' },
-    task: 'Solve this problem'
+const agent = new Agent({
+    name: 'MyBot',
+    instructions: 'You are a helpful assistant.',
+    modelClass: 'reasoning'
 });
-```
 
-### Advanced API
-```typescript
-import { runMECHAdvanced } from '@just-every/mech';
-
-const context: MechContext = {
-    // Required functions
-    sendComms: (msg) => { /* ... */ },
-    getCommunicationManager: () => { /* ... */ },
-    // ... other required functions
-};
-
-const result = await runMECHAdvanced(agent, task, context);
+// runMECH returns an AsyncGenerator<ProviderStreamEvent>
+for await (const event of runMECH(agent, 'Solve this problem')) {
+    if (event.type === 'message_delta') {
+        process.stdout.write(event.content);
+    }
+}
 ```
 
 ### Meta-cognition Control
 ```typescript
-import { setMetaFrequency, mechState } from '@just-every/mech';
+import { setMetaFrequency, setModelScore, listModelScores } from '@just-every/mech';
 
-// Run meta-cognition every 10 LLM calls
-setMetaFrequency('10');
+// Run meta-cognition every 5 LLM calls
+setMetaFrequency('5');
 
-// Check current state
-console.log(mechState.metaFrequency);
-console.log(mechState.llmRequestCount);
+// Set model performance scores (0-100)
+setModelScore('gpt-4', '85');
+setModelScore('claude-3-5-sonnet-20241022', '90');
+
+// View current scores
+console.log(listModelScores());
 ```
 
 ### Thought Delays
 ```typescript
 import { setThoughtDelay, getThoughtDelay } from '@just-every/mech';
 
-// Set 4-second delay between thoughts
-setThoughtDelay('4');
+// Set 2-second delay between thoughts
+setThoughtDelay('2');
 
 // Check current delay
-const currentDelay = getThoughtDelay(); // Returns '4'
+const currentDelay = getThoughtDelay(); // Returns '2'
 ```
+
+### Custom Tools
+```typescript
+import { createToolFunction } from '@just-every/ensemble';
+
+const myTool = createToolFunction(
+    (args: { input: string }) => `Processed: ${args.input}`,
+    'Process some input',
+    { input: { type: 'string', description: 'Input to process' } },
+    undefined,
+    'my_tool'
+);
+
+const agent = new Agent({
+    name: 'ToolBot',
+    tools: [myTool]
+});
+```
+
+## Event Types
+
+The `runMECH` async generator yields various event types:
+
+- `message_delta`: Streaming text content from the LLM
+- `tool_start`: Tool call begins
+- `tool_done`: Tool call completes (including `task_complete`)
+- `response_start`: New LLM request begins
+- `response_output`: LLM response completed
+- `cost_update`: Token usage and cost information
+- `error`: Error occurred
 
 ## Integration Tips
 
-1. **Start Simple**: Use `runMECH` for basic tasks
-2. **Add Memory**: Include embedding functions for context awareness
-3. **Enable Meta-cognition**: Let MECH self-optimize with meta-cognition
-4. **Custom Context**: Build full `MechContext` for advanced features
+1. **Start Simple**: Use `runMECH(agent, task)` for basic tasks
+2. **Event Handling**: Process events in real-time for responsive UIs
+3. **Meta-cognition**: Configure frequency and model scores for optimization
+4. **Thought Timing**: Use delays for paced reasoning or rate limiting
+5. **Custom Tools**: Extend agent capabilities with domain-specific tools
 
-## Common Patterns
+## State Management
 
-### Memory Integration
+MECH maintains global state that persists across executions:
+
 ```typescript
-const options = {
-    // ... other options
-    // Embedding is handled automatically by @just-every/ensemble
-    lookupMemories: async (embedding) => searchMemories(embedding),
-    saveMemory: async (taskId, memories) => storeMemories(taskId, memories)
-};
-```
+import { mechState, resetLLMRequestCount } from '@just-every/mech';
 
-### Status Monitoring
-```typescript
-onStatus: (status) => {
-    switch (status.type) {
-        case 'meta_cognition_triggered':
-            console.log('Meta-cognition running...');
-            break;
-        case 'model_rotated':
-            console.log('Switched to:', status.model);
-            break;
-    }
-}
+// Check current state
+console.log(`LLM requests: ${mechState.llmRequestCount}`);
+console.log(`Meta frequency: ${mechState.metaFrequency}`);
+console.log(`Disabled models: ${Array.from(mechState.disabledModels)}`);
+
+// Reset counters
+resetLLMRequestCount();
 ```

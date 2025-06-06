@@ -21,11 +21,6 @@ export {
 // ============================================================================
 // Core Types
 // ============================================================================
-export type {
-    // Result types
-    MechResult,
-    MechOutcome,
-} from './src/state/types.js';
 
 // Re-export Agent from ensemble
 export type { Agent } from '@just-every/ensemble';
@@ -35,7 +30,13 @@ export type { Agent } from '@just-every/ensemble';
 // ============================================================================
 export { 
     mechState, 
-    resetLLMRequestCount 
+    resetLLMRequestCount,
+    setMetaFrequency,
+    setModelScore,
+    getModelScore,
+    disableModel,
+    listDisabledModels,
+    listModelScores
 } from './src/state/state.js';
 
 export { 

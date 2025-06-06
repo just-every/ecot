@@ -10,6 +10,12 @@ vi.mock('@just-every/ensemble', () => ({
         name: def.name || 'TestAgent',
         tools: def.tools || []
     })),
+    cloneAgent: vi.fn().mockImplementation((agent) => ({
+        ...agent,
+        agent_id: agent.agent_id || 'test-agent',
+        name: agent.name || 'TestAgent',
+        tools: agent.tools || []
+    })),
     ensembleRequest: vi.fn().mockImplementation(async function* () {
         // First yield a message delta
         yield {
@@ -62,10 +68,6 @@ vi.mock('@just-every/ensemble', () => ({
     getModelFromClass: vi.fn().mockResolvedValue('gpt-4')
 }));
 
-// Mock model rotation
-vi.mock('../src/core/model_rotation.js', () => ({
-    rotateModel: vi.fn().mockResolvedValue('gpt-4')
-}));
 
 describe('MECH API', () => {
     beforeEach(() => {
@@ -74,15 +76,24 @@ describe('MECH API', () => {
 
     describe('runMECH', () => {
         it('should validate agent parameter', async () => {
-            await expect(runMECH(null as any, 'test')).rejects.toThrow('Agent must be a valid Agent instance');
-            await expect(runMECH('not an agent' as any, 'test')).rejects.toThrow('Agent must be a valid Agent instance');
+            const gen1 = runMECH(null as any, 'test');
+            await expect(gen1.next()).rejects.toThrow('Agent must be a valid Agent instance');
+            
+            const gen2 = runMECH('not an agent' as any, 'test');
+            await expect(gen2.next()).rejects.toThrow('Agent must be a valid Agent instance');
         });
 
         it('should validate content parameter', async () => {
             const agent = new Agent({ name: 'TestAgent' });
-            await expect(runMECH(agent, null as any)).rejects.toThrow('Content must be a non-empty string');
-            await expect(runMECH(agent, '')).rejects.toThrow('Content must be a non-empty string');
-            await expect(runMECH(agent, '   ')).rejects.toThrow('Content must be a non-empty string');
+            
+            const gen1 = runMECH(agent, null as any);
+            await expect(gen1.next()).rejects.toThrow('Content must be a non-empty string');
+            
+            const gen2 = runMECH(agent, '');
+            await expect(gen2.next()).rejects.toThrow('Content must be a non-empty string');
+            
+            const gen3 = runMECH(agent, '   ');
+            await expect(gen3.next()).rejects.toThrow('Content must be a non-empty string');
         });
 
         it('should successfully run a simple task', async () => {
@@ -91,17 +102,27 @@ describe('MECH API', () => {
                 instructions: 'You are a test agent'
             });
             
-            const result = await runMECH(agent, 'Complete this test task');
+            const events = [];
+            for await (const event of runMECH(agent, 'Complete this test task')) {
+                events.push(event);
+            }
             
-            expect(result).toMatchObject({
-                status: 'complete',
-                durationSec: expect.any(Number),
-                totalCost: 0.01,
-                history: expect.any(Array),
-                mechOutcome: {
-                    status: 'complete',
-                    result: 'Task completed successfully'
+            // Should have yielded all events
+            expect(events).toHaveLength(3);
+            expect(events[0]).toMatchObject({
+                type: 'message_delta',
+                content: 'Processing task...'
+            });
+            expect(events[1]).toMatchObject({
+                type: 'tool_done',
+                tool_call: {
+                    function: {
+                        name: 'task_complete'
+                    }
                 }
+            });
+            expect(events[2]).toMatchObject({
+                type: 'response_output'
             });
         });
 
@@ -124,13 +145,19 @@ describe('MECH API', () => {
             });
             
             const agent = new Agent({ name: 'TestAgent' });
-            const result = await runMECH(agent, 'Fail this task');
+            const events = [];
+            for await (const event of runMECH(agent, 'Fail this task')) {
+                events.push(event);
+            }
             
-            expect(result).toMatchObject({
-                status: 'fatal_error',
-                mechOutcome: {
-                    status: 'fatal_error',
-                    error: 'Unable to complete task'
+            // Should have yielded the error event
+            expect(events).toHaveLength(1);
+            expect(events[0]).toMatchObject({
+                type: 'tool_done',
+                tool_call: {
+                    function: {
+                        name: 'task_fatal_error'
+                    }
                 }
             });
         });
@@ -144,14 +171,18 @@ describe('MECH API', () => {
             });
             
             const agent = new Agent({ name: 'TestAgent' });
-            const result = await runMECH(agent, 'Cause an error');
+            const events = [];
+            for await (const event of runMECH(agent, 'Cause an error')) {
+                events.push(event);
+            }
             
-            expect(result).toMatchObject({
-                status: 'fatal_error',
-                mechOutcome: {
-                    status: 'fatal_error',
-                    error: expect.stringContaining('Network error')
-                }
+            // Should have yielded an error event
+            expect(events).toHaveLength(1);
+            expect(events[0]).toMatchObject({
+                type: 'error',
+                error: expect.objectContaining({
+                    message: expect.stringContaining('Network error')
+                })
             });
         });
     });

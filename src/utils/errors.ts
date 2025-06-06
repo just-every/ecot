@@ -6,7 +6,6 @@
 
 export type MechErrorComponent = 
     | 'validation'
-    | 'model_rotation'
     | 'meta_cognition'
     | 'thought_management'
     | 'state_management'
@@ -90,15 +89,10 @@ export class MechError extends Error {
                 suggestions.push('Ensure parameter types match the expected interface');
                 break;
                 
-            case 'model_rotation':
-                suggestions.push('Verify that model classes are properly configured');
-                suggestions.push('Check if any models are disabled or unavailable');
-                suggestions.push('Ensure @just-every/ensemble is properly installed');
-                break;
                 
             case 'meta_cognition':
                 suggestions.push('Check meta-cognition frequency settings');
-                suggestions.push('Verify that model rotation is working correctly');
+                suggestions.push('Verify that @just-every/ensemble is properly configured');
                 break;
                 
             case 'memory':
