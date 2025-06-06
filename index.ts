@@ -44,8 +44,18 @@ export {
 
 export { 
     setThoughtDelay,
-    setDelayInterrupted 
+    getThoughtDelay,
+    setDelayInterrupted,
+    isDelayInterrupted,
+    runThoughtDelay,
+    getDelayAbortSignal,
+    getThoughtTools
 } from './thought_utils.js';
+
+// ============================================================================
+// Constants (for testing and advanced usage)
+// ============================================================================
+export { MESSAGE_TYPES } from './utils/constants.js';
 
 // That's it! Just use runMECH(agent, content) and everything else is automatic.
 
