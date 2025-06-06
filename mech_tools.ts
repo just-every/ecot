@@ -253,6 +253,15 @@ export async function runMECH(
                 if (event.type === 'message_delta' && 'content' in event) {
                     console.log('[MECH] ', { response: event.content });
                 }
+                
+                // Add response to history for multi-turn conversations
+                if (event.type === 'response_output' && loop) {
+                    const responseEvent = event as any; // TODO: Import ResponseOutputEvent type
+                    if (responseEvent.message) {
+                        context.addHistory(responseEvent.message);
+                        messages.push(responseEvent.message);
+                    }
+                }
             }
             
             // Check if we should continue or if task is complete
