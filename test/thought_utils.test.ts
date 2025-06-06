@@ -6,8 +6,7 @@ import {
     isDelayInterrupted,
     runThoughtDelay,
     getDelayAbortSignal,
-    getThoughtTools,
-    MESSAGE_TYPES
+    getThoughtTools
 } from '../index.js';
 
 describe('Thought Utils', () => {
@@ -72,7 +71,7 @@ describe('Thought Utils', () => {
             setThoughtDelay('0');
             const start = Date.now();
             
-            await runThoughtDelay({} as any);
+            await runThoughtDelay();
             
             const elapsed = Date.now() - start;
             expect(elapsed).toBeLessThan(50); // Should be nearly instant
@@ -82,7 +81,7 @@ describe('Thought Utils', () => {
             setThoughtDelay('2');
             const start = Date.now();
             
-            await runThoughtDelay({} as any);
+            await runThoughtDelay();
             
             const elapsed = Date.now() - start;
             expect(elapsed).toBeGreaterThanOrEqual(2000);
@@ -93,74 +92,69 @@ describe('Thought Utils', () => {
             setThoughtDelay('8'); // 8 seconds
             const start = Date.now();
             
-            // Interrupt after 100ms
-            setTimeout(() => setDelayInterrupted(true), 100);
+            // Start the delay in background
+            const delayPromise = runThoughtDelay().catch(() => {});
             
-            await runThoughtDelay({} as any);
+            // Wait a bit then interrupt
+            await new Promise(resolve => setTimeout(resolve, 100));
+            setDelayInterrupted(true);
+            
+            await delayPromise;
             
             const elapsed = Date.now() - start;
             expect(elapsed).toBeLessThan(1000); // Should exit early
-            expect(isDelayInterrupted()).toBe(false); // Should reset
         });
 
-        it('should send status messages', async () => {
-            const mockContext = {
-                sendComms: vi.fn()
-            };
+        it('should log delay message', async () => {
+            const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
             
             setThoughtDelay('2');
-            await runThoughtDelay(mockContext as any);
+            await runThoughtDelay();
             
-            // Should have sent delay start and complete messages
-            expect(mockContext.sendComms).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    type: 'thought_delay',
-                    delayMs: 2000
-                })
-            );
+            expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Thought delay: 2 seconds');
             
-            expect(mockContext.sendComms).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    type: 'thought_complete'
-                })
-            );
+            consoleLogSpy.mockRestore();
         });
     });
 
     describe('getThoughtTools', () => {
-        it('should return thought management tool', () => {
-            const mockContext = {
-                createToolFunction: vi.fn((fn, desc, params) => ({
-                    function: fn,
-                    definition: { type: 'function', function: { name: 'setThoughtDelay', description: desc, parameters: params } }
-                }))
-            };
+        it('should return thought management tools', () => {
+            const tools = getThoughtTools();
             
-            const tools = getThoughtTools(mockContext as any);
+            expect(tools).toHaveLength(3);
             
-            expect(tools).toHaveLength(1);
-            expect(mockContext.createToolFunction).toHaveBeenCalledWith(
-                expect.any(Function),
-                expect.stringContaining('thought'),
-                expect.objectContaining({
-                    delay: expect.objectContaining({
-                        description: expect.any(String),
-                        enum: expect.any(Array)
-                    })
-                })
-            );
+            // Check tool names
+            const toolNames = tools.map(t => t.definition.function.name);
+            expect(toolNames).toContain('set_thought_delay');
+            expect(toolNames).toContain('interrupt_delay');
+            expect(toolNames).toContain('get_thought_delay');
             
-            // Test the tool function
-            const toolFn = tools[0].function as any;
-            const result = toolFn({ delay: '4' });
-            expect(result).toContain('Thought delay set to 4 seconds');
+            // Test set_thought_delay
+            const setDelayTool = tools.find(t => t.definition.function.name === 'set_thought_delay');
+            const result = setDelayTool!.function('4');
+            expect(result).toBe('4');
             expect(getThoughtDelay()).toBe('4');
         });
 
-        it('should handle missing createToolFunction', () => {
-            const mockContext = {};
-            const tools = getThoughtTools(mockContext as any);
-            expect(tools).toEqual([]);
+        it('should provide interrupt delay tool', () => {
+            const tools = getThoughtTools();
+            const interruptTool = tools.find(t => t.definition.function.name === 'interrupt_delay');
+            
+            const result = interruptTool!.function();
+            expect(result).toBe('Thought delay interrupted');
+            expect(isDelayInterrupted()).toBe(true);
+            
+            // Reset
+            setDelayInterrupted(false);
+        });
+
+        it('should provide get delay tool', () => {
+            setThoughtDelay('16');
+            const tools = getThoughtTools();
+            const getTool = tools.find(t => t.definition.function.name === 'get_thought_delay');
+            
+            const result = getTool!.function();
+            expect(result).toBe('Current thought delay: 16 seconds');
         });
     });
 
@@ -170,7 +164,7 @@ describe('Thought Utils', () => {
             
             const promises = [];
             for (let i = 0; i < 5; i++) {
-                promises.push(runThoughtDelay({} as any));
+                promises.push(runThoughtDelay().catch(() => {}));
                 setDelayInterrupted(true);
                 setDelayInterrupted(false);
             }
@@ -181,24 +175,21 @@ describe('Thought Utils', () => {
 
         it('should handle concurrent delays', async () => {
             setThoughtDelay('2');
-            const mockContext = { sendComms: vi.fn() };
+            const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
             
             // Start multiple delays
-            const delay1 = runThoughtDelay(mockContext as any);
-            const delay2 = runThoughtDelay(mockContext as any);
+            const delay1 = runThoughtDelay();
+            const delay2 = runThoughtDelay();
             
             // Interrupt after 500ms
             setTimeout(() => setDelayInterrupted(true), 500);
             
-            await Promise.all([delay1, delay2]);
+            await Promise.all([delay1, delay2].map(p => p.catch(() => {})));
             
-            // Should have been called at least for start/end messages (may include progress updates)
-            expect(mockContext.sendComms).toHaveBeenCalledWith(
-                expect.objectContaining({ type: MESSAGE_TYPES.THOUGHT_DELAY })
-            );
-            expect(mockContext.sendComms).toHaveBeenCalledWith(
-                expect.objectContaining({ type: MESSAGE_TYPES.THOUGHT_COMPLETE })
-            );
+            // Should have logged the delay message
+            expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Thought delay: 2 seconds');
+            
+            consoleLogSpy.mockRestore();
         });
     });
 });

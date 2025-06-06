@@ -4,9 +4,8 @@
  * This module handles the weighted model selection based on MECH scores.
  */
 
-import { MODEL_CLASSES, ModelClassID, getModelFromClass } from '@just-every/ensemble';
+import { MODEL_CLASSES, ModelClassID, getModelFromClass, type AgentDefinition } from '@just-every/ensemble';
 import { mechState, getModelScore } from '../state/state.js';
-import type { Agent } from '../state/types.js';
 import { globalPerformanceCache } from '../utils/performance.js';
 // MechModelError available if needed for error handling
 import { debugModelSelection, debugTrace } from '../utils/debug.js';
@@ -44,12 +43,12 @@ import { debugModelSelection, debugTrace } from '../utils/debug.js';
  * ```
  */
 export async function rotateModel(
-    agent: Agent,
+    agent: Pick<AgentDefinition, 'name' | 'model' | 'modelClass'>,
     modelClass?: ModelClassID
 ): Promise<string | undefined> {
     // Validate agent first
     if (!agent || typeof agent !== 'object') {
-        throw new TypeError('Invalid agent: must be a valid MechAgent object');
+        throw new TypeError('Invalid agent: must be a valid agent object');
     }
     
     debugTrace('model_rotation', 'start', { agentName: agent.name, modelClass });

@@ -4,8 +4,6 @@
  * Minimal debug utilities for MECH
  */
 
-import type { Agent } from '../state/types.js';
-
 /**
  * Simple debug trace function
  */
@@ -25,7 +23,7 @@ export function debugTrace(component: string, operation: string, input?: any, ou
  * Simple model selection debug function
  */
 export function debugModelSelection(
-    agent: Agent,
+    agent: { name?: string; modelClass?: string },
     availableModels: string[],
     selectedModel: string | undefined,
     _scores: Record<string, number>,
