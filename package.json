@@ -64,7 +64,7 @@
     "release:quick": "./scripts/release-quick.sh"
   },
   "dependencies": {
-    "@just-every/ensemble": "^0.2.14"
+    "@just-every/ensemble": "^0.2.15"
   },
   "peerDependencies": {
     "anthropic": ">=0.20.0",
