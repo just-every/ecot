@@ -13,7 +13,7 @@ import { VALID_THOUGHT_DELAYS } from './constants.js';
 /**
  * Validate model score input
  */
-export function validateModelScore(modelId: unknown, score: unknown, modelClass?: unknown): void {
+export function validateModelScore(modelId: unknown, score: unknown): void {
     if (!modelId || typeof modelId !== 'string' || !modelId.trim()) {
         throw new MechValidationError(
             'Model ID must be a non-empty string',
@@ -40,23 +40,6 @@ export function validateModelScore(modelId: unknown, score: unknown, modelClass?
                 }
             }
         );
-    }
-
-    if (modelClass !== undefined) {
-        const validClasses = ['reasoning', 'standard', 'code', 'metacognition'];
-        if (typeof modelClass !== 'string' || !validClasses.includes(modelClass)) {
-            throw new MechValidationError(
-                `Model class must be one of: ${validClasses.join(', ')}`,
-                {
-                    modelId,
-                    metadata: { 
-                        modelClassValue: modelClass,
-                        modelClassType: typeof modelClass,
-                        validModelClasses: validClasses
-                    }
-                }
-            );
-        }
     }
 }
 
@@ -96,38 +79,6 @@ export function validateThoughtDelay(delay: unknown): void {
             }
         );
     }
-}
-
-/**
- * Sanitize text input for security
- */
-export function sanitizeTextInput(input: string, maxLength: number = 10000): string {
-    if (typeof input !== 'string') {
-        throw new MechValidationError(
-            'Input must be a string',
-            {
-                metadata: { 
-                    inputType: typeof input,
-                    expectedType: 'string'
-                }
-            }
-        );
-    }
-
-    // Remove potentially dangerous patterns
-    let sanitized = input
-        .replace(/[<>]/g, '') // Remove HTML-like tags
-        .replace(/javascript:/gi, '') // Remove javascript: URLs
-        .replace(/data:/gi, '') // Remove data: URLs
-        .replace(/vbscript:/gi, '') // Remove vbscript: URLs
-        .trim();
-
-    // Limit length
-    if (sanitized.length > maxLength) {
-        sanitized = sanitized.substring(0, maxLength);
-    }
-
-    return sanitized;
 }
 
 // Sensitive data validation removed - not currently used in simplified API

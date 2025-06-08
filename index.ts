@@ -41,12 +41,7 @@ export {
 
 export { 
     setThoughtDelay,
-    getThoughtDelay,
-    setDelayInterrupted,
-    isDelayInterrupted,
-    runThoughtDelay,
-    getDelayAbortSignal,
-    getThoughtTools
+    getThoughtDelay
 } from './src/core/thought_utils.js';
 
 // ============================================================================
@@ -60,11 +55,6 @@ export {
     waitWhilePaused,
     type PauseController
 } from '@just-every/ensemble';
-
-// ============================================================================
-// Constants (for testing and advanced usage)
-// ============================================================================
-export { MESSAGE_TYPES } from './src/utils/constants.js';
 
 // That's it! Just use runMECH(agent, content) and everything else is automatic.
 

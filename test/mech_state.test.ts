@@ -80,18 +80,16 @@ describe('MECH State Management', () => {
             expect(getModelScore('claude-3')).toBe(90);
         });
 
-        it('should handle class-specific scores', () => {
-            setModelScore('gpt-4', '80', 'code');
-            setModelScore('gpt-4', '85', 'reasoning');
+        it('should handle overwriting model scores', () => {
+            setModelScore('gpt-4', '80');
+            expect(getModelScore('gpt-4')).toBe(80);
             
-            expect(getModelScore('gpt-4', 'code')).toBe(80);
-            expect(getModelScore('gpt-4', 'reasoning')).toBe(85);
-            expect(getModelScore('gpt-4')).toBe(50); // Default when no overall score
+            setModelScore('gpt-4', '85'); // Overwrite
+            expect(getModelScore('gpt-4')).toBe(85);
         });
 
         it('should return default score for unknown models', () => {
             expect(getModelScore('unknown-model')).toBe(50);
-            expect(getModelScore('unknown-model', 'code')).toBe(50);
         });
 
         it('should validate score range', () => {
@@ -105,14 +103,12 @@ describe('MECH State Management', () => {
         it('should list all model scores', () => {
             setModelScore('gpt-4', '80');
             setModelScore('claude-3', '85');
-            setModelScore('gpt-4', '75', 'code');
             
             const scores = listModelScores();
             expect(scores).toContain('gpt-4');
             expect(scores).toContain('claude-3');
             expect(scores).toContain('80');
             expect(scores).toContain('85');
-            expect(scores).toContain('code: 75');
         });
     });
 
@@ -169,14 +165,13 @@ describe('MECH State Management', () => {
     });
 
     describe('State persistence', () => {
-        it('should track last model used', () => {
-            expect(mechState.lastModelUsed).toBeUndefined();
+        it('should maintain state between operations', () => {
+            // Test that state persists across operations
+            setModelScore('test-model', '75');
+            disableModel('disabled-model');
             
-            mechState.lastModelUsed = 'gpt-4';
-            expect(mechState.lastModelUsed).toBe('gpt-4');
-            
-            mechState.lastModelUsed = 'claude-3';
-            expect(mechState.lastModelUsed).toBe('claude-3');
+            expect(getModelScore('test-model')).toBe(75);
+            expect(mechState.disabledModels.has('disabled-model')).toBe(true);
         });
     });
 });

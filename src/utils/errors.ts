@@ -6,14 +6,8 @@
 
 export type MechErrorComponent = 
     | 'validation'
-    | 'meta_cognition'
-    | 'thought_management'
     | 'state_management'
-    | 'simple_api'
-    | 'memory'
-    | 'tools'
-    | 'communication'
-    | 'internal';
+    | 'thought_management';
 
 export interface MechErrorContext {
     /** Component where the error occurred */
@@ -63,77 +57,8 @@ export class MechError extends Error {
         }
     }
 
-    /**
-     * Get a user-friendly error message with suggestions
-     */
-    getUserMessage(): string {
-        const suggestions = this.getSuggestions();
-        let message = this.message;
-        
-        if (suggestions.length > 0) {
-            message += '\n\nSuggestions:\n' + suggestions.map(s => `- ${s}`).join('\n');
-        }
-        
-        return message;
-    }
-
-    /**
-     * Get contextual suggestions based on error type
-     */
-    private getSuggestions(): string[] {
-        const suggestions: string[] = [];
-        
-        switch (this.component) {
-            case 'validation':
-                suggestions.push('Check that all required parameters are provided');
-                suggestions.push('Ensure parameter types match the expected interface');
-                break;
-                
-                
-            case 'meta_cognition':
-                suggestions.push('Check meta-cognition frequency settings');
-                suggestions.push('Verify that @just-every/ensemble is properly configured');
-                break;
-                
-            case 'memory':
-                suggestions.push('Ensure embedding function is provided and working');
-                suggestions.push('Check memory lookup and storage functions');
-                break;
-                
-            case 'simple_api':
-                suggestions.push('Verify runAgent function signature and return type');
-                suggestions.push('Check that agent has required properties (name)');
-                break;
-                
-            default:
-                suggestions.push('Check the MECH documentation for troubleshooting');
-                break;
-        }
-        
-        return suggestions;
-    }
-
-    /**
-     * Convert error to structured object for logging
-     */
-    toJSON(): Record<string, any> {
-        return {
-            name: this.name,
-            message: this.message,
-            component: this.component,
-            agentName: this.agentName,
-            modelId: this.modelId,
-            task: this.task,
-            metadata: this.metadata,
-            timestamp: this.timestamp.toISOString(),
-            originalError: this.originalError ? {
-                name: this.originalError.name,
-                message: this.originalError.message,
-                stack: this.originalError.stack
-            } : undefined,
-            stack: this.stack
-        };
-    }
+    // Unused methods removed - getUserMessage, getSuggestions, toJSON
+    // These were not used anywhere in the codebase
 }
 
 /**

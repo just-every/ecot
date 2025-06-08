@@ -7,7 +7,7 @@ import {
     runThoughtDelay,
     getDelayAbortSignal,
     getThoughtTools
-} from '../index.js';
+} from '../src/core/thought_utils.js';
 
 describe('Thought Utils', () => {
     beforeEach(() => {

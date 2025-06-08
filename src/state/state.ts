@@ -5,11 +5,33 @@
  * It provides a central state container and methods to modify the system's behavior at runtime.
  */
 
-import type { MECHState } from './types.js';
-import { MODEL_CLASSES, findModel, ModelClassID } from '@just-every/ensemble';
-import { DEFAULT_MODEL_SCORE, DEFAULT_META_FREQUENCY, type MetaFrequency } from '../utils/constants.js';
+// Types moved from types.ts for consolidation
+import type { MetaFrequency, ThoughtDelay } from '../utils/constants.js';
+import { findModel } from '@just-every/ensemble';
+import { DEFAULT_MODEL_SCORE, DEFAULT_META_FREQUENCY } from '../utils/constants.js';
 import { validateModelScore, validateMetaFrequency } from '../utils/validation.js';
 import { withErrorHandling } from '../utils/errors.js';
+
+/**
+ * State container for the MECH system
+ */
+export interface MECHState {
+    /** Counter for LLM requests to trigger meta-cognition */
+    llmRequestCount: number;
+
+    /** How often meta-cognition should run (every N LLM requests) */
+    metaFrequency: MetaFrequency;
+
+    /** Set of model IDs that have been temporarily disabled */
+    disabledModels: Set<string>;
+
+    /** Model effectiveness scores (0-100) - higher scores mean the model is selected more often */
+    modelScores: Record<string, number>;
+}
+
+// Re-export types for external use
+export type { MetaFrequency, ThoughtDelay };
+export type { ToolFunction, Agent } from '@just-every/ensemble';
 
 /**
  * Global state container for the MECH system
@@ -63,45 +85,25 @@ export function listDisabledModels(): string {
 /**
  * Get a formatted list of model scores for performance monitoring
  * 
- * Shows current performance scores for all models or models in a specific class.
+ * Shows current performance scores for all models.
  * Higher scores indicate better performance and increase selection probability.
  * 
- * @param modelClass - Optional model class to filter results
  * @returns Human-readable string listing model scores
  * 
  * @example
  * ```typescript
- * // All model scores
  * console.log(listModelScores());
- * 
- * // Reasoning model scores only
- * console.log(listModelScores('reasoning'));
+ * // Output: "- gpt-4: 85\n- claude-3: 90"
  * ```
  */
-export function listModelScores(modelClass?: ModelClassID): string {
-    if (modelClass && MODEL_CLASSES[modelClass]?.models?.length > 0) {
-        return MODEL_CLASSES[modelClass].models
-            .map(
-                modelId => `- ${modelId}: ${getModelScore(modelId, modelClass)}`
-            )
-            .join('\n');
-    }
+export function listModelScores(): string {
     if (Object.keys(mechState.modelScores).length === 0) {
         return '- No model scores set';
     }
     
-    const lines: string[] = [];
-    for (const [modelId, scoreData] of Object.entries(mechState.modelScores)) {
-        if (typeof scoreData === 'number') {
-            lines.push(`- ${modelId}: ${scoreData}`);
-        } else if (typeof scoreData === 'object') {
-            const classScores = Object.entries(scoreData)
-                .map(([cls, score]) => `${cls}: ${score}`)
-                .join(', ');
-            lines.push(`- ${modelId}: ${classScores}`);
-        }
-    }
-    return lines.join('\n');
+    return Object.entries(mechState.modelScores)
+        .map(([modelId, score]) => `- ${modelId}: ${score}`)
+        .join('\n');
 }
 
 /**
@@ -124,42 +126,20 @@ export const setMetaFrequency = withErrorHandling(
 /**
  * Set the score for a specific model
  * @param modelId - The model ID to score
- * @param scoreOrClass - Score between 0-100 or model class name
- * @param modelClass - Optional model class for class-specific scores
+ * @param score - Score between 0-100
  * @returns Success message or error
  */
 export const setModelScore = withErrorHandling(
-    (modelId: string, scoreOrClass: string, modelClass?: string): string => {
+    (modelId: string, score: string): string => {
         // Validate inputs using validation system
-        validateModelScore(modelId, scoreOrClass, modelClass);
+        validateModelScore(modelId, score);
         
-        // Parse the score
-        const scoreStr = modelClass ? scoreOrClass : scoreOrClass;
-        const score = Number(scoreStr);
+        // Parse and store the score
+        const numericScore = Number(score);
+        mechState.modelScores[modelId] = numericScore;
+        console.log(`[MECH] Model ${modelId} score set to ${numericScore}`);
         
-        // If modelClass is provided, store class-specific score
-        if (modelClass) {
-            if (!mechState.modelScores[modelId]) {
-                mechState.modelScores[modelId] = {};
-            }
-            if (typeof mechState.modelScores[modelId] === 'number') {
-                // Convert to object format
-                const currentScore = mechState.modelScores[modelId] as number;
-                mechState.modelScores[modelId] = { overall: currentScore };
-            }
-            
-            // Type-safe assignment for class-specific scores
-            const modelScoreObj = mechState.modelScores[modelId] as Record<string, number>;
-            modelScoreObj[modelClass] = score;
-            console.log(`[MECH] Model ${modelId} score for ${modelClass} set to ${score}`);
-        } else {
-            // Store overall score
-            mechState.modelScores[modelId] = score;
-            console.log(`[MECH] Model ${modelId} score set to ${score}`);
-        }
-        
-        
-        return `Score set to ${score}`;
+        return `Score set to ${numericScore}`;
     },
     'state_management'
 );
@@ -188,43 +168,23 @@ export function disableModel(modelId: string, disabled?: boolean): string {
 // enableModel function inlined into disableModel since it was only used there
 
 /**
- * Get the score for a model, optionally for a specific model class
+ * Get the score for a model
  * @param modelId - The model ID to get the score for
- * @param modelClass - Optional model class to get a class-specific score
  * @returns The model's score (0-100)
  */
-export function getModelScore(modelId: string, modelClass?: string): number {
+export function getModelScore(modelId: string): number {
     // First check if we have a score in mechState
-    const scoreData = mechState.modelScores[modelId];
+    const score = mechState.modelScores[modelId];
     
-    if (scoreData !== undefined) {
-        if (typeof scoreData === 'number') {
-            // Simple numeric score - return it regardless of whether modelClass is specified
-            return scoreData;
-        } else if (typeof scoreData === 'object' && scoreData !== null) {
-            // Class-specific scores
-            const scoreObj = scoreData as Record<string, number>;
-            if (modelClass && modelClass in scoreObj) {
-                return scoreObj[modelClass];
-            }
-            // Return overall if exists, otherwise default
-            return scoreObj.overall || DEFAULT_MODEL_SCORE;
-        }
+    if (score !== undefined) {
+        return score;
     }
 
     // If not in mechState, look up the model entry
     const modelEntry = findModel(modelId);
 
-    if (modelEntry) {
-        // If a specific class is requested, check if there's a class-specific score
-        if (modelClass && modelEntry.scores && modelClass in modelEntry.scores) {
-            return (modelEntry.scores as any)[modelClass];
-        }
-
-        // Fall back to general score if available
-        if (modelEntry.score !== undefined) {
-            return modelEntry.score;
-        }
+    if (modelEntry?.score !== undefined) {
+        return modelEntry.score;
     }
 
     // Default score
