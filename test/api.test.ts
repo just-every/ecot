@@ -65,7 +65,8 @@ vi.mock('@just-every/ensemble', () => ({
         getTotalCost: () => 0.01,
         addUsage: vi.fn()
     })),
-    getModelFromClass: vi.fn().mockResolvedValue('gpt-4')
+    getModelFromClass: vi.fn().mockResolvedValue('gpt-4'),
+    waitWhilePaused: vi.fn().mockResolvedValue(undefined)
 }));
 
 

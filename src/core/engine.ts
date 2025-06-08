@@ -13,6 +13,7 @@ import {
     ensembleRequest,
     createToolFunction,
     cloneAgent,
+    waitWhilePaused,
     type ToolFunction,
     type Agent,
     type ResponseInput,
@@ -129,6 +130,9 @@ export async function* runMECH(
         
         while (!isComplete && iteration < 100) {
             iteration++;
+            
+            // Wait if ensemble is paused (before any processing)
+            await waitWhilePaused();
             
             // Apply thought delay (MECH-specific feature)
             if (iteration > 1) {

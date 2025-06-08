@@ -25,6 +25,7 @@ node dist/examples/simple-mech.js
 node dist/examples/meta-cognition.js
 node dist/examples/thought-management.js
 node dist/examples/custom-tools.js
+node dist/examples/pause-control.js
 ```
 
 ## Examples Overview
@@ -64,6 +65,15 @@ Shows how to add custom tools to MECH agents.
 - Adding tools to agent definitions
 - Tool call tracking in event streams
 - Custom functionality integration
+
+### 5. Pause Control (`pause-control.ts`)
+Demonstrates ensemble's pause/resume functionality with MECH.
+
+**Key concepts:**
+- Global pause/resume control with `pause()` and `resume()`
+- Automatic pause handling in MECH loops
+- Pause event listeners with `getPauseController()`
+- Real-time pause state monitoring
 
 ## Core API
 
@@ -110,6 +120,27 @@ setThoughtDelay('2');
 
 // Check current delay
 const currentDelay = getThoughtDelay(); // Returns '2'
+```
+
+### Pause Control
+```typescript
+import { pause, resume, isPaused, getPauseController } from '@just-every/mech';
+
+// Pause all LLM requests globally
+pause();
+
+// Check if paused
+if (isPaused()) {
+    console.log('System is paused');
+}
+
+// Resume all requests
+resume();
+
+// Listen to pause events
+const controller = getPauseController();
+controller.on('paused', () => console.log('Paused!'));
+controller.on('resumed', () => console.log('Resumed!'));
 ```
 
 ### Custom Tools

@@ -50,6 +50,18 @@ export {
 } from './src/core/thought_utils.js';
 
 // ============================================================================
+// Pause Control (from ensemble)
+// ============================================================================
+export { 
+    pause, 
+    resume, 
+    isPaused, 
+    getPauseController,
+    waitWhilePaused,
+    type PauseController
+} from '@just-every/ensemble';
+
+// ============================================================================
 // Constants (for testing and advanced usage)
 // ============================================================================
 export { MESSAGE_TYPES } from './src/utils/constants.js';
