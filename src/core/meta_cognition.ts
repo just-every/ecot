@@ -1,13 +1,13 @@
 /**
- * metacognition module for Mind
+ * metacognition module for Task
  *
- * This module implements "thinking about thinking" capabilities for the Mind system.
+ * This module implements "thinking about thinking" capabilities for the Task system.
  * It spawns an LLM agent that analyzes recent thought history and can adjust system
  * parameters to improve performance.
  */
 
 import {
-    mindState,
+    taskState,
     listDisabledModels,
     listModelScores,
     setMetaFrequency,
@@ -39,12 +39,12 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
             role: 'developer',
             content: `**IMPORTANT - METACOGNITION:** ${content}`,
         });
-        console.log(`[Mind] metacognition injected thought: ${content}`);
+        console.log(`[Task] metacognition injected thought: ${content}`);
         return `Successfully injected metacognition thought at ${new Date().toISOString()}`;
     }
     
     function noChangesNeeded(): string {
-        console.log('[Mind] metacognition no change');
+        console.log('[Task] metacognition no change');
         return 'No changes made';
     }
     
@@ -111,7 +111,7 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
 /**
  * Spawn a metacognition process to analyze and optimize agent performance
  * 
- * Metacognition is Mind's "thinking about thinking" capability. It:
+ * Metacognition is Task's "thinking about thinking" capability. It:
  * - Analyzes recent agent thoughts and tool usage patterns
  * - Identifies inefficiencies, errors, and optimization opportunities
  * - Can adjust system parameters (model scores, meta frequency, thought delay)
@@ -145,18 +145,18 @@ export async function spawnMetaThought(
 ): Promise<void> {
     // Validate inputs
     if (!agent || typeof agent !== 'object') {
-        throw new TypeError('[Mind] Invalid agent for metacognition');
+        throw new TypeError('[Task] Invalid agent for metacognition');
     }
     
     if (!messages || !Array.isArray(messages)) {
-        throw new TypeError('[Mind] Invalid messages for metacognition');
+        throw new TypeError('[Task] Invalid messages for metacognition');
     }
     
     if (!startTime || !(startTime instanceof Date)) {
-        throw new TypeError('[Mind] Invalid startTime for metacognition');
+        throw new TypeError('[Task] Invalid startTime for metacognition');
     }
     
-    console.log('[Mind] Spawning metacognition process');
+    console.log('[Task] Spawning metacognition process');
 
     try {
         // Create a metacognition agent
@@ -171,8 +171,8 @@ Though metacognition, you continuously improve ${agent.name || 'the agent'}'s pe
 
 System State:
 - Runtime: ${Math.round((Date.now() - startTime.getTime()) / 1000)} seconds
-- LLM Requests: ${mindState.llmRequestCount}
-- Meta Frequency: Every ${mindState.metaFrequency} requests
+- LLM Requests: ${taskState.llmRequestCount}
+- Meta Frequency: Every ${taskState.metaFrequency} requests
 - Thought Delay: ${getThoughtDelay()} seconds
 - Disabled Models: ${listDisabledModels()}
 - Model Scores: ${listModelScores()}
@@ -214,13 +214,13 @@ Be concise and strategic in your analysis.`,
         for await (const event of ensembleRequest(metaMessages, metaAgent)) {
             // Log metacognition responses
             if (event.type === 'message_delta' && 'content' in event) {
-                console.log('[Mind:META]', event.content);
+                console.log('[Task:META]', event.content);
             }
         }
 
-        console.log('[Mind] Metacognition process completed');
+        console.log('[Task] Metacognition process completed');
     } catch (error) {
-        console.error('[Mind] Error in metacognition:', error);
+        console.error('[Task] Error in metacognition:', error);
         throw error;
     }
 }

@@ -1,17 +1,17 @@
 /**
- * Mind Error Handling System
+ * Task Error Handling System
  * 
  * Provides structured error handling for better debugging and user experience
  */
 
-export type MindErrorComponent = 
+export type TaskErrorComponent = 
     | 'validation'
     | 'state_management'
     | 'thought_management';
 
-export interface MindErrorContext {
+export interface TaskErrorContext {
     /** Component where the error occurred */
-    component: MindErrorComponent;
+    component: TaskErrorComponent;
     /** Agent name if applicable */
     agentName?: string;
     /** Model ID if applicable */
@@ -23,10 +23,10 @@ export interface MindErrorContext {
 }
 
 /**
- * Structured error class for Mind system
+ * Structured error class for Task system
  */
-export class MindError extends Error {
-    public readonly component: MindErrorComponent;
+export class TaskError extends Error {
+    public readonly component: TaskErrorComponent;
     public readonly agentName?: string;
     public readonly modelId?: string;
     public readonly task?: string;
@@ -36,13 +36,13 @@ export class MindError extends Error {
 
     constructor(
         message: string,
-        context: MindErrorContext,
+        context: TaskErrorContext,
         originalError?: Error
     ) {
-        const fullMessage = `[Mind:${context.component}] ${message}`;
+        const fullMessage = `[Task:${context.component}] ${message}`;
         super(fullMessage);
         
-        this.name = 'MindError';
+        this.name = 'TaskError';
         this.component = context.component;
         this.agentName = context.agentName;
         this.modelId = context.modelId;
@@ -53,7 +53,7 @@ export class MindError extends Error {
 
         // Maintain stack trace
         if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, MindError);
+            Error.captureStackTrace(this, TaskError);
         }
     }
 
@@ -64,27 +64,27 @@ export class MindError extends Error {
 /**
  * Validation error - thrown when input validation fails
  */
-export class MindValidationError extends MindError {
+export class TaskValidationError extends TaskError {
     constructor(
         message: string,
-        context: Omit<MindErrorContext, 'component'>,
+        context: Omit<TaskErrorContext, 'component'>,
         originalError?: Error
     ) {
         super(message, { ...context, component: 'validation' }, originalError);
-        this.name = 'MindValidationError';
+        this.name = 'TaskValidationError';
     }
 }
 
 // Specialized error classes and validation functions removed
-// Only MindError and MindValidationError are used in the simplified API
+// Only TaskError and TaskValidationError are used in the simplified API
 
 /**
  * Utility to wrap functions with error handling
  */
 export function withErrorHandling<T extends (...args: any[]) => any>(
     fn: T,
-    component: MindErrorComponent,
-    context?: Partial<MindErrorContext>
+    component: TaskErrorComponent,
+    context?: Partial<TaskErrorContext>
 ): T {
     return ((...args: Parameters<T>) => {
         try {
@@ -93,7 +93,7 @@ export function withErrorHandling<T extends (...args: any[]) => any>(
             // Handle async functions
             if (result instanceof Promise) {
                 return result.catch((error: any) => {
-                    throw new MindError(
+                    throw new TaskError(
                         `Async operation failed: ${error.message || String(error)}`,
                         { component, ...context },
                         error instanceof Error ? error : new Error(String(error))
@@ -103,7 +103,7 @@ export function withErrorHandling<T extends (...args: any[]) => any>(
             
             return result;
         } catch (error: any) {
-            throw new MindError(
+            throw new TaskError(
                 `Operation failed: ${error.message || String(error)}`,
                 { component, ...context },
                 error instanceof Error ? error : new Error(String(error))

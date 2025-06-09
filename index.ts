@@ -1,9 +1,9 @@
 /**
- * @just-every/mind
+ * @just-every/task
  * 
- * Mind - Advanced LLM orchestration with meta-cognition
+ * Task - Advanced LLM orchestration with meta-cognition
  * 
- * This module provides the Mind system which includes:
+ * This module provides the Task system which includes:
  * - Hierarchical model selection based on performance scores
  * - Meta-cognition for self-reflection and strategy adjustment
  * - Thought delay management for pacing
@@ -29,7 +29,7 @@ export type { Agent } from '@just-every/ensemble';
 // State Management (for debugging/monitoring)
 // ============================================================================
 export { 
-    mindState, 
+    taskState, 
     resetLLMRequestCount,
     setMetaFrequency,
     setModelScore,

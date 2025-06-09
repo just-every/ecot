@@ -1,15 +1,15 @@
 /**
- * Simple Mind Example
+ * Simple Task Example
  * 
- * This example shows the simplest way to use Mind with minimal setup.
- * Mind handles LLM communication internally through the @just-every/ensemble package.
+ * This example shows the simplest way to use Task with minimal setup.
+ * Task handles LLM communication internally through the @just-every/ensemble package.
  */
 
 import { mindTask } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
-    console.log('🤖 Simple Mind Example\n');
+    console.log('🤖 Simple Task Example\n');
     console.log('Note: This example requires API keys to be configured in your environment.\n');
     
     // Create agent using ensemble's Agent class
@@ -22,8 +22,8 @@ async function main() {
     const task = 'What is the meaning of life?';
     
     try {
-        console.log('Starting Mind...\n');
-        console.log('ℹ️  Mind will automatically handle:');
+        console.log('Starting Task...\n');
+        console.log('ℹ️  Task will automatically handle:');
         console.log('   • LLM selection and rotation');
         console.log('   • Model performance tracking');
         console.log('   • Meta-cognition');
@@ -46,7 +46,7 @@ async function main() {
         
         const duration = (Date.now() - startTime) / 1000;
         
-        console.log('\n\n✅ Mind Execution Complete:');
+        console.log('\n\n✅ Task Execution Complete:');
         console.log('-'.repeat(50));
         console.log(`Duration: ${duration.toFixed(2)}s`);
         
@@ -56,7 +56,7 @@ async function main() {
         
         console.log('\n💡 Tips:');
         console.log('   • Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY in your environment');
-        console.log('   • Mind will automatically select the best available model');
+        console.log('   • Task will automatically select the best available model');
         console.log('   • The async generator yields all events for real-time processing');
         
     } catch (error) {

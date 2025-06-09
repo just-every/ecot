@@ -73,7 +73,7 @@ export async function runThoughtDelay(): Promise<void> {
     const delayMs = parseInt(thoughtDelay);
     
     if (thoughtDelay && !isNaN(delayMs) && delayMs > 0) {
-        console.log(`[Mind] Thought delay: ${delayMs} seconds`);
+        console.log(`[Task] Thought delay: ${delayMs} seconds`);
         
         // Create a new controller for this delay
         delayAbortController = new AbortController();
@@ -93,7 +93,7 @@ export async function runThoughtDelay(): Promise<void> {
             });
         } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') {
-                console.log('[Mind] Thought delay interrupted');
+                console.log('[Task] Thought delay interrupted');
                 throw error;
             }
             throw error;
@@ -110,8 +110,8 @@ export const setThoughtDelay = withErrorHandling(
     (delay: string): string => {
         validateThoughtDelay(delay);
         thoughtDelay = delay as ThoughtDelay;
-        console.log(`[Mind] Thought delay set to ${delay} seconds`);
-        return thoughtDelay;
+        console.log(`[Task] Thought delay set to ${delay} seconds`);
+        return `Thought delay set to ${thoughtDelay} seconds`;
     },
     'thought_management'
 );

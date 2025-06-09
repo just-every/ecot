@@ -1,7 +1,7 @@
 /**
  * Pause Control Example
  * 
- * This example demonstrates how to use ensemble's pause functionality with Mind.
+ * This example demonstrates how to use ensemble's pause functionality with Task.
  * Shows how to pause/resume LLM requests and listen to pause events.
  */
 
@@ -9,7 +9,7 @@ import { mindTask, pause, resume, isPaused, getPauseController } from '../index.
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
-    console.log('⏸️  Mind Pause Control Example\n');
+    console.log('⏸️  Task Pause Control Example\n');
     
     // Set up pause event listeners
     const controller = getPauseController();
@@ -26,9 +26,9 @@ async function main() {
     const task = 'Count from 1 to 10, but explain what each number represents in different contexts (math, time, sports, etc.)';
     
     try {
-        console.log('Starting Mind with pause control...\n');
+        console.log('Starting Task with pause control...\n');
         
-        // Start the Mind process
+        // Start the Task process
         const mindGenerator = mindTask(agent, task);
         
         // Set up automatic pause/resume for demonstration
@@ -37,7 +37,7 @@ async function main() {
             setTimeout(() => {
                 if (!isPaused()) {
                     pause();
-                    console.log('⏸️  Paused! Notice how Mind waits between iterations.');
+                    console.log('⏸️  Paused! Notice how Task waits between iterations.');
                     
                     // Resume after 5 seconds
                     setTimeout(() => {
@@ -85,8 +85,8 @@ async function main() {
     }
     
     console.log('\n📋 Summary:');
-    console.log('- Mind automatically waits when ensemble is paused');
-    console.log('- No additional pause logic needed in Mind');
+    console.log('- Task automatically waits when ensemble is paused');
+    console.log('- No additional pause logic needed in Task');
     console.log('- Pause state is managed globally by ensemble');
     console.log('- Events continue normally after resume');
 }

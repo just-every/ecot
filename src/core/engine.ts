@@ -1,12 +1,12 @@
 /**
- * Mind Engine - Simplified Version
+ * Task Engine - Simplified Version
  *
- * Mind implementation for LLM orchestration.
+ * Task implementation for LLM orchestration.
  * Provides meta-cognition and thought delays on top of ensemble.
  * Model rotation is handled by ensemble automatically.
  */
 
-import { mindState } from '../state/state.js';
+import { taskState } from '../state/state.js';
 import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
 import { 
@@ -21,13 +21,13 @@ import {
 } from '@just-every/ensemble';
 
 /**
- * Get Mind control tools
+ * Get Task control tools
  */
-function getMindTools(): ToolFunction[] {
+function getTaskTools(): ToolFunction[] {
     return [
         createToolFunction(
             (args: { result: string }) => {
-                console.log('[Mind] Task completed:', args.result);
+                console.log('[Task] Task completed:', args.result);
                 return `Task completed: ${args.result}`;
             },
             'Report that the task has completed successfully',
@@ -43,7 +43,7 @@ function getMindTools(): ToolFunction[] {
         
         createToolFunction(
             (args: { error: string }) => {
-                console.error('[Mind] Task failed:', args.error);
+                console.error('[Task] Task failed:', args.error);
                 return `Task failed: ${args.error}`;
             },
             'Report that you were not able to complete the task',
@@ -69,7 +69,7 @@ function getMindTools(): ToolFunction[] {
  * @example
  * ```typescript
  * import { Agent } from '@just-every/ensemble';
- * import { mindTask } from '@just-every/mind';
+ * import { mindTask } from '@just-every/task';
  * 
  * const agent = new Agent({ 
  *     name: 'MyAgent',
@@ -112,18 +112,18 @@ export async function* mindTask(
         }
     ];
 
-    // Add Mind tools to the agent
-    const mindTools = getMindTools();
+    // Add Task tools to the agent
+    const taskTools = getTaskTools();
     
-    // Clone agent to get AgentDefinition and add Mind tools
+    // Clone agent to get AgentDefinition and add Task tools
     const agentDef = cloneAgent(agent);
-    agentDef.tools = [...mindTools, ...(agent.tools || [])];
+    agentDef.tools = [...taskTools, ...(agent.tools || [])];
 
     // Track completion state
     let isComplete = false;
     
     try {
-        console.log(`[Mind] Starting execution for agent: ${agent.name}`);
+        console.log(`[Task] Starting execution for agent: ${agent.name}`);
         
         // Run the request loop
         let iteration = 0;
@@ -143,16 +143,16 @@ export async function* mindTask(
             }
             
             // Increment request counter for meta-cognition
-            mindState.llmRequestCount++;
+            taskState.llmRequestCount++;
             
             // Check meta-cognition trigger (Mind-specific feature)
-            const metaFrequency = parseInt(mindState.metaFrequency);
-            if (mindState.llmRequestCount % metaFrequency === 0) {
-                console.log(`[Mind] Triggering meta-cognition after ${mindState.llmRequestCount} requests`);
+            const metaFrequency = parseInt(taskState.metaFrequency);
+            if (taskState.llmRequestCount % metaFrequency === 0) {
+                console.log(`[Task] Triggering meta-cognition after ${taskState.llmRequestCount} requests`);
                 try {
                     await spawnMetaThought(agentDef, messages, new Date(startTime));
                 } catch (error) {
-                    console.error('[Mind] Error in meta-cognition:', error);
+                    console.error('[Task] Error in meta-cognition:', error);
                 }
             }
             
@@ -163,7 +163,7 @@ export async function* mindTask(
                 
                 // Log responses
                 if (event.type === 'message_delta' && 'content' in event) {
-                    console.log('[Mind]', event.content);
+                    console.log('[Task]', event.content);
                 }
                 
                 // Handle tool calls
@@ -189,7 +189,7 @@ export async function* mindTask(
         }
 
     } catch (error) {
-        console.error('[Mind] Error running agent:', error);
+        console.error('[Task] Error running agent:', error);
         
         // Yield an error event
         const errorMessage = error instanceof Error ? error.message : String(error);

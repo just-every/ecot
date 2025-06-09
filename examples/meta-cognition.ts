@@ -1,7 +1,7 @@
 /**
  * Meta-cognition Example
  * 
- * This example demonstrates Mind's meta-cognition capabilities.
+ * This example demonstrates Task's meta-cognition capabilities.
  * Shows how to configure meta-cognition frequency and monitor model performance.
  */
 
@@ -9,7 +9,7 @@ import { mindTask, setMetaFrequency, setModelScore, listModelScores } from '../i
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
-    console.log('🧠 Mind Meta-cognition Example\n');
+    console.log('🧠 Task Meta-cognition Example\n');
     
     // Configure meta-cognition to trigger every 5 LLM requests
     setMetaFrequency('5');
@@ -34,7 +34,7 @@ async function main() {
     const task = 'Solve this step by step: If a train travels 120 km in 2 hours, and then 180 km in the next 3 hours, what is the average speed for the entire journey?';
     
     try {
-        console.log('Starting Mind with meta-cognition...\n');
+        console.log('Starting Task with meta-cognition...\n');
         
         let llmRequestCount = 0;
         

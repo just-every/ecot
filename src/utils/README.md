@@ -1,6 +1,6 @@
-# Mind Utilities
+# Task Utilities
 
-This directory contains utility modules that support the Mind system.
+This directory contains utility modules that support the Task system.
 
 ## Module Overview
 
@@ -12,8 +12,8 @@ System-wide constants and configuration values.
 
 ### `errors.ts`
 Simplified error handling system.
-- `MindError` - Structured error class with component context
-- `MindValidationError` - Specialized validation error class
+- `TaskError` - Structured error class with component context
+- `TaskValidationError` - Specialized validation error class
 - `withErrorHandling` - Utility wrapper for error-prone functions
 
 ### `validation.ts`
@@ -24,25 +24,25 @@ Input validation for system parameters.
 
 ## Current Structure
 
-Mind has been significantly simplified from its original design. The utilities now focus on:
+Task has been significantly simplified from its original design. The utilities now focus on:
 
 1. **Constants**: Core system values and types
 2. **Validation**: Parameter validation with clear error messages  
 3. **Error Handling**: Structured errors for debugging
 
-## Usage in Mind
+## Usage in Task
 
-The utilities support Mind's simplified API:
+The utilities support Task's simplified API:
 
 ```typescript
-import { mindTask, setMetaFrequency, setThoughtDelay } from '@just-every/mind';
+import { mindTask, setMetaFrequency, setThoughtDelay } from '@just-every/task';
 import { Agent } from '@just-every/ensemble';
 
 // Set system parameters
 setMetaFrequency('10'); // Every 10 LLM requests
 setThoughtDelay('2');   // 2 second delays
 
-// Run Mind
+// Run Task
 const agent = new Agent({ name: 'MyBot' });
 for await (const event of mindTask(agent, 'Task description')) {
     console.log(event);

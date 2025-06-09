@@ -1,7 +1,7 @@
 /**
- * Mind State management
+ * Task State management
  *
- * This module manages the state for the Mind system.
+ * This module manages the state for the Task system.
  * It provides a central state container and methods to modify the system's behavior at runtime.
  */
 
@@ -13,9 +13,9 @@ import { validateModelScore, validateMetaFrequency } from '../utils/validation.j
 import { withErrorHandling } from '../utils/errors.js';
 
 /**
- * State container for the Mind system
+ * State container for the Task system
  */
-export interface MindState {
+export interface TaskState {
     /** Counter for LLM requests to trigger meta-cognition */
     llmRequestCount: number;
 
@@ -34,24 +34,24 @@ export type { MetaFrequency, ThoughtDelay };
 export type { ToolFunction, Agent } from '@just-every/ensemble';
 
 /**
- * Global state container for the Mind system
+ * Global state container for the Task system
  * 
  * Manages meta-cognition frequency, model performance scores, and disabled models.
- * This state persists across Mind executions and influences model selection behavior.
- * Changes to this state affect all subsequent Mind operations.
+ * This state persists across Task executions and influences model selection behavior.
+ * Changes to this state affect all subsequent Task operations.
  * 
  * @example
  * ```typescript
  * // Check current state
- * console.log(`LLM requests: ${mindState.llmRequestCount}`);
- * console.log(`Meta frequency: ${mindState.metaFrequency}`);
- * console.log(`Disabled models: ${mindState.disabledModels.size}`);
+ * console.log(`LLM requests: ${taskState.llmRequestCount}`);
+ * console.log(`Meta frequency: ${taskState.metaFrequency}`);
+ * console.log(`Disabled models: ${taskState.disabledModels.size}`);
  * 
  * // View model scores
  * console.log(listModelScores());
  * ```
  */
-export const mindState: MindState = {
+export const taskState: TaskState = {
     llmRequestCount: 0,
     metaFrequency: DEFAULT_META_FREQUENCY,
     disabledModels: new Set<string>(),
@@ -74,10 +74,10 @@ export const mindState: MindState = {
  * ```
  */
 export function listDisabledModels(): string {
-    if (mindState.disabledModels.size === 0) {
+    if (taskState.disabledModels.size === 0) {
         return 'No models are currently disabled.';
     } else {
-        const models = Array.from(mindState.disabledModels);
+        const models = Array.from(taskState.disabledModels);
         return `${models.join('\n')}\n${models.length} models disabled`;
     }
 }
@@ -97,11 +97,11 @@ export function listDisabledModels(): string {
  * ```
  */
 export function listModelScores(): string {
-    if (Object.keys(mindState.modelScores).length === 0) {
+    if (Object.keys(taskState.modelScores).length === 0) {
         return '- No model scores set';
     }
     
-    return Object.entries(mindState.modelScores)
+    return Object.entries(taskState.modelScores)
         .map(([modelId, score]) => `- ${modelId}: ${score}`)
         .join('\n');
 }
@@ -114,14 +114,14 @@ export function listModelScores(): string {
 export const setMetaFrequency = withErrorHandling(
     (frequency: string): string => {
         validateMetaFrequency(frequency);
-        mindState.metaFrequency = frequency as MetaFrequency;
-        console.log(`[Mind] Meta-cognition frequency set to ${frequency}`);
-        return mindState.metaFrequency;
+        taskState.metaFrequency = frequency as MetaFrequency;
+        console.log(`[Task] Meta-cognition frequency set to ${frequency}`);
+        return taskState.metaFrequency;
     },
     'state_management'
 );
 
-// getMetaFrequency removed - only used in tests, frequency can be accessed via mindState.metaFrequency
+// getMetaFrequency removed - only used in tests, frequency can be accessed via taskState.metaFrequency
 
 /**
  * Set the score for a specific model
@@ -136,8 +136,8 @@ export const setModelScore = withErrorHandling(
         
         // Parse and store the score
         const numericScore = Number(score);
-        mindState.modelScores[modelId] = numericScore;
-        console.log(`[Mind] Model ${modelId} score set to ${numericScore}`);
+        taskState.modelScores[modelId] = numericScore;
+        console.log(`[Task] Model ${modelId} score set to ${numericScore}`);
         
         return `Score set to ${numericScore}`;
     },
@@ -157,11 +157,11 @@ export function disableModel(modelId: string, disabled?: boolean): string {
     
     if (disabled === false) {
         // Inline enableModel functionality
-        const wasDisabled = mindState.disabledModels.has(modelId);
-        mindState.disabledModels.delete(modelId);
+        const wasDisabled = taskState.disabledModels.has(modelId);
+        taskState.disabledModels.delete(modelId);
         return wasDisabled ? `Model ${modelId} enabled` : `Model ${modelId} was not disabled`;
     }
-    mindState.disabledModels.add(modelId);
+    taskState.disabledModels.add(modelId);
     return `Model ${modelId} disabled`;
 }
 
@@ -173,14 +173,14 @@ export function disableModel(modelId: string, disabled?: boolean): string {
  * @returns The model's score (0-100)
  */
 export function getModelScore(modelId: string): number {
-    // First check if we have a score in mindState
-    const score = mindState.modelScores[modelId];
+    // First check if we have a score in taskState
+    const score = taskState.modelScores[modelId];
     
     if (score !== undefined) {
         return score;
     }
 
-    // If not in mindState, look up the model entry
+    // If not in taskState, look up the model entry
     const modelEntry = findModel(modelId);
 
     if (modelEntry?.score !== undefined) {
@@ -199,31 +199,31 @@ export function incrementLLMRequestCount(): {
     count: number;
     shouldTriggerMeta: boolean;
 } {
-    mindState.llmRequestCount++;
-    const frequency = parseInt(mindState.metaFrequency);
+    taskState.llmRequestCount++;
+    const frequency = parseInt(taskState.metaFrequency);
     
     // Validate frequency to avoid division by zero
     if (isNaN(frequency) || frequency <= 0) {
-        console.error(`[Mind] Invalid meta frequency: ${mindState.metaFrequency}. Using default.`);
-        mindState.metaFrequency = DEFAULT_META_FREQUENCY;
+        console.error(`[Task] Invalid meta frequency: ${taskState.metaFrequency}. Using default.`);
+        taskState.metaFrequency = DEFAULT_META_FREQUENCY;
         const defaultFreq = parseInt(DEFAULT_META_FREQUENCY);
-        const shouldTriggerMeta = mindState.llmRequestCount % defaultFreq === 0;
+        const shouldTriggerMeta = taskState.llmRequestCount % defaultFreq === 0;
         return {
-            count: mindState.llmRequestCount,
+            count: taskState.llmRequestCount,
             shouldTriggerMeta,
         };
     }
     
-    const shouldTriggerMeta = mindState.llmRequestCount % frequency === 0;
+    const shouldTriggerMeta = taskState.llmRequestCount % frequency === 0;
 
     if (shouldTriggerMeta) {
         console.log(
-            `[Mind] Meta-cognition trigger point reached at ${mindState.llmRequestCount} LLM requests`
+            `[Task] Meta-cognition trigger point reached at ${taskState.llmRequestCount} LLM requests`
         );
     }
 
     return {
-        count: mindState.llmRequestCount,
+        count: taskState.llmRequestCount,
         shouldTriggerMeta,
     };
 }
@@ -232,6 +232,6 @@ export function incrementLLMRequestCount(): {
  * Reset the LLM request counter
  */
 export function resetLLMRequestCount(): void {
-    mindState.llmRequestCount = 0;
+    taskState.llmRequestCount = 0;
 }
 

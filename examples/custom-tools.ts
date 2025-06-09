@@ -1,7 +1,7 @@
 /**
  * Custom Tools Example
  * 
- * This example demonstrates how to add custom tools to a Mind agent.
+ * This example demonstrates how to add custom tools to a Task agent.
  * Shows how to create tools using @just-every/ensemble's tool system.
  */
 
@@ -9,7 +9,7 @@ import { mindTask } from '../index.js';
 import { Agent, createToolFunction } from '@just-every/ensemble';
 
 async function main() {
-    console.log('🔧 Mind Custom Tools Example\n');
+    console.log('🔧 Task Custom Tools Example\n');
     
     // Create custom tools
     const calculateTool = createToolFunction(
@@ -68,7 +68,7 @@ async function main() {
     const task = 'I need to plan a trip. Can you calculate how much 3 nights at $150 per night would cost, and also tell me the weather in Tokyo?';
     
     try {
-        console.log('Starting Mind with custom tools...\n');
+        console.log('Starting Task with custom tools...\n');
         
         for await (const event of mindTask(agent, task)) {
             // Show message content

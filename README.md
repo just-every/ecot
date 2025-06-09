@@ -1,12 +1,12 @@
-@just-every/mind
+@just-every/task
 
-Mind adds meta-cognition, adaptive model rotation and cost tracking to your @just-every/ensemble agents in a single call.
+Task adds meta-cognition, adaptive model rotation and cost tracking to your @just-every/ensemble agents in a single call.
 
 ⸻
 
 🚀 Quick install
 
-npm install @just-every/mind
+npm install @just-every/task
 
 ⸻
 
@@ -21,9 +21,9 @@ export GOOGLE_API_KEY="…"
 
 ⸻
 
-⚡ Hello Mind
+⚡ Hello Task
 
-import { mindTask } from "@just-every/mind";
+import { mindTask } from "@just-every/task";
 import { Agent } from "@just-every/ensemble";
 
 const agent = new Agent({ modelClass: "reasoning" });
@@ -32,11 +32,11 @@ const stream = mindTask(agent,
   "Review this function: function add(a, b) { return a + b; }"
 );
 
-Mind picks the best model, runs until the task is done, and logs every decision.
+Task picks the best model, runs until the task is done, and logs every decision.
 
 ⸻
 
-🎯 Why Mind?
+🎯 Why Task?
 	•	Auto model rotation – performance-based, cost-aware.
 	•	Meta-cognition – agents reflect & self-correct.
 	•	Tool wiring – any Ensemble tool, zero boilerplate.

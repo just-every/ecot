@@ -79,7 +79,7 @@ Demonstrates ensemble's pause/resume functionality with Mind.
 
 ### Basic Usage
 ```typescript
-import { mindTask } from '@just-every/mind';
+import { mindTask } from '@just-every/task';
 import { Agent } from '@just-every/ensemble';
 
 const agent = new Agent({
@@ -98,7 +98,7 @@ for await (const event of mindTask(agent, 'Solve this problem')) {
 
 ### Meta-cognition Control
 ```typescript
-import { setMetaFrequency, setModelScore, listModelScores } from '@just-every/mind';
+import { setMetaFrequency, setModelScore, listModelScores } from '@just-every/task';
 
 // Run meta-cognition every 5 LLM calls
 setMetaFrequency('5');
@@ -113,7 +113,7 @@ console.log(listModelScores());
 
 ### Thought Delays
 ```typescript
-import { setThoughtDelay, getThoughtDelay } from '@just-every/mind';
+import { setThoughtDelay, getThoughtDelay } from '@just-every/task';
 
 // Set 2-second delay between thoughts
 setThoughtDelay('2');
@@ -124,7 +124,7 @@ const currentDelay = getThoughtDelay(); // Returns '2'
 
 ### Pause Control
 ```typescript
-import { pause, resume, isPaused, getPauseController } from '@just-every/mind';
+import { pause, resume, isPaused, getPauseController } from '@just-every/task';
 
 // Pause all LLM requests globally
 pause();
@@ -186,7 +186,7 @@ The `mindTask` async generator yields various event types:
 Mind maintains global state that persists across executions:
 
 ```typescript
-import { mindState, resetLLMRequestCount } from '@just-every/mind';
+import { mindState, resetLLMRequestCount } from '@just-every/task';
 
 // Check current state
 console.log(`LLM requests: ${mindState.llmRequestCount}`);

@@ -1,5 +1,5 @@
 /**
- * Shared constants for the Mind system
+ * Shared constants for the Task system
  */
 
 /**

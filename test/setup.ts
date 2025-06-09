@@ -3,7 +3,7 @@
  */
 
 import { vi, beforeAll } from 'vitest';
-import { mindState, setModelScore } from '../src/state/state.js';
+import { taskState, setModelScore } from '../src/state/state.js';
 
 // Setup global mocks before all tests
 beforeAll(() => {
@@ -16,7 +16,7 @@ beforeAll(() => {
     setModelScore('gpt-4o-mini', '60');
     
     // Clear disabled models
-    mindState.disabledModels.clear();
+    taskState.disabledModels.clear();
 });
 
 // Export common mocks

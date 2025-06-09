@@ -39,7 +39,7 @@ npm run build && node dist/examples/simple-mind.js
 
 ## Architecture Overview
 
-Mind is an advanced LLM orchestration system built on top of `@just-every/ensemble`. The architecture consists of several key components:
+Task is an advanced LLM orchestration system built on top of `@just-every/ensemble`. The architecture consists of several key components:
 
 ### Core Flow
 1. **Simple API** (`engine.ts`) - Provides minimal setup interface for most users
@@ -47,7 +47,7 @@ Mind is an advanced LLM orchestration system built on top of `@just-every/ensemb
    - Integrates with ensemble's pause/resume capabilities
    - Automatically manages meta-cognition and thought delays
 
-2. **Mind Tools** - Core execution tools
+2. **Task Tools** - Core execution tools
    - Integrated directly in engine.ts
    - Provides task completion tools (`task_complete`, `task_fatal_error`)
    - Coordinates meta-cognition and thought delays
@@ -76,7 +76,7 @@ Mind is an advanced LLM orchestration system built on top of `@just-every/ensemb
 
 - **Agent**: Uses ensemble's Agent directly
 - **MindState**: State container for meta-cognition and model management
-- **mindTask**: Single entry point for all Mind functionality
+- **mindTask**: Single entry point for all Task functionality
 
 ### Integration Pattern
 

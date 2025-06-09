@@ -111,7 +111,7 @@ describe('Thought Utils', () => {
             setThoughtDelay('2');
             await runThoughtDelay();
             
-            expect(consoleLogSpy).toHaveBeenCalledWith('[Mind] Thought delay: 2 seconds');
+            expect(consoleLogSpy).toHaveBeenCalledWith('[Task] Thought delay: 2 seconds');
             
             consoleLogSpy.mockRestore();
         });
@@ -132,7 +132,7 @@ describe('Thought Utils', () => {
             // Test set_thought_delay
             const setDelayTool = tools.find(t => t.definition.function.name === 'set_thought_delay');
             const result = setDelayTool!.function('4');
-            expect(result).toBe('4');
+            expect(result).toBe('Thought delay set to 4 seconds');
             expect(getThoughtDelay()).toBe('4');
         });
 
@@ -187,7 +187,7 @@ describe('Thought Utils', () => {
             await Promise.all([delay1, delay2].map(p => p.catch(() => {})));
             
             // Should have logged the delay message
-            expect(consoleLogSpy).toHaveBeenCalledWith('[Mind] Thought delay: 2 seconds');
+            expect(consoleLogSpy).toHaveBeenCalledWith('[Task] Thought delay: 2 seconds');
             
             consoleLogSpy.mockRestore();
         });

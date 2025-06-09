@@ -1,19 +1,19 @@
 {
-  "name": "@just-every/mind",
+  "name": "@just-every/task",
   "version": "0.2.3",
-  "description": "Mind - Advanced LLM orchestration with meta-cognition",
+  "description": "Task - A Thoughtful Task Loop",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/just-every/mind.git"
+    "url": "git+https://github.com/just-every/task.git"
   },
   "keywords": [
     "llm",
     "ai",
-    "mind",
+    "task",
     "ensemble",
     "chain-of-thought",
     "meta-cognition",
@@ -30,9 +30,9 @@
   "author": "just-every",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/just-every/mind/issues"
+    "url": "https://github.com/just-every/task/issues"
   },
-  "homepage": "https://github.com/just-every/mind#readme",
+  "homepage": "https://github.com/just-every/task#readme",
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
@@ -54,7 +54,7 @@
     "example:meta": "npm run build && node --experimental-vm-modules examples/meta-cognition.js",
     "dev": "npm run build:watch",
     "start": "npm run example",
-    "debug": "npm run build && MIND_DEBUG=true MIND_LOG_LEVEL=debug npm run example",
+    "debug": "npm run build && TASK_DEBUG=true TASK_LOG_LEVEL=debug npm run example",
     "performance": "npm run build && npm run test:performance",
     "release": "./scripts/release.sh",
     "release:patch": "./scripts/release.sh patch",
