@@ -1,5 +1,5 @@
 /**
- * Test utilities for MECH tests
+ * Test utilities for Mind tests
  * Simplifies mocking of ensemble's request
  */
 

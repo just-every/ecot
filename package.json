@@ -1,19 +1,19 @@
 {
-  "name": "@just-every/mech",
+  "name": "@just-every/mind",
   "version": "0.2.3",
-  "description": "MECH - Advanced LLM orchestration with meta-cognition",
+  "description": "Mind - Advanced LLM orchestration with meta-cognition",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/just-every/MECH.git"
+    "url": "git+https://github.com/just-every/mind.git"
   },
   "keywords": [
     "llm",
     "ai",
-    "mech",
+    "mind",
     "ensemble",
     "chain-of-thought",
     "meta-cognition",
@@ -30,9 +30,9 @@
   "author": "just-every",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/just-every/MECH/issues"
+    "url": "https://github.com/just-every/mind/issues"
   },
-  "homepage": "https://github.com/just-every/MECH#readme",
+  "homepage": "https://github.com/just-every/mind#readme",
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
@@ -50,12 +50,11 @@
     "prepare": "npm run build",
     "prepublishOnly": "npm run validate",
     "example": "npm run build && node --experimental-vm-modules dist/examples/basic-example.js",
-    "example:simple": "npm run build && node --experimental-vm-modules examples/simple-mech.js",
-    "example:memory": "npm run build && node --experimental-vm-modules examples/mech-with-memory.js",
+    "example:simple": "npm run build && node --experimental-vm-modules examples/simple-mind.js",
     "example:meta": "npm run build && node --experimental-vm-modules examples/meta-cognition.js",
     "dev": "npm run build:watch",
     "start": "npm run example",
-    "debug": "npm run build && MECH_DEBUG=true MECH_LOG_LEVEL=debug npm run example",
+    "debug": "npm run build && MIND_DEBUG=true MIND_LOG_LEVEL=debug npm run example",
     "performance": "npm run build && npm run test:performance",
     "release": "./scripts/release.sh",
     "release:patch": "./scripts/release.sh patch",

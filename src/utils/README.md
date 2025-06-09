@@ -1,6 +1,6 @@
-# MECH Utilities
+# Mind Utilities
 
-This directory contains utility modules that support the MECH (Meta-cognition Ensemble Chain-of-thought Hierarchy) system.
+This directory contains utility modules that support the Mind system.
 
 ## Module Overview
 
@@ -12,8 +12,8 @@ System-wide constants and configuration values.
 
 ### `errors.ts`
 Simplified error handling system.
-- `MechError` - Structured error class with component context
-- `MechValidationError` - Specialized validation error class
+- `MindError` - Structured error class with component context
+- `MindValidationError` - Specialized validation error class
 - `withErrorHandling` - Utility wrapper for error-prone functions
 
 ### `validation.ts`
@@ -24,27 +24,27 @@ Input validation for system parameters.
 
 ## Current Structure
 
-MECH has been significantly simplified from its original design. The utilities now focus on:
+Mind has been significantly simplified from its original design. The utilities now focus on:
 
 1. **Constants**: Core system values and types
 2. **Validation**: Parameter validation with clear error messages  
 3. **Error Handling**: Structured errors for debugging
 
-## Usage in MECH
+## Usage in Mind
 
-The utilities support MECH's simplified API:
+The utilities support Mind's simplified API:
 
 ```typescript
-import { runMECH, setMetaFrequency, setThoughtDelay } from '@just-every/mech';
+import { mindTask, setMetaFrequency, setThoughtDelay } from '@just-every/mind';
 import { Agent } from '@just-every/ensemble';
 
 // Set system parameters
 setMetaFrequency('10'); // Every 10 LLM requests
 setThoughtDelay('2');   // 2 second delays
 
-// Run MECH
+// Run Mind
 const agent = new Agent({ name: 'MyBot' });
-for await (const event of runMECH(agent, 'Task description')) {
+for await (const event of mindTask(agent, 'Task description')) {
     console.log(event);
 }
 ```

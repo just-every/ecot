@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawnMetaThought } from '../src/core/meta_cognition.js';
-import { mechState, setMetaFrequency, setModelScore, disableModel } from '../src/state/state.js';
+import { mindState, setMetaFrequency, setModelScore, disableModel } from '../src/state/state.js';
 import type { ResponseInput } from '@just-every/ensemble';
 
 // Mock ensemble imports
@@ -65,11 +65,11 @@ describe('Meta-cognition', () => {
 
     beforeEach(() => {
         // Reset state
-        mechState.metaFrequency = '5';
-        mechState.llmRequestCount = 0;
-        mechState.disabledModels.clear();
-        Object.keys(mechState.modelScores).forEach(key => {
-            delete mechState.modelScores[key];
+        mindState.metaFrequency = '5';
+        mindState.llmRequestCount = 0;
+        mindState.disabledModels.clear();
+        Object.keys(mindState.modelScores).forEach(key => {
+            delete mindState.modelScores[key];
         });
         
         // Clear all mocks
@@ -116,8 +116,8 @@ describe('Meta-cognition', () => {
             
             await spawnMetaThought(mockAgent, mockMessages, startTime);
             
-            expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Spawning metacognition process');
-            expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Metacognition process completed');
+            expect(consoleLogSpy).toHaveBeenCalledWith('[Mind] Spawning metacognition process');
+            expect(consoleLogSpy).toHaveBeenCalledWith('[Mind] Metacognition process completed');
         });
 
         it('should create a metacognition agent', async () => {
@@ -140,10 +140,10 @@ describe('Meta-cognition', () => {
             const startTime = new Date();
             
             // Set up some state AFTER the mock is cleared
-            mechState.llmRequestCount = 25;
-            mechState.metaFrequency = '10';
-            mechState.modelScores['gpt-4'] = 85;
-            mechState.disabledModels.add('claude-3');
+            mindState.llmRequestCount = 25;
+            mindState.metaFrequency = '10';
+            mindState.modelScores['gpt-4'] = 85;
+            mindState.disabledModels.add('claude-3');
             
             await spawnMetaThought(mockAgent, mockMessages, startTime);
             
@@ -197,7 +197,7 @@ describe('Meta-cognition', () => {
                 .rejects.toThrow('Network error');
             
             expect(consoleErrorSpy).toHaveBeenCalledWith(
-                '[MECH] Error in metacognition:', 
+                '[Mind] Error in metacognition:', 
                 expect.any(Error)
             );
         });

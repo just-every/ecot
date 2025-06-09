@@ -1,15 +1,15 @@
 /**
  * Custom Tools Example
  * 
- * This example demonstrates how to add custom tools to a MECH agent.
+ * This example demonstrates how to add custom tools to a Mind agent.
  * Shows how to create tools using @just-every/ensemble's tool system.
  */
 
-import { runMECH } from '../index.js';
+import { mindTask } from '../index.js';
 import { Agent, createToolFunction } from '@just-every/ensemble';
 
 async function main() {
-    console.log('🔧 MECH Custom Tools Example\n');
+    console.log('🔧 Mind Custom Tools Example\n');
     
     // Create custom tools
     const calculateTool = createToolFunction(
@@ -68,9 +68,9 @@ async function main() {
     const task = 'I need to plan a trip. Can you calculate how much 3 nights at $150 per night would cost, and also tell me the weather in Tokyo?';
     
     try {
-        console.log('Starting MECH with custom tools...\n');
+        console.log('Starting Mind with custom tools...\n');
         
-        for await (const event of runMECH(agent, task)) {
+        for await (const event of mindTask(agent, task)) {
             // Show message content
             if (event.type === 'message_delta' && 'content' in event) {
                 process.stdout.write(event.content);

@@ -1,15 +1,15 @@
 /**
  * Pause Control Example
  * 
- * This example demonstrates how to use ensemble's pause functionality with MECH.
+ * This example demonstrates how to use ensemble's pause functionality with Mind.
  * Shows how to pause/resume LLM requests and listen to pause events.
  */
 
-import { runMECH, pause, resume, isPaused, getPauseController } from '../index.js';
+import { mindTask, pause, resume, isPaused, getPauseController } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
-    console.log('⏸️  MECH Pause Control Example\n');
+    console.log('⏸️  Mind Pause Control Example\n');
     
     // Set up pause event listeners
     const controller = getPauseController();
@@ -26,10 +26,10 @@ async function main() {
     const task = 'Count from 1 to 10, but explain what each number represents in different contexts (math, time, sports, etc.)';
     
     try {
-        console.log('Starting MECH with pause control...\n');
+        console.log('Starting Mind with pause control...\n');
         
-        // Start the MECH process
-        const mechGenerator = runMECH(agent, task);
+        // Start the Mind process
+        const mindGenerator = mindTask(agent, task);
         
         // Set up automatic pause/resume for demonstration
         setTimeout(() => {
@@ -37,7 +37,7 @@ async function main() {
             setTimeout(() => {
                 if (!isPaused()) {
                     pause();
-                    console.log('⏸️  Paused! Notice how MECH waits between iterations.');
+                    console.log('⏸️  Paused! Notice how Mind waits between iterations.');
                     
                     // Resume after 5 seconds
                     setTimeout(() => {
@@ -50,7 +50,7 @@ async function main() {
         
         let eventCount = 0;
         
-        for await (const event of mechGenerator) {
+        for await (const event of mindGenerator) {
             eventCount++;
             
             // Show message content
@@ -85,8 +85,8 @@ async function main() {
     }
     
     console.log('\n📋 Summary:');
-    console.log('- MECH automatically waits when ensemble is paused');
-    console.log('- No additional pause logic needed in MECH');
+    console.log('- Mind automatically waits when ensemble is paused');
+    console.log('- No additional pause logic needed in Mind');
     console.log('- Pause state is managed globally by ensemble');
     console.log('- Events continue normally after resume');
 }

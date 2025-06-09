@@ -1,17 +1,17 @@
 /**
- * MECH Error Handling System
+ * Mind Error Handling System
  * 
  * Provides structured error handling for better debugging and user experience
  */
 
-export type MechErrorComponent = 
+export type MindErrorComponent = 
     | 'validation'
     | 'state_management'
     | 'thought_management';
 
-export interface MechErrorContext {
+export interface MindErrorContext {
     /** Component where the error occurred */
-    component: MechErrorComponent;
+    component: MindErrorComponent;
     /** Agent name if applicable */
     agentName?: string;
     /** Model ID if applicable */
@@ -23,10 +23,10 @@ export interface MechErrorContext {
 }
 
 /**
- * Structured error class for MECH system
+ * Structured error class for Mind system
  */
-export class MechError extends Error {
-    public readonly component: MechErrorComponent;
+export class MindError extends Error {
+    public readonly component: MindErrorComponent;
     public readonly agentName?: string;
     public readonly modelId?: string;
     public readonly task?: string;
@@ -36,13 +36,13 @@ export class MechError extends Error {
 
     constructor(
         message: string,
-        context: MechErrorContext,
+        context: MindErrorContext,
         originalError?: Error
     ) {
-        const fullMessage = `[MECH:${context.component}] ${message}`;
+        const fullMessage = `[Mind:${context.component}] ${message}`;
         super(fullMessage);
         
-        this.name = 'MechError';
+        this.name = 'MindError';
         this.component = context.component;
         this.agentName = context.agentName;
         this.modelId = context.modelId;
@@ -53,7 +53,7 @@ export class MechError extends Error {
 
         // Maintain stack trace
         if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, MechError);
+            Error.captureStackTrace(this, MindError);
         }
     }
 
@@ -64,27 +64,27 @@ export class MechError extends Error {
 /**
  * Validation error - thrown when input validation fails
  */
-export class MechValidationError extends MechError {
+export class MindValidationError extends MindError {
     constructor(
         message: string,
-        context: Omit<MechErrorContext, 'component'>,
+        context: Omit<MindErrorContext, 'component'>,
         originalError?: Error
     ) {
         super(message, { ...context, component: 'validation' }, originalError);
-        this.name = 'MechValidationError';
+        this.name = 'MindValidationError';
     }
 }
 
 // Specialized error classes and validation functions removed
-// Only MechError and MechValidationError are used in the simplified API
+// Only MindError and MindValidationError are used in the simplified API
 
 /**
  * Utility to wrap functions with error handling
  */
 export function withErrorHandling<T extends (...args: any[]) => any>(
     fn: T,
-    component: MechErrorComponent,
-    context?: Partial<MechErrorContext>
+    component: MindErrorComponent,
+    context?: Partial<MindErrorContext>
 ): T {
     return ((...args: Parameters<T>) => {
         try {
@@ -93,7 +93,7 @@ export function withErrorHandling<T extends (...args: any[]) => any>(
             // Handle async functions
             if (result instanceof Promise) {
                 return result.catch((error: any) => {
-                    throw new MechError(
+                    throw new MindError(
                         `Async operation failed: ${error.message || String(error)}`,
                         { component, ...context },
                         error instanceof Error ? error : new Error(String(error))
@@ -103,7 +103,7 @@ export function withErrorHandling<T extends (...args: any[]) => any>(
             
             return result;
         } catch (error: any) {
-            throw new MechError(
+            throw new MindError(
                 `Operation failed: ${error.message || String(error)}`,
                 { component, ...context },
                 error instanceof Error ? error : new Error(String(error))

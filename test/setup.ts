@@ -1,9 +1,9 @@
 /**
- * Global test setup for MECH tests
+ * Global test setup for Mind tests
  */
 
 import { vi, beforeAll } from 'vitest';
-import { mechState, setModelScore } from '../src/state/state.js';
+import { mindState, setModelScore } from '../src/state/state.js';
 
 // Setup global mocks before all tests
 beforeAll(() => {
@@ -16,7 +16,7 @@ beforeAll(() => {
     setModelScore('gpt-4o-mini', '60');
     
     // Clear disabled models
-    mechState.disabledModels.clear();
+    mindState.disabledModels.clear();
 });
 
 // Export common mocks

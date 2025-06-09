@@ -111,7 +111,7 @@ describe('Thought Utils', () => {
             setThoughtDelay('2');
             await runThoughtDelay();
             
-            expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Thought delay: 2 seconds');
+            expect(consoleLogSpy).toHaveBeenCalledWith('[Mind] Thought delay: 2 seconds');
             
             consoleLogSpy.mockRestore();
         });
@@ -187,7 +187,7 @@ describe('Thought Utils', () => {
             await Promise.all([delay1, delay2].map(p => p.catch(() => {})));
             
             // Should have logged the delay message
-            expect(consoleLogSpy).toHaveBeenCalledWith('[MECH] Thought delay: 2 seconds');
+            expect(consoleLogSpy).toHaveBeenCalledWith('[Mind] Thought delay: 2 seconds');
             
             consoleLogSpy.mockRestore();
         });

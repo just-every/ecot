@@ -1,15 +1,15 @@
 /**
- * Simple MECH Example
+ * Simple Mind Example
  * 
- * This example shows the simplest way to use MECH with minimal setup.
- * MECH now handles LLM communication internally through the @just-every/ensemble package.
+ * This example shows the simplest way to use Mind with minimal setup.
+ * Mind handles LLM communication internally through the @just-every/ensemble package.
  */
 
-import { runMECH } from '../index.js';
+import { mindTask } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
-    console.log('🤖 Simple MECH Example\n');
+    console.log('🤖 Simple Mind Example\n');
     console.log('Note: This example requires API keys to be configured in your environment.\n');
     
     // Create agent using ensemble's Agent class
@@ -22,8 +22,8 @@ async function main() {
     const task = 'What is the meaning of life?';
     
     try {
-        console.log('Starting MECH...\n');
-        console.log('ℹ️  MECH will automatically handle:');
+        console.log('Starting Mind...\n');
+        console.log('ℹ️  Mind will automatically handle:');
         console.log('   • LLM selection and rotation');
         console.log('   • Model performance tracking');
         console.log('   • Meta-cognition');
@@ -32,7 +32,7 @@ async function main() {
         let startTime = Date.now();
         let completionResult = '';
         
-        for await (const event of runMECH(agent, task)) {
+        for await (const event of mindTask(agent, task)) {
             // Handle different event types
             if (event.type === 'message_delta' && 'content' in event) {
                 process.stdout.write(event.content);
@@ -46,7 +46,7 @@ async function main() {
         
         const duration = (Date.now() - startTime) / 1000;
         
-        console.log('\n\n✅ MECH Execution Complete:');
+        console.log('\n\n✅ Mind Execution Complete:');
         console.log('-'.repeat(50));
         console.log(`Duration: ${duration.toFixed(2)}s`);
         
@@ -56,7 +56,7 @@ async function main() {
         
         console.log('\n💡 Tips:');
         console.log('   • Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY in your environment');
-        console.log('   • MECH will automatically select the best available model');
+        console.log('   • Mind will automatically select the best available model');
         console.log('   • The async generator yields all events for real-time processing');
         
     } catch (error) {

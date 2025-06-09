@@ -34,25 +34,25 @@ npm run release:major  # Major version bump (1.0.1 -> 2.0.0)
 
 ### Examples
 ```bash
-npm run build && node dist/examples/simple-mech.js
+npm run build && node dist/examples/simple-mind.js
 ```
 
 ## Architecture Overview
 
-MECH is an advanced LLM orchestration system built on top of `@just-every/ensemble`. The architecture consists of several key components:
+Mind is an advanced LLM orchestration system built on top of `@just-every/ensemble`. The architecture consists of several key components:
 
 ### Core Flow
-1. **Simple API** (`simple.ts`) - Provides minimal setup interface for most users
-   - `runMECH()` - Unified function for both basic execution and memory features
-   - Memory features automatically enabled when `embed` function is provided
-   - Automatically creates full `MechContext` from minimal options
+1. **Simple API** (`engine.ts`) - Provides minimal setup interface for most users
+   - `mindTask()` - Unified function for execution
+   - Integrates with ensemble's pause/resume capabilities
+   - Automatically manages meta-cognition and thought delays
 
-2. **MECH Tools** (`mech_tools.ts`) - Core execution engine
-   - Manages the main execution loop
-   - Coordinates model rotation, meta-cognition, and thought delays
+2. **Mind Tools** - Core execution tools
+   - Integrated directly in engine.ts
    - Provides task completion tools (`task_complete`, `task_fatal_error`)
+   - Coordinates meta-cognition and thought delays
 
-3. **State Management** (`mech_state.ts`) - Global state and configuration
+3. **State Management** (`state.ts`) - Global state and configuration
    - Tracks LLM request counts for meta-cognition triggers
    - Manages model scores and disabled models
    - Configurable meta-frequency (5, 10, 20, or 40 requests)
@@ -74,15 +74,14 @@ MECH is an advanced LLM orchestration system built on top of `@just-every/ensemb
 
 ### Key Interfaces
 
-- **MechAgent**: Minimal agent interface requiring only name, agent_id, and basic methods
-- **MechContext**: Full context with all required functions (most provided by internal utils)
-- **RunMechOptions**: Unified options for simple API - includes optional memory parameters
+- **Agent**: Uses ensemble's Agent directly
+- **MindState**: State container for meta-cognition and model management
+- **mindTask**: Single entry point for all Mind functionality
 
 ### Integration Pattern
 
 The system expects users to provide:
-1. An agent (can be as simple as `{ name: 'MyAgent' }`)
+1. An agent (from `@just-every/ensemble`)
 2. A task description
-3. A `runAgent` function that calls their LLM
 
-Everything else (history management, cost tracking, tool creation, etc.) is handled internally through `createFullContext()` in `utils/internal_utils.ts`.
+Everything else (meta-cognition, thought delays, model rotation via ensemble) is handled automatically.

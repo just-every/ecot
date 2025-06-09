@@ -1,15 +1,15 @@
 /**
  * Meta-cognition Example
  * 
- * This example demonstrates MECH's meta-cognition capabilities.
+ * This example demonstrates Mind's meta-cognition capabilities.
  * Shows how to configure meta-cognition frequency and monitor model performance.
  */
 
-import { runMECH, setMetaFrequency, setModelScore, listModelScores } from '../index.js';
+import { mindTask, setMetaFrequency, setModelScore, listModelScores } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
-    console.log('🧠 MECH Meta-cognition Example\n');
+    console.log('🧠 Mind Meta-cognition Example\n');
     
     // Configure meta-cognition to trigger every 5 LLM requests
     setMetaFrequency('5');
@@ -34,11 +34,11 @@ async function main() {
     const task = 'Solve this step by step: If a train travels 120 km in 2 hours, and then 180 km in the next 3 hours, what is the average speed for the entire journey?';
     
     try {
-        console.log('Starting MECH with meta-cognition...\n');
+        console.log('Starting Mind with meta-cognition...\n');
         
         let llmRequestCount = 0;
         
-        for await (const event of runMECH(agent, task)) {
+        for await (const event of mindTask(agent, task)) {
             // Track LLM requests to show when meta-cognition triggers
             if (event.type === 'response_start') {
                 llmRequestCount++;

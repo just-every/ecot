@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { runMECH } from '../src/core/engine.js';
+import { mindTask } from '../src/core/engine.js';
 import { Agent } from '@just-every/ensemble';
 
 // Mock ensemble
@@ -70,30 +70,30 @@ vi.mock('@just-every/ensemble', () => ({
 }));
 
 
-describe('MECH API', () => {
+describe('Mind API', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    describe('runMECH', () => {
+    describe('mindTask', () => {
         it('should validate agent parameter', async () => {
-            const gen1 = runMECH(null as any, 'test');
+            const gen1 = mindTask(null as any, 'test');
             await expect(gen1.next()).rejects.toThrow('Agent must be a valid Agent instance');
             
-            const gen2 = runMECH('not an agent' as any, 'test');
+            const gen2 = mindTask('not an agent' as any, 'test');
             await expect(gen2.next()).rejects.toThrow('Agent must be a valid Agent instance');
         });
 
         it('should validate content parameter', async () => {
             const agent = new Agent({ name: 'TestAgent' });
             
-            const gen1 = runMECH(agent, null as any);
+            const gen1 = mindTask(agent, null as any);
             await expect(gen1.next()).rejects.toThrow('Content must be a non-empty string');
             
-            const gen2 = runMECH(agent, '');
+            const gen2 = mindTask(agent, '');
             await expect(gen2.next()).rejects.toThrow('Content must be a non-empty string');
             
-            const gen3 = runMECH(agent, '   ');
+            const gen3 = mindTask(agent, '   ');
             await expect(gen3.next()).rejects.toThrow('Content must be a non-empty string');
         });
 
@@ -104,7 +104,7 @@ describe('MECH API', () => {
             });
             
             const events = [];
-            for await (const event of runMECH(agent, 'Complete this test task')) {
+            for await (const event of mindTask(agent, 'Complete this test task')) {
                 events.push(event);
             }
             
@@ -147,7 +147,7 @@ describe('MECH API', () => {
             
             const agent = new Agent({ name: 'TestAgent' });
             const events = [];
-            for await (const event of runMECH(agent, 'Fail this task')) {
+            for await (const event of mindTask(agent, 'Fail this task')) {
                 events.push(event);
             }
             
@@ -173,7 +173,7 @@ describe('MECH API', () => {
             
             const agent = new Agent({ name: 'TestAgent' });
             const events = [];
-            for await (const event of runMECH(agent, 'Cause an error')) {
+            for await (const event of mindTask(agent, 'Cause an error')) {
                 events.push(event);
             }
             

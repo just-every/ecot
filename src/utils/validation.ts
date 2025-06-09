@@ -1,12 +1,12 @@
 /**
- * MECH Validation System
+ * Mind Validation System
  * 
  * Comprehensive input validation with helpful error messages
  */
 
-import { MechValidationError } from './errors.js';
+import { MindValidationError } from './errors.js';
 import { VALID_THOUGHT_DELAYS } from './constants.js';
-// Agent and task validation removed - MECH now uses ensemble agents directly
+// Agent and task validation removed - Mind now uses ensemble agents directly
 // and handles validation internally in the simplified API
 
 
@@ -15,7 +15,7 @@ import { VALID_THOUGHT_DELAYS } from './constants.js';
  */
 export function validateModelScore(modelId: unknown, score: unknown): void {
     if (!modelId || typeof modelId !== 'string' || !modelId.trim()) {
-        throw new MechValidationError(
+        throw new MindValidationError(
             'Model ID must be a non-empty string',
             {
                 metadata: { 
@@ -28,7 +28,7 @@ export function validateModelScore(modelId: unknown, score: unknown): void {
 
     const scoreNum = Number(score);
     if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
-        throw new MechValidationError(
+        throw new MindValidationError(
             'Score must be a number between 0 and 100',
             {
                 modelId,
@@ -50,7 +50,7 @@ export function validateMetaFrequency(frequency: unknown): void {
     const validFrequencies = ['5', '10', '20', '40'];
     
     if (typeof frequency !== 'string' || !validFrequencies.includes(frequency)) {
-        throw new MechValidationError(
+        throw new MindValidationError(
             `Meta frequency must be one of: ${validFrequencies.join(', ')}`,
             {
                 metadata: { 
@@ -68,7 +68,7 @@ export function validateMetaFrequency(frequency: unknown): void {
  */
 export function validateThoughtDelay(delay: unknown): void {
     if (typeof delay !== 'string' || !VALID_THOUGHT_DELAYS.includes(delay as any)) {
-        throw new MechValidationError(
+        throw new MindValidationError(
             `Thought delay must be one of: ${VALID_THOUGHT_DELAYS.join(', ')} (seconds)`,
             {
                 metadata: { 

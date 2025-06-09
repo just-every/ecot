@@ -1,5 +1,5 @@
 /**
- * Shared constants for the MECH system
+ * Shared constants for the Mind system
  */
 
 /**

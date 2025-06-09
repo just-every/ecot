@@ -63,7 +63,7 @@ git push origin "${NEW_VERSION}"
 
 echo -e "${GREEN}✅ Release process complete!${NC}"
 echo -e "${YELLOW}Next steps:${NC}"
-echo -e "1. Go to https://github.com/just-every/MECH/releases/new"
+echo -e "1. Go to https://github.com/just-every/mind/releases/new"
 echo -e "2. Select tag: ${NEW_VERSION}"
 echo -e "3. Set release title: ${NEW_VERSION}"
 echo -e "4. Add release notes"

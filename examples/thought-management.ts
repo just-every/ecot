@@ -1,15 +1,15 @@
 /**
  * Thought Management Example
  * 
- * This example demonstrates MECH's thought delay and interruption capabilities.
+ * This example demonstrates Mind's thought delay and interruption capabilities.
  * Shows how to configure timing between agent thoughts.
  */
 
-import { runMECH, setThoughtDelay, getThoughtDelay } from '../index.js';
+import { mindTask, setThoughtDelay, getThoughtDelay } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
-    console.log('⏱️  MECH Thought Management Example\n');
+    console.log('⏱️  Mind Thought Management Example\n');
     
     // Configure thought delay (2 seconds between thoughts)
     setThoughtDelay('2');
@@ -25,13 +25,13 @@ async function main() {
     const task = 'Explain the concept of recursion in programming with examples, including both the benefits and potential pitfalls.';
     
     try {
-        console.log('Starting MECH with thought delays...\n');
+        console.log('Starting Mind with thought delays...\n');
         console.log('Note: You will see pauses between agent thoughts due to the configured delay.\n');
         
         let thoughtCount = 0;
         let startTime = Date.now();
         
-        for await (const event of runMECH(agent, task)) {
+        for await (const event of mindTask(agent, task)) {
             // Track when new thoughts begin
             if (event.type === 'response_start') {
                 thoughtCount++;

@@ -1,13 +1,13 @@
 /**
- * metacognition module for MECH
+ * metacognition module for Mind
  *
- * This module implements "thinking about thinking" capabilities for the MECH system.
+ * This module implements "thinking about thinking" capabilities for the Mind system.
  * It spawns an LLM agent that analyzes recent thought history and can adjust system
  * parameters to improve performance.
  */
 
 import {
-    mechState,
+    mindState,
     listDisabledModels,
     listModelScores,
     setMetaFrequency,
@@ -20,8 +20,7 @@ import {
     Agent,
     ensembleRequest,
     createToolFunction,
-    type ToolFunction,
-    type AgentDefinition
+    type ToolFunction
 } from '@just-every/ensemble';
 import { VALID_FREQUENCIES } from '../utils/constants.js';
 
@@ -40,12 +39,12 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
             role: 'developer',
             content: `**IMPORTANT - METACOGNITION:** ${content}`,
         });
-        console.log(`[MECH] metacognition injected thought: ${content}`);
+        console.log(`[Mind] metacognition injected thought: ${content}`);
         return `Successfully injected metacognition thought at ${new Date().toISOString()}`;
     }
     
     function noChangesNeeded(): string {
-        console.log('[MECH] metacognition no change');
+        console.log('[Mind] metacognition no change');
         return 'No changes made';
     }
     
@@ -112,7 +111,7 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
 /**
  * Spawn a metacognition process to analyze and optimize agent performance
  * 
- * Metacognition is MECH's "thinking about thinking" capability. It:
+ * Metacognition is Mind's "thinking about thinking" capability. It:
  * - Analyzes recent agent thoughts and tool usage patterns
  * - Identifies inefficiencies, errors, and optimization opportunities
  * - Can adjust system parameters (model scores, meta frequency, thought delay)
@@ -146,18 +145,18 @@ export async function spawnMetaThought(
 ): Promise<void> {
     // Validate inputs
     if (!agent || typeof agent !== 'object') {
-        throw new TypeError('[MECH] Invalid agent for metacognition');
+        throw new TypeError('[Mind] Invalid agent for metacognition');
     }
     
     if (!messages || !Array.isArray(messages)) {
-        throw new TypeError('[MECH] Invalid messages for metacognition');
+        throw new TypeError('[Mind] Invalid messages for metacognition');
     }
     
     if (!startTime || !(startTime instanceof Date)) {
-        throw new TypeError('[MECH] Invalid startTime for metacognition');
+        throw new TypeError('[Mind] Invalid startTime for metacognition');
     }
     
-    console.log('[MECH] Spawning metacognition process');
+    console.log('[Mind] Spawning metacognition process');
 
     try {
         // Create a metacognition agent
@@ -172,8 +171,8 @@ Though metacognition, you continuously improve ${agent.name || 'the agent'}'s pe
 
 System State:
 - Runtime: ${Math.round((Date.now() - startTime.getTime()) / 1000)} seconds
-- LLM Requests: ${mechState.llmRequestCount}
-- Meta Frequency: Every ${mechState.metaFrequency} requests
+- LLM Requests: ${mindState.llmRequestCount}
+- Meta Frequency: Every ${mindState.metaFrequency} requests
 - Thought Delay: ${getThoughtDelay()} seconds
 - Disabled Models: ${listDisabledModels()}
 - Model Scores: ${listModelScores()}
@@ -212,16 +211,16 @@ Be concise and strategic in your analysis.`,
         ];
 
         // Run metacognition request - ensemble will handle model selection with modelClass
-        for await (const event of ensembleRequest(metaMessages, metaAgent.export() as AgentDefinition)) {
+        for await (const event of ensembleRequest(metaMessages, metaAgent)) {
             // Log metacognition responses
             if (event.type === 'message_delta' && 'content' in event) {
-                console.log('[MECH:META]', event.content);
+                console.log('[Mind:META]', event.content);
             }
         }
 
-        console.log('[MECH] Metacognition process completed');
+        console.log('[Mind] Metacognition process completed');
     } catch (error) {
-        console.error('[MECH] Error in metacognition:', error);
+        console.error('[Mind] Error in metacognition:', error);
         throw error;
     }
 }

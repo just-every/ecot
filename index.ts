@@ -1,9 +1,9 @@
 /**
- * @just-every/mech
+ * @just-every/mind
  * 
- * MECH - Advanced LLM orchestration with meta-cognition
+ * Mind - Advanced LLM orchestration with meta-cognition
  * 
- * This module provides the MECH system which includes:
+ * This module provides the Mind system which includes:
  * - Hierarchical model selection based on performance scores
  * - Meta-cognition for self-reflection and strategy adjustment
  * - Thought delay management for pacing
@@ -15,7 +15,7 @@
 // ============================================================================
 export {
     // The one and only function you need
-    runMECH,
+    mindTask,
 } from './src/core/engine.js';
 
 // ============================================================================
@@ -29,7 +29,7 @@ export type { Agent } from '@just-every/ensemble';
 // State Management (for debugging/monitoring)
 // ============================================================================
 export { 
-    mechState, 
+    mindState, 
     resetLLMRequestCount,
     setMetaFrequency,
     setModelScore,
@@ -56,6 +56,6 @@ export {
     type PauseController
 } from '@just-every/ensemble';
 
-// That's it! Just use runMECH(agent, content) and everything else is automatic.
+// That's it! Just use mindTask(agent, content) and everything else is automatic.
 
 

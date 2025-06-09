@@ -1,10 +1,10 @@
-# MECH Examples
+# Mind Examples
 
-This directory contains examples demonstrating the Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) system.
+This directory contains examples demonstrating the Meta-cognition Ensemble Chain-of-thought Hierarchy (Mind) system.
 
 ## Important: API Keys Required
 
-MECH uses `@just-every/ensemble` for LLM communication. Before running examples, ensure you have API keys configured in your environment:
+Mind uses `@just-every/ensemble` for LLM communication. Before running examples, ensure you have API keys configured in your environment:
 
 ```bash
 export OPENAI_API_KEY="your-openai-key"
@@ -12,16 +12,16 @@ export ANTHROPIC_API_KEY="your-anthropic-key"
 export GOOGLE_API_KEY="your-google-key"
 ```
 
-MECH will automatically select the best available model based on your configured keys.
+Mind will automatically select the best available model based on your configured keys.
 
 ## Running Examples
 
-Build MECH first, then run examples:
+Build Mind first, then run examples:
 
 ```bash
-# From the mech directory
+# From the mind directory
 npm run build
-node dist/examples/simple-mech.js
+node dist/examples/simple-mind.js
 node dist/examples/meta-cognition.js
 node dist/examples/thought-management.js
 node dist/examples/custom-tools.js
@@ -30,17 +30,17 @@ node dist/examples/pause-control.js
 
 ## Examples Overview
 
-### 1. Simple MECH (`simple-mech.ts`)
-The simplest way to use MECH with minimal setup. Demonstrates the basic async generator API.
+### 1. Simple Mind (`simple-mind.ts`)
+The simplest way to use Mind with minimal setup. Demonstrates the basic async generator API.
 
 **Key concepts:**
-- Basic MECH configuration with `runMECH(agent, task)`
+- Basic Mind configuration with `mindTask(agent, task)`
 - Event streaming with `AsyncGenerator<ProviderStreamEvent>`
 - Simple agent definition using ensemble's `Agent` class
 - Real-time event processing
 
 ### 2. Meta-cognition (`meta-cognition.ts`)
-Shows MECH's self-reflection and model rotation capabilities.
+Shows Mind's self-reflection and model rotation capabilities.
 
 **Key concepts:**
 - Meta-cognition frequency configuration
@@ -58,7 +58,7 @@ Demonstrates thought delays and timing control.
 - Performance monitoring
 
 ### 4. Custom Tools (`custom-tools.ts`)
-Shows how to add custom tools to MECH agents.
+Shows how to add custom tools to Mind agents.
 
 **Key concepts:**
 - Creating tools with `createToolFunction` from ensemble
@@ -67,11 +67,11 @@ Shows how to add custom tools to MECH agents.
 - Custom functionality integration
 
 ### 5. Pause Control (`pause-control.ts`)
-Demonstrates ensemble's pause/resume functionality with MECH.
+Demonstrates ensemble's pause/resume functionality with Mind.
 
 **Key concepts:**
 - Global pause/resume control with `pause()` and `resume()`
-- Automatic pause handling in MECH loops
+- Automatic pause handling in Mind loops
 - Pause event listeners with `getPauseController()`
 - Real-time pause state monitoring
 
@@ -79,7 +79,7 @@ Demonstrates ensemble's pause/resume functionality with MECH.
 
 ### Basic Usage
 ```typescript
-import { runMECH } from '@just-every/mech';
+import { mindTask } from '@just-every/mind';
 import { Agent } from '@just-every/ensemble';
 
 const agent = new Agent({
@@ -88,8 +88,8 @@ const agent = new Agent({
     modelClass: 'reasoning'
 });
 
-// runMECH returns an AsyncGenerator<ProviderStreamEvent>
-for await (const event of runMECH(agent, 'Solve this problem')) {
+// mindTask returns an AsyncGenerator<ProviderStreamEvent>
+for await (const event of mindTask(agent, 'Solve this problem')) {
     if (event.type === 'message_delta') {
         process.stdout.write(event.content);
     }
@@ -98,7 +98,7 @@ for await (const event of runMECH(agent, 'Solve this problem')) {
 
 ### Meta-cognition Control
 ```typescript
-import { setMetaFrequency, setModelScore, listModelScores } from '@just-every/mech';
+import { setMetaFrequency, setModelScore, listModelScores } from '@just-every/mind';
 
 // Run meta-cognition every 5 LLM calls
 setMetaFrequency('5');
@@ -113,7 +113,7 @@ console.log(listModelScores());
 
 ### Thought Delays
 ```typescript
-import { setThoughtDelay, getThoughtDelay } from '@just-every/mech';
+import { setThoughtDelay, getThoughtDelay } from '@just-every/mind';
 
 // Set 2-second delay between thoughts
 setThoughtDelay('2');
@@ -124,7 +124,7 @@ const currentDelay = getThoughtDelay(); // Returns '2'
 
 ### Pause Control
 ```typescript
-import { pause, resume, isPaused, getPauseController } from '@just-every/mech';
+import { pause, resume, isPaused, getPauseController } from '@just-every/mind';
 
 // Pause all LLM requests globally
 pause();
@@ -163,7 +163,7 @@ const agent = new Agent({
 
 ## Event Types
 
-The `runMECH` async generator yields various event types:
+The `mindTask` async generator yields various event types:
 
 - `message_delta`: Streaming text content from the LLM
 - `tool_start`: Tool call begins
@@ -175,7 +175,7 @@ The `runMECH` async generator yields various event types:
 
 ## Integration Tips
 
-1. **Start Simple**: Use `runMECH(agent, task)` for basic tasks
+1. **Start Simple**: Use `mindTask(agent, task)` for basic tasks
 2. **Event Handling**: Process events in real-time for responsive UIs
 3. **Meta-cognition**: Configure frequency and model scores for optimization
 4. **Thought Timing**: Use delays for paced reasoning or rate limiting
@@ -183,15 +183,15 @@ The `runMECH` async generator yields various event types:
 
 ## State Management
 
-MECH maintains global state that persists across executions:
+Mind maintains global state that persists across executions:
 
 ```typescript
-import { mechState, resetLLMRequestCount } from '@just-every/mech';
+import { mindState, resetLLMRequestCount } from '@just-every/mind';
 
 // Check current state
-console.log(`LLM requests: ${mechState.llmRequestCount}`);
-console.log(`Meta frequency: ${mechState.metaFrequency}`);
-console.log(`Disabled models: ${Array.from(mechState.disabledModels)}`);
+console.log(`LLM requests: ${mindState.llmRequestCount}`);
+console.log(`Meta frequency: ${mindState.metaFrequency}`);
+console.log(`Disabled models: ${Array.from(mindState.disabledModels)}`);
 
 // Reset counters
 resetLLMRequestCount();

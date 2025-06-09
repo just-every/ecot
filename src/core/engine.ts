@@ -1,12 +1,12 @@
 /**
- * MECH Engine - Simplified Version
+ * Mind Engine - Simplified Version
  *
- * Meta-cognition Ensemble Chain-of-thought Hierarchy (MECH) implementation.
+ * Mind implementation for LLM orchestration.
  * Provides meta-cognition and thought delays on top of ensemble.
  * Model rotation is handled by ensemble automatically.
  */
 
-import { mechState } from '../state/state.js';
+import { mindState } from '../state/state.js';
 import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
 import { 
@@ -21,13 +21,13 @@ import {
 } from '@just-every/ensemble';
 
 /**
- * Get MECH control tools
+ * Get Mind control tools
  */
-function getMECHTools(): ToolFunction[] {
+function getMindTools(): ToolFunction[] {
     return [
         createToolFunction(
             (args: { result: string }) => {
-                console.log('[MECH] Task completed:', args.result);
+                console.log('[Mind] Task completed:', args.result);
                 return `Task completed: ${args.result}`;
             },
             'Report that the task has completed successfully',
@@ -43,7 +43,7 @@ function getMECHTools(): ToolFunction[] {
         
         createToolFunction(
             (args: { error: string }) => {
-                console.error('[MECH] Task failed:', args.error);
+                console.error('[Mind] Task failed:', args.error);
                 return `Task failed: ${args.error}`;
             },
             'Report that you were not able to complete the task',
@@ -60,7 +60,7 @@ function getMECHTools(): ToolFunction[] {
 }
 
 /**
- * Run MECH with automatic everything
+ * Run Mind with automatic everything
  * 
  * @param agent - The agent from ensemble
  * @param content - The task/prompt to execute
@@ -69,19 +69,19 @@ function getMECHTools(): ToolFunction[] {
  * @example
  * ```typescript
  * import { Agent } from '@just-every/ensemble';
- * import { runMECH } from '@just-every/mech';
+ * import { mindTask } from '@just-every/mind';
  * 
  * const agent = new Agent({ 
  *     name: 'MyAgent',
  *     modelClass: 'reasoning' 
  * });
  * 
- * for await (const event of runMECH(agent, 'Analyze this code')) {
+ * for await (const event of mindTask(agent, 'Analyze this code')) {
  *     console.log(event);
  * }
  * ```
  */
-export async function* runMECH(
+export async function* mindTask(
     agent: Agent,
     content: string
 ): AsyncGenerator<ProviderStreamEvent> {
@@ -112,18 +112,18 @@ export async function* runMECH(
         }
     ];
 
-    // Add MECH tools to the agent
-    const mechTools = getMECHTools();
+    // Add Mind tools to the agent
+    const mindTools = getMindTools();
     
-    // Clone agent to get AgentDefinition and add MECH tools
+    // Clone agent to get AgentDefinition and add Mind tools
     const agentDef = cloneAgent(agent);
-    agentDef.tools = [...mechTools, ...(agent.tools || [])];
+    agentDef.tools = [...mindTools, ...(agent.tools || [])];
 
     // Track completion state
     let isComplete = false;
     
     try {
-        console.log(`[MECH] Starting execution for agent: ${agent.name}`);
+        console.log(`[Mind] Starting execution for agent: ${agent.name}`);
         
         // Run the request loop
         let iteration = 0;
@@ -134,7 +134,7 @@ export async function* runMECH(
             // Wait if ensemble is paused (before any processing)
             await waitWhilePaused();
             
-            // Apply thought delay (MECH-specific feature)
+            // Apply thought delay (Mind-specific feature)
             if (iteration > 1) {
                 const delay = parseInt(getThoughtDelay());
                 if (delay > 0) {
@@ -143,16 +143,16 @@ export async function* runMECH(
             }
             
             // Increment request counter for meta-cognition
-            mechState.llmRequestCount++;
+            mindState.llmRequestCount++;
             
-            // Check meta-cognition trigger (MECH-specific feature)
-            const metaFrequency = parseInt(mechState.metaFrequency);
-            if (mechState.llmRequestCount % metaFrequency === 0) {
-                console.log(`[MECH] Triggering meta-cognition after ${mechState.llmRequestCount} requests`);
+            // Check meta-cognition trigger (Mind-specific feature)
+            const metaFrequency = parseInt(mindState.metaFrequency);
+            if (mindState.llmRequestCount % metaFrequency === 0) {
+                console.log(`[Mind] Triggering meta-cognition after ${mindState.llmRequestCount} requests`);
                 try {
                     await spawnMetaThought(agentDef, messages, new Date(startTime));
                 } catch (error) {
-                    console.error('[MECH] Error in meta-cognition:', error);
+                    console.error('[Mind] Error in meta-cognition:', error);
                 }
             }
             
@@ -163,7 +163,7 @@ export async function* runMECH(
                 
                 // Log responses
                 if (event.type === 'message_delta' && 'content' in event) {
-                    console.log('[MECH]', event.content);
+                    console.log('[Mind]', event.content);
                 }
                 
                 // Handle tool calls
@@ -189,7 +189,7 @@ export async function* runMECH(
         }
 
     } catch (error) {
-        console.error('[MECH] Error running agent:', error);
+        console.error('[Mind] Error running agent:', error);
         
         // Yield an error event
         const errorMessage = error instanceof Error ? error.message : String(error);
