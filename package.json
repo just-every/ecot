@@ -1,6 +1,6 @@
 {
   "name": "@just-every/mind",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Mind - Advanced LLM orchestration with meta-cognition",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
