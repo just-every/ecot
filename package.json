@@ -63,7 +63,7 @@
     "release:quick": "./scripts/release-quick.sh"
   },
   "dependencies": {
-    "@just-every/ensemble": "^0.2.22"
+    "@just-every/ensemble": "^0.2.35"
   },
   "peerDependencies": {
     "anthropic": ">=0.20.0",
@@ -78,10 +78,10 @@
     }
   },
   "devDependencies": {
-    "@types/node": "^22.15.29",
-    "@vitest/coverage-v8": "^3.1.4",
+    "@types/node": "^22.15.30",
+    "@vitest/coverage-v8": "^3.2.3",
     "typescript": "^5.8.3",
-    "vitest": "^3.1.4"
+    "vitest": "^3.2.3"
   },
   "exports": {
     ".": {
