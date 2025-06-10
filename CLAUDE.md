@@ -43,7 +43,7 @@ Task is an advanced LLM orchestration system built on top of `@just-every/ensemb
 
 ### Core Flow
 1. **Simple API** (`engine.ts`) - Provides minimal setup interface for most users
-   - `mindTask()` - Unified function for execution
+   - `runTask()` - Unified function for execution
    - Integrates with ensemble's pause/resume capabilities
    - Automatically manages meta-cognition and thought delays
 
@@ -76,7 +76,7 @@ Task is an advanced LLM orchestration system built on top of `@just-every/ensemb
 
 - **Agent**: Uses ensemble's Agent directly
 - **MindState**: State container for meta-cognition and model management
-- **mindTask**: Single entry point for all Task functionality
+- **runTask**: Single entry point for all Task functionality
 
 ### Integration Pattern
 

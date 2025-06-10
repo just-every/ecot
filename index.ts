@@ -15,7 +15,7 @@
 // ============================================================================
 export {
     // The one and only function you need
-    mindTask,
+    runTask,
 } from './src/core/engine.js';
 
 // ============================================================================
@@ -56,6 +56,6 @@ export {
     type PauseController
 } from '@just-every/ensemble';
 
-// That's it! Just use mindTask(agent, content) and everything else is automatic.
+// That's it! Just use runTask(agent, content) and everything else is automatic.
 
 

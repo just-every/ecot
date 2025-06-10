@@ -35,7 +35,7 @@ Task has been significantly simplified from its original design. The utilities n
 The utilities support Task's simplified API:
 
 ```typescript
-import { mindTask, setMetaFrequency, setThoughtDelay } from '@just-every/task';
+import { runTask, setMetaFrequency, setThoughtDelay } from '@just-every/task';
 import { Agent } from '@just-every/ensemble';
 
 // Set system parameters
@@ -44,7 +44,7 @@ setThoughtDelay('2');   // 2 second delays
 
 // Run Task
 const agent = new Agent({ name: 'MyBot' });
-for await (const event of mindTask(agent, 'Task description')) {
+for await (const event of runTask(agent, 'Task description')) {
     console.log(event);
 }
 ```

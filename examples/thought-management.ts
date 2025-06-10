@@ -5,7 +5,7 @@
  * Shows how to configure timing between agent thoughts.
  */
 
-import { mindTask, setThoughtDelay, getThoughtDelay } from '../index.js';
+import { runTask, setThoughtDelay, getThoughtDelay } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
@@ -31,7 +31,7 @@ async function main() {
         let thoughtCount = 0;
         let startTime = Date.now();
         
-        for await (const event of mindTask(agent, task)) {
+        for await (const event of runTask(agent, task)) {
             // Track when new thoughts begin
             if (event.type === 'response_start') {
                 thoughtCount++;

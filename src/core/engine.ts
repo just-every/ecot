@@ -26,9 +26,10 @@ import {
 function getTaskTools(): ToolFunction[] {
     return [
         createToolFunction(
-            (args: { result: string }) => {
-                console.log('[Task] Task completed:', args.result);
-                return `Task completed: ${args.result}`;
+            (result: string ) => {
+                console.log('[Task] Task completed:', result);
+                // Return the result so it can be captured in the tool_done event
+                return result;
             },
             'Report that the task has completed successfully',
             {
@@ -42,9 +43,10 @@ function getTaskTools(): ToolFunction[] {
         ),
         
         createToolFunction(
-            (args: { error: string }) => {
-                console.error('[Task] Task failed:', args.error);
-                return `Task failed: ${args.error}`;
+            (error: string ) => {
+                console.error('[Task] Task failed:', error);
+                // Return the error so it can be captured in the tool_done event
+                return error;
             },
             'Report that you were not able to complete the task',
             {
@@ -69,19 +71,19 @@ function getTaskTools(): ToolFunction[] {
  * @example
  * ```typescript
  * import { Agent } from '@just-every/ensemble';
- * import { mindTask } from '@just-every/task';
+ * import { runTask } from '@just-every/task';
  * 
  * const agent = new Agent({ 
  *     name: 'MyAgent',
  *     modelClass: 'reasoning' 
  * });
  * 
- * for await (const event of mindTask(agent, 'Analyze this code')) {
+ * for await (const event of runTask(agent, 'Analyze this code')) {
  *     console.log(event);
  * }
  * ```
  */
-export async function* mindTask(
+export async function* runTask(
     agent: Agent,
     content: string
 ): AsyncGenerator<ProviderStreamEvent> {
@@ -173,8 +175,20 @@ export async function* mindTask(
                     
                     if (toolName === 'task_complete') {
                         isComplete = true;
+                        // Emit task_complete event
+                        // Note: TaskEvent exists in ensemble but is not included in ProviderStreamEvent
+                        // This would require ensemble to be extended
+                        yield {
+                            type: 'task_complete' as any,
+                            result: toolEvent.result?.output || ''
+                        };
                     } else if (toolName === 'task_fatal_error') {
                         isComplete = true;
+                        // Emit task_fatal_error event
+                        yield {
+                            type: 'task_fatal_error' as any,
+                            result: toolEvent.result?.output || ''
+                        };
                     }
                 }
                 

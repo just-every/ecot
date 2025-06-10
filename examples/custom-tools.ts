@@ -5,7 +5,7 @@
  * Shows how to create tools using @just-every/ensemble's tool system.
  */
 
-import { mindTask } from '../index.js';
+import { runTask } from '../index.js';
 import { Agent, createToolFunction } from '@just-every/ensemble';
 
 async function main() {
@@ -70,7 +70,7 @@ async function main() {
     try {
         console.log('Starting Task with custom tools...\n');
         
-        for await (const event of mindTask(agent, task)) {
+        for await (const event of runTask(agent, task)) {
             // Show message content
             if (event.type === 'message_delta' && 'content' in event) {
                 process.stdout.write(event.content);

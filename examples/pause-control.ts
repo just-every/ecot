@@ -5,7 +5,7 @@
  * Shows how to pause/resume LLM requests and listen to pause events.
  */
 
-import { mindTask, pause, resume, isPaused, getPauseController } from '../index.js';
+import { runTask, pause, resume, isPaused, getPauseController } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
@@ -29,7 +29,7 @@ async function main() {
         console.log('Starting Task with pause control...\n');
         
         // Start the Task process
-        const mindGenerator = mindTask(agent, task);
+        const mindGenerator = runTask(agent, task);
         
         // Set up automatic pause/resume for demonstration
         setTimeout(() => {

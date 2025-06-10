@@ -34,7 +34,7 @@ node dist/examples/pause-control.js
 The simplest way to use Mind with minimal setup. Demonstrates the basic async generator API.
 
 **Key concepts:**
-- Basic Mind configuration with `mindTask(agent, task)`
+- Basic Mind configuration with `runTask(agent, task)`
 - Event streaming with `AsyncGenerator<ProviderStreamEvent>`
 - Simple agent definition using ensemble's `Agent` class
 - Real-time event processing
@@ -79,18 +79,11 @@ Demonstrates ensemble's pause/resume functionality with Mind.
 
 ### Basic Usage
 ```typescript
-import { mindTask } from '@just-every/task';
-import { Agent } from '@just-every/ensemble';
+import { runTask } from '@just-every/task';
 
-const agent = new Agent({
-    name: 'MyBot',
-    instructions: 'You are a helpful assistant.',
-    modelClass: 'reasoning'
-});
-
-// mindTask returns an AsyncGenerator<ProviderStreamEvent>
-for await (const event of mindTask(agent, 'Solve this problem')) {
-    if (event.type === 'message_delta') {
+// runTask returns an AsyncGenerator<ProviderStreamEvent>
+for await (const event of runTask({ modelClass: 'reasoning' }, 'Solve this problem')) {
+    if (event.type === 'task_complete') {
         process.stdout.write(event.content);
     }
 }
@@ -163,7 +156,7 @@ const agent = new Agent({
 
 ## Event Types
 
-The `mindTask` async generator yields various event types:
+The `runTask` async generator yields various event types:
 
 - `message_delta`: Streaming text content from the LLM
 - `tool_start`: Tool call begins
@@ -175,7 +168,7 @@ The `mindTask` async generator yields various event types:
 
 ## Integration Tips
 
-1. **Start Simple**: Use `mindTask(agent, task)` for basic tasks
+1. **Start Simple**: Use `runTask(agent, task)` for basic tasks
 2. **Event Handling**: Process events in real-time for responsive UIs
 3. **Meta-cognition**: Configure frequency and model scores for optimization
 4. **Thought Timing**: Use delays for paced reasoning or rate limiting

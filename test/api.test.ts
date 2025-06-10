@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mindTask } from '../src/core/engine.js';
+import { runTask } from '../src/core/engine.js';
 import { Agent } from '@just-every/ensemble';
 
 // Mock ensemble
@@ -75,25 +75,25 @@ describe('Mind API', () => {
         vi.clearAllMocks();
     });
 
-    describe('mindTask', () => {
+    describe('runTask', () => {
         it('should validate agent parameter', async () => {
-            const gen1 = mindTask(null as any, 'test');
+            const gen1 = runTask(null as any, 'test');
             await expect(gen1.next()).rejects.toThrow('Agent must be a valid Agent instance');
             
-            const gen2 = mindTask('not an agent' as any, 'test');
+            const gen2 = runTask('not an agent' as any, 'test');
             await expect(gen2.next()).rejects.toThrow('Agent must be a valid Agent instance');
         });
 
         it('should validate content parameter', async () => {
             const agent = new Agent({ name: 'TestAgent' });
             
-            const gen1 = mindTask(agent, null as any);
+            const gen1 = runTask(agent, null as any);
             await expect(gen1.next()).rejects.toThrow('Content must be a non-empty string');
             
-            const gen2 = mindTask(agent, '');
+            const gen2 = runTask(agent, '');
             await expect(gen2.next()).rejects.toThrow('Content must be a non-empty string');
             
-            const gen3 = mindTask(agent, '   ');
+            const gen3 = runTask(agent, '   ');
             await expect(gen3.next()).rejects.toThrow('Content must be a non-empty string');
         });
 
@@ -104,12 +104,12 @@ describe('Mind API', () => {
             });
             
             const events = [];
-            for await (const event of mindTask(agent, 'Complete this test task')) {
+            for await (const event of runTask(agent, 'Complete this test task')) {
                 events.push(event);
             }
             
-            // Should have yielded all events
-            expect(events).toHaveLength(3);
+            // Should have yielded all events including task_complete
+            expect(events).toHaveLength(4);
             expect(events[0]).toMatchObject({
                 type: 'message_delta',
                 content: 'Processing task...'
@@ -123,6 +123,10 @@ describe('Mind API', () => {
                 }
             });
             expect(events[2]).toMatchObject({
+                type: 'task_complete',
+                result: 'Task completed successfully'
+            });
+            expect(events[3]).toMatchObject({
                 type: 'response_output'
             });
         });
@@ -147,12 +151,12 @@ describe('Mind API', () => {
             
             const agent = new Agent({ name: 'TestAgent' });
             const events = [];
-            for await (const event of mindTask(agent, 'Fail this task')) {
+            for await (const event of runTask(agent, 'Fail this task')) {
                 events.push(event);
             }
             
-            // Should have yielded the error event
-            expect(events).toHaveLength(1);
+            // Should have yielded the error event and task_fatal_error
+            expect(events).toHaveLength(2);
             expect(events[0]).toMatchObject({
                 type: 'tool_done',
                 tool_call: {
@@ -160,6 +164,10 @@ describe('Mind API', () => {
                         name: 'task_fatal_error'
                     }
                 }
+            });
+            expect(events[1]).toMatchObject({
+                type: 'task_fatal_error',
+                result: 'Unable to complete task'
             });
         });
 
@@ -173,7 +181,7 @@ describe('Mind API', () => {
             
             const agent = new Agent({ name: 'TestAgent' });
             const events = [];
-            for await (const event of mindTask(agent, 'Cause an error')) {
+            for await (const event of runTask(agent, 'Cause an error')) {
                 events.push(event);
             }
             

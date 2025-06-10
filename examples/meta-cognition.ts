@@ -5,7 +5,7 @@
  * Shows how to configure meta-cognition frequency and monitor model performance.
  */
 
-import { mindTask, setMetaFrequency, setModelScore, listModelScores } from '../index.js';
+import { runTask, setMetaFrequency, setModelScore, listModelScores } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
@@ -38,7 +38,7 @@ async function main() {
         
         let llmRequestCount = 0;
         
-        for await (const event of mindTask(agent, task)) {
+        for await (const event of runTask(agent, task)) {
             // Track LLM requests to show when meta-cognition triggers
             if (event.type === 'response_start') {
                 llmRequestCount++;

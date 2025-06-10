@@ -23,12 +23,12 @@ export GOOGLE_API_KEY="…"
 
 ⚡ Hello Task
 
-import { mindTask } from "@just-every/task";
+import { runTask } from "@just-every/task";
 import { Agent } from "@just-every/ensemble";
 
 const agent = new Agent({ modelClass: "reasoning" });
 
-const stream = mindTask(agent,
+const stream = runTask(agent,
   "Review this function: function add(a, b) { return a + b; }"
 );
 

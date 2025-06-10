@@ -5,7 +5,7 @@
  * Task handles LLM communication internally through the @just-every/ensemble package.
  */
 
-import { mindTask } from '../index.js';
+import { runTask } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
@@ -32,7 +32,7 @@ async function main() {
         let startTime = Date.now();
         let completionResult = '';
         
-        for await (const event of mindTask(agent, task)) {
+        for await (const event of runTask(agent, task)) {
             // Handle different event types
             if (event.type === 'message_delta' && 'content' in event) {
                 process.stdout.write(event.content);
