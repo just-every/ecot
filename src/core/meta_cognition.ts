@@ -214,7 +214,7 @@ Be concise and strategic in your analysis.`,
         for await (const event of ensembleRequest(metaMessages, metaAgent)) {
             // Log metacognition responses
             if (event.type === 'message_delta' && 'content' in event) {
-                console.log('[Task:META]', event.content);
+                //console.log('[Task:META]', event.content);
             }
         }
 

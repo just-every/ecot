@@ -163,11 +163,6 @@ export async function* runTask(
                 // Yield the event to the caller
                 yield event;
                 
-                // Log responses
-                if (event.type === 'message_delta' && 'content' in event) {
-                    console.log('[Task]', event.content);
-                }
-                
                 // Handle tool calls
                 if (event.type === 'tool_done' && 'result' in event) {
                     const toolEvent = event as any;

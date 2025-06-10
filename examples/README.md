@@ -80,9 +80,14 @@ Demonstrates ensemble's pause/resume functionality with Mind.
 ### Basic Usage
 ```typescript
 import { runTask } from '@just-every/task';
+import { Agent } from '@just-every/ensemble';
+
+const agent = new Agent({
+    modelClass: 'reasoning'
+});
 
 // runTask returns an AsyncGenerator<ProviderStreamEvent>
-for await (const event of runTask({ modelClass: 'reasoning' }, 'Solve this problem')) {
+for await (const event of runTask(agent, 'Solve this problem')) {
     if (event.type === 'task_complete') {
         process.stdout.write(event.content);
     }
