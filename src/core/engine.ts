@@ -100,16 +100,11 @@ export async function* runTask(
     const toolGuidance = 'You must complete tasks by using the provided tools. When you have finished a task, you MUST call the task_complete tool with a comprehensive result. If you cannot complete the task, you MUST call the task_fatal_error tool with an explanation. Do not just provide a final answer without using these tools.';
     
     // Check if agent instructions already contain task_complete guidance
-    const hasTaskCompleteGuidance = agent.instructions?.includes('task_complete');
+    if(!agent.instructions?.includes('task_complete')) {
+        agent.instructions = agent.instructions ? `${agent.instructions}\n\n${toolGuidance}` : toolGuidance;
+    }
     
     const messages: ResponseInput = [
-        {
-            type: 'message',
-            role: 'system',
-            content: agent.instructions 
-                ? (hasTaskCompleteGuidance ? agent.instructions : `${agent.instructions}\n\n${toolGuidance}`)
-                : toolGuidance
-        },
         {
             type: 'message',
             role: 'user',
