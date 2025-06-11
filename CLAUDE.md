@@ -85,3 +85,79 @@ The system expects users to provide:
 2. A task description
 
 Everything else (meta-cognition, thought delays, model rotation via ensemble) is handled automatically.
+
+## TypeScript Configuration
+
+- ES modules with .js extensions for imports
+- Strict mode enabled
+- Target ES2022 with NodeNext module resolution
+- Source maps and declarations generated
+
+## Code Style Guidelines
+
+- Use async/await for asynchronous operations
+- Implement proper error handling
+- Keep functions small and focused
+- Use descriptive names for clarity
+- Follow functional programming patterns where appropriate
+
+## Testing Instructions
+
+- Run `npm test` for all tests
+- Tests use Vitest framework
+- Mock ensemble dependencies when needed
+- Test state management thoroughly
+- Verify meta-cognition triggers
+
+## Repository Etiquette
+
+- Branch names: `feature/description`, `fix/issue`
+- Use conventional commits
+- Update CHANGELOG.md for releases
+- Keep PR descriptions detailed
+
+## Developer Environment Setup
+
+1. Clone repository
+2. Run `npm install`
+3. Set up LLM API keys in environment
+4. Run `npm test` to verify setup
+5. Use `npm run build && node dist/examples/simple-mind.js` to test
+
+## Package Management
+
+- Peer dependency on @just-every/ensemble
+- Keep dependencies minimal
+- Use exact versions for stability
+- Run `npm audit` regularly
+
+## Project-Specific Warnings
+
+- **API Costs**: Meta-cognition can increase API usage
+- **Model Availability**: Ensure multiple providers are configured
+- **State Management**: MindState is mutable - handle carefully
+- **Thought Delays**: Can make responses feel slow to users
+
+## Key Utility Functions & APIs
+
+- `runTask()`: Main entry point
+- `MindState`: Configuration and state container
+- `selectModel()`: Weighted model selection
+- `runMetaCognition()`: Self-reflection system
+- `thoughtDelay()`: Interruptible delay implementation
+
+## Troubleshooting
+
+### Common Issues
+
+- **No model rotation**: Check multiple API keys are set
+- **High costs**: Reduce meta-frequency
+- **Slow responses**: Lower thought delays
+- **State persistence**: MindState is not persisted between calls
+
+### Debug Mode
+
+Enable debug output:
+```bash
+DEBUG=task:* npm run build && node dist/examples/simple-mind.js
+```
