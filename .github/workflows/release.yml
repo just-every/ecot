@@ -91,7 +91,9 @@ jobs:
       if: steps.should_publish.outputs.publish == 'true'
         
     - name: Push changes
-      run: |
-        git push origin main
-        git push origin --tags
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GH_PAT }}
+        branch: ${{ github.ref }}
+        tags: true
       if: steps.version.outputs.skip_push != 'true'
