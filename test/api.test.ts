@@ -76,25 +76,17 @@ describe('Mind API', () => {
     });
 
     describe('runTask', () => {
-        it('should validate agent parameter', async () => {
-            const gen1 = runTask(null as any, 'test');
-            await expect(gen1.next()).rejects.toThrow('Agent must be a valid Agent instance');
-            
-            const gen2 = runTask('not an agent' as any, 'test');
-            await expect(gen2.next()).rejects.toThrow('Agent must be a valid Agent instance');
+        it('should validate agent parameter', () => {
+            expect(() => runTask(null as any, 'test')).toThrow('Agent must be a valid Agent instance');
+            expect(() => runTask('not an agent' as any, 'test')).toThrow('Agent must be a valid Agent instance');
         });
 
-        it('should validate content parameter', async () => {
+        it('should validate content parameter', () => {
             const agent = new Agent({ name: 'TestAgent' });
             
-            const gen1 = runTask(agent, null as any);
-            await expect(gen1.next()).rejects.toThrow('Content must be a non-empty string');
-            
-            const gen2 = runTask(agent, '');
-            await expect(gen2.next()).rejects.toThrow('Content must be a non-empty string');
-            
-            const gen3 = runTask(agent, '   ');
-            await expect(gen3.next()).rejects.toThrow('Content must be a non-empty string');
+            expect(() => runTask(agent, null as any)).toThrow('Content must be a non-empty string');
+            expect(() => runTask(agent, '')).toThrow('Content must be a non-empty string');
+            expect(() => runTask(agent, '   ')).toThrow('Content must be a non-empty string');
         });
 
         it('should successfully run a simple task', async () => {

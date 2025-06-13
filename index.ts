@@ -16,6 +16,8 @@
 export {
     // The one and only function you need
     runTask,
+    // Add messages to an active task
+    addMessageToTask,
 } from './src/core/engine.js';
 
 // ============================================================================
