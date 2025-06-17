@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
     taskState,
-    setMetaFrequency,
-    setModelScore,
+    set_meta_frequency,
+    set_model_score,
     getModelScore,
-    disableModel,
+    disable_model,
     listDisabledModels,
     listModelScores,
     incrementLLMRequestCount,
@@ -15,7 +15,7 @@ describe('Mind State Management', () => {
     beforeEach(() => {
         // Reset state before each test
         resetLLMRequestCount();
-        setMetaFrequency('5');
+        set_meta_frequency('5');
         taskState.disabledModels.clear();
         // Clear model scores
         Object.keys(taskState.modelScores).forEach(key => {
@@ -25,25 +25,25 @@ describe('Mind State Management', () => {
 
     describe('Meta-cognition frequency', () => {
         it('should set and get meta frequency', () => {
-            setMetaFrequency('10');
+            set_meta_frequency('10');
             expect(taskState.metaFrequency).toBe('10');
 
-            setMetaFrequency('20');
+            set_meta_frequency('20');
             expect(taskState.metaFrequency).toBe('20');
 
-            setMetaFrequency('40');
+            set_meta_frequency('40');
             expect(taskState.metaFrequency).toBe('40');
         });
 
         it('should handle invalid frequency values', () => {
-            expect(() => setMetaFrequency('invalid' as any)).toThrow(/Meta frequency must be one of/);
+            expect(() => set_meta_frequency('invalid' as any)).toThrow(/Meta frequency must be one of/);
             expect(taskState.metaFrequency).toBe('5'); // Should remain at default
         });
 
         it('should only accept valid frequencies', () => {
             const validFreqs = ['5', '10', '20', '40'];
             validFreqs.forEach(freq => {
-                setMetaFrequency(freq as any);
+                set_meta_frequency(freq as any);
                 expect(taskState.metaFrequency).toBe(freq);
             });
         });
@@ -73,18 +73,18 @@ describe('Mind State Management', () => {
 
     describe('Model scoring', () => {
         it('should set and get model scores', () => {
-            setModelScore('gpt-4', '85');
+            set_model_score('gpt-4', '85');
             expect(getModelScore('gpt-4')).toBe(85);
             
-            setModelScore('claude-3', '90');
+            set_model_score('claude-3', '90');
             expect(getModelScore('claude-3')).toBe(90);
         });
 
         it('should handle overwriting model scores', () => {
-            setModelScore('gpt-4', '80');
+            set_model_score('gpt-4', '80');
             expect(getModelScore('gpt-4')).toBe(80);
             
-            setModelScore('gpt-4', '85'); // Overwrite
+            set_model_score('gpt-4', '85'); // Overwrite
             expect(getModelScore('gpt-4')).toBe(85);
         });
 
@@ -93,16 +93,16 @@ describe('Mind State Management', () => {
         });
 
         it('should validate score range', () => {
-            expect(() => setModelScore('gpt-4', '150')).toThrow(/Score must be a number between 0 and 100/);
+            expect(() => set_model_score('gpt-4', '150')).toThrow(/Score must be a number between 0 and 100/);
             
-            expect(() => setModelScore('gpt-4', '-10')).toThrow(/Score must be a number between 0 and 100/);
+            expect(() => set_model_score('gpt-4', '-10')).toThrow(/Score must be a number between 0 and 100/);
             
-            expect(() => setModelScore('gpt-4', 'abc')).toThrow(/Score must be a number between 0 and 100/);
+            expect(() => set_model_score('gpt-4', 'abc')).toThrow(/Score must be a number between 0 and 100/);
         });
 
         it('should list all model scores', () => {
-            setModelScore('gpt-4', '80');
-            setModelScore('claude-3', '85');
+            set_model_score('gpt-4', '80');
+            set_model_score('claude-3', '85');
             
             const scores = listModelScores();
             expect(scores).toContain('gpt-4');
@@ -116,31 +116,31 @@ describe('Mind State Management', () => {
         it('should disable and enable models', () => {
             expect(taskState.disabledModels.has('gpt-4')).toBe(false);
             
-            disableModel('gpt-4');
+            disable_model('gpt-4');
             expect(taskState.disabledModels.has('gpt-4')).toBe(true);
             
-            disableModel('gpt-4', false); // Enable by passing false
+            disable_model('gpt-4', false); // Enable by passing false
             expect(taskState.disabledModels.has('gpt-4')).toBe(false);
         });
 
         it('should handle multiple models', () => {
-            disableModel('gpt-4');
-            disableModel('claude-3');
-            disableModel('gemini');
+            disable_model('gpt-4');
+            disable_model('claude-3');
+            disable_model('gemini');
             
             expect(taskState.disabledModels.size).toBe(3);
             expect(taskState.disabledModels.has('gpt-4')).toBe(true);
             expect(taskState.disabledModels.has('claude-3')).toBe(true);
             expect(taskState.disabledModels.has('gemini')).toBe(true);
             
-            disableModel('claude-3', false); // Enable by passing false
+            disable_model('claude-3', false); // Enable by passing false
             expect(taskState.disabledModels.size).toBe(2);
             expect(taskState.disabledModels.has('claude-3')).toBe(false);
         });
 
         it('should list disabled models', () => {
-            disableModel('model1');
-            disableModel('model2');
+            disable_model('model1');
+            disable_model('model2');
             
             const list = listDisabledModels();
             expect(list).toContain('model1');
@@ -154,12 +154,12 @@ describe('Mind State Management', () => {
         });
 
         it('should handle duplicate operations gracefully', () => {
-            disableModel('gpt-4');
-            disableModel('gpt-4'); // Duplicate
+            disable_model('gpt-4');
+            disable_model('gpt-4'); // Duplicate
             expect(taskState.disabledModels.size).toBe(1);
             
-            disableModel('gpt-4', false); // Enable by passing false
-            disableModel('gpt-4', false); // Already enabled
+            disable_model('gpt-4', false); // Enable by passing false
+            disable_model('gpt-4', false); // Already enabled
             expect(taskState.disabledModels.size).toBe(0);
         });
     });
@@ -167,8 +167,8 @@ describe('Mind State Management', () => {
     describe('State persistence', () => {
         it('should maintain state between operations', () => {
             // Test that state persists across operations
-            setModelScore('test-model', '75');
-            disableModel('disabled-model');
+            set_model_score('test-model', '75');
+            disable_model('disabled-model');
             
             expect(getModelScore('test-model')).toBe(75);
             expect(taskState.disabledModels.has('disabled-model')).toBe(true);

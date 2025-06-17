@@ -111,7 +111,7 @@ export function listModelScores(): string {
  * @param frequency - The frequency to set (5, 10, 20, or 40)
  * @returns The new frequency or error message
  */
-export const setMetaFrequency = withErrorHandling(
+export const set_meta_frequency = withErrorHandling(
     (frequency: string): string => {
         validateMetaFrequency(frequency);
         taskState.metaFrequency = frequency as MetaFrequency;
@@ -129,7 +129,7 @@ export const setMetaFrequency = withErrorHandling(
  * @param score - Score between 0-100
  * @returns Success message or error
  */
-export const setModelScore = withErrorHandling(
+export const set_model_score = withErrorHandling(
     (modelId: string, score: string): string => {
         // Validate inputs using validation system
         validateModelScore(modelId, score);
@@ -150,7 +150,7 @@ export const setModelScore = withErrorHandling(
  * @param disabled - Optional boolean to enable/disable (default: true)
  * @returns Status message
  */
-export function disableModel(modelId: string, disabled?: boolean): string {
+export function disable_model(modelId: string, disabled?: boolean): string {
     if (!modelId || typeof modelId !== 'string') {
         return `Invalid modelId: ${modelId}. Must be a non-empty string.`;
     }
@@ -165,7 +165,7 @@ export function disableModel(modelId: string, disabled?: boolean): string {
     return `Model ${modelId} disabled`;
 }
 
-// enableModel function inlined into disableModel since it was only used there
+// enableModel function inlined into disable_model since it was only used there
 
 /**
  * Get the score for a model

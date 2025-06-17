@@ -5,20 +5,20 @@
  * Shows how to configure meta-cognition frequency and monitor model performance.
  */
 
-import { runTask, setMetaFrequency, setModelScore, listModelScores } from '../index.js';
+import { runTask, set_meta_frequency, set_model_score, listModelScores } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
     console.log('🧠 Task Meta-cognition Example\n');
     
     // Configure meta-cognition to trigger every 5 LLM requests
-    setMetaFrequency('5');
+    set_meta_frequency('5');
     console.log('Meta-cognition frequency set to every 5 LLM requests\n');
     
     // Set some model scores to influence selection
-    setModelScore('gpt-4', '85');
-    setModelScore('claude-3-5-sonnet-20241022', '90');
-    setModelScore('gpt-4o-mini', '60');
+    set_model_score('gpt-4', '85');
+    set_model_score('claude-3-5-sonnet-20241022', '90');
+    set_model_score('gpt-4o-mini', '60');
     
     console.log('Model scores:');
     console.log(listModelScores());

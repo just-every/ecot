@@ -10,9 +10,9 @@ import {
     taskState,
     listDisabledModels,
     listModelScores,
-    setMetaFrequency,
-    setModelScore,
-    disableModel
+    set_meta_frequency,
+    set_model_score,
+    disable_model
 } from '../state/state.js';
 import { getThoughtDelay, getThoughtTools } from './thought_utils.js';
 import { 
@@ -32,7 +32,7 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
     const tools: ToolFunction[] = [];
     
     // Create named functions for better debugging and testing
-    function injectThought(content: string) { 
+    function inject_thought(content: string) { 
         // Add thought to the main messages array for next iteration
         mainMessages.push({
             type: 'message',
@@ -43,23 +43,21 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
         return `Successfully injected metacognition thought at ${new Date().toISOString()}`;
     }
     
-    function noChangesNeeded(): string {
+    function no_changes_needed(): string {
         console.log('[Task] metacognition no change');
         return 'No changes made';
     }
     
     tools.push(
         createToolFunction(
-            injectThought,
+            inject_thought,
             'Your core tool for altering the thought process of the agent. Injects a thought with high priority into the next loop for the agent. The agent will see this before choosing their next thought or action.',
             {
                 content: 'The thought to inject. Be detailed and explain why this is important.',
             },
-            undefined,
-            'injectThought'
         ),
         createToolFunction(
-            setMetaFrequency,
+            set_meta_frequency,
             'Change how often metacognition should run (every N LLM requests)',
             {
                 frequency: {
@@ -68,21 +66,17 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
                     enum: VALID_FREQUENCIES as unknown as string[],
                 },
             },
-            'Confirmation message',
-            'setMetaFrequency'
         ),
         createToolFunction(
-            setModelScore,
+            set_model_score,
             'Set a score for a specific model (affects selection frequency)',
             {
                 modelId: 'The model ID to score',
                 score: 'Score between 0-100, higher means the model is selected more often',
             },
-            'The new score for the model',
-            'setModelScore'
         ),
         createToolFunction(
-            disableModel,
+            disable_model,
             'Temporarily disable a model from being selected. Pass disabled=false to enable it again.',
             {
                 modelId: 'The model ID to change',
@@ -93,15 +87,11 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
                     default: true,
                 },
             },
-            undefined,
-            'disableModel'
         ),
         createToolFunction(
-            noChangesNeeded,
+            no_changes_needed,
             'Everything is perfect. Use when no other tools are needed.',
             {},
-            undefined,
-            'noChangesNeeded'
         ),
     );
     

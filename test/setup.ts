@@ -3,17 +3,17 @@
  */
 
 import { vi, beforeAll } from 'vitest';
-import { taskState, setModelScore } from '../src/state/state.js';
+import { taskState, set_model_score } from '../src/state/state.js';
 
 // Setup global mocks before all tests
 beforeAll(() => {
     // Initialize model scores for test models
-    setModelScore('gpt-4', '80');
-    setModelScore('o1-preview', '85');
-    setModelScore('claude-3-5-sonnet-20241022', '90');
-    setModelScore('gemini-1.5-pro', '75');
-    setModelScore('grok-beta', '70');
-    setModelScore('gpt-4o-mini', '60');
+    set_model_score('gpt-4', '80');
+    set_model_score('o1-preview', '85');
+    set_model_score('claude-3-5-sonnet-20241022', '90');
+    set_model_score('gemini-1.5-pro', '75');
+    set_model_score('grok-beta', '70');
+    set_model_score('gpt-4o-mini', '60');
     
     // Clear disabled models
     taskState.disabledModels.clear();

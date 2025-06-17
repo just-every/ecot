@@ -46,7 +46,7 @@ Shows Mind's self-reflection and model rotation capabilities.
 - Meta-cognition frequency configuration
 - Model scoring and performance tracking
 - Automatic model selection optimization
-- State management with `setMetaFrequency` and model scores
+- State management with `set_meta_frequency` and model scores
 
 ### 3. Thought Management (`thought-management.ts`)
 Demonstrates thought delays and timing control.
@@ -96,14 +96,14 @@ for await (const event of runTask(agent, 'Solve this problem')) {
 
 ### Meta-cognition Control
 ```typescript
-import { setMetaFrequency, setModelScore, listModelScores } from '@just-every/task';
+import { set_meta_frequency, set_model_score, listModelScores } from '@just-every/task';
 
 // Run meta-cognition every 5 LLM calls
-setMetaFrequency('5');
+set_meta_frequency('5');
 
 // Set model performance scores (0-100)
-setModelScore('gpt-4', '85');
-setModelScore('claude-3-5-sonnet-20241022', '90');
+set_model_score('gpt-4', '85');
+set_model_score('claude-3-5-sonnet-20241022', '90');
 
 // View current scores
 console.log(listModelScores());

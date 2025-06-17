@@ -33,10 +33,10 @@ export type { Agent } from '@just-every/ensemble';
 export { 
     taskState, 
     resetLLMRequestCount,
-    setMetaFrequency,
-    setModelScore,
+    set_meta_frequency,
+    set_model_score,
     getModelScore,
-    disableModel,
+    disable_model,
     listDisabledModels,
     listModelScores
 } from './src/state/state.js';

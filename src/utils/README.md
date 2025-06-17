@@ -35,11 +35,11 @@ Task has been significantly simplified from its original design. The utilities n
 The utilities support Task's simplified API:
 
 ```typescript
-import { runTask, setMetaFrequency, setThoughtDelay } from '@just-every/task';
+import { runTask, set_meta_frequency, setThoughtDelay } from '@just-every/task';
 import { Agent } from '@just-every/ensemble';
 
 // Set system parameters
-setMetaFrequency('10'); // Every 10 LLM requests
+set_meta_frequency('10'); // Every 10 LLM requests
 setThoughtDelay('2');   // 2 second delays
 
 // Run Task
