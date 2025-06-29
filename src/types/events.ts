@@ -1,16 +1,14 @@
 /**
- * Task event types that match what ensemble should have
- * Once ensemble is updated, we can import these from there
+ * Task event types extending ensemble's TaskEvent
+ * Since ensemble has optional fields, we create stricter types here
  */
 
-import type { StreamEventBase, ResponseInput } from '@just-every/ensemble';
+import type { TaskEvent as EnsembleTaskEvent, ResponseInput } from '@just-every/ensemble';
 
 /**
- * Task completion/error event with full state for resumability
+ * Task's stricter version of TaskEvent with required finalState
  */
-export interface TaskEvent extends StreamEventBase {
-    type: 'task_complete' | 'task_fatal_error';
-    result: string;
+export interface TaskEvent extends EnsembleTaskEvent {
     finalState: {
         metaFrequency: string;
         thoughtDelay: string;
@@ -20,7 +18,7 @@ export interface TaskEvent extends StreamEventBase {
     };
 }
 
-// For now, create separate types for easier handling
+// Specific event types for easier handling
 export interface TaskCompleteEvent extends TaskEvent {
     type: 'task_complete';
 }
