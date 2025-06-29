@@ -52,7 +52,9 @@ import { Agent } from "@just-every/ensemble";
 
 // Create an agent with a model class
 const agent = new Agent({ 
-  modelClass: "reasoning" 
+  name: "MyAssistant",
+  modelClass: "reasoning",
+  instructions: "You are a helpful coding assistant"
 });
 
 // Run a task - Task handles everything else
@@ -66,42 +68,294 @@ for await (const event of stream) {
 }
 ```
 
-## Usage
+## Usage Examples
 
-### Basic Usage
-
-```typescript
-// Simple task execution
-const stream = runTask(agent, "Your task description here");
-```
-
-### With Custom Tools
+### 1. Basic Task Execution
 
 ```typescript
-const agent = new Agent({
-  modelClass: "code",
-  tools: [{
-    definition: {
-      type: 'function',
-      function: {
-        name: 'search_codebase',
-        description: 'Search for code patterns',
-        parameters: {
-          type: 'object',
-          properties: {
-            pattern: { type: 'string' }
-          }
-        }
-      }
-    },
-    function: async (pattern) => {
-      // Your implementation
-      return searchResults;
-    }
-  }]
+import { runTask } from "@just-every/task";
+import { Agent } from "@just-every/ensemble";
+
+// Create a simple agent
+const agent = new Agent({ 
+  modelClass: "standard" 
 });
 
-const stream = runTask(agent, "Find all API endpoints in the codebase");
+// Execute a task
+const stream = runTask(agent, "Write a haiku about programming");
+
+// Handle the response
+for await (const event of stream) {
+  if (event.type === 'message_delta') {
+    process.stdout.write(event.content);
+  }
+}
+```
+
+### 2. Code Analysis with Instructions
+
+```typescript
+const codeAgent = new Agent({
+  name: "CodeAnalyzer",
+  modelClass: "code",
+  instructions: `You are an expert code reviewer. Focus on:
+    - Performance improvements
+    - Security vulnerabilities
+    - Code maintainability
+    - Best practices`
+});
+
+const codeToAnalyze = `
+function processData(users) {
+  let result = [];
+  for (let i = 0; i < users.length; i++) {
+    if (users[i].age > 18) {
+      result.push(users[i].name);
+    }
+  }
+  return result;
+}
+`;
+
+const stream = runTask(codeAgent, 
+  `Review this code and suggest improvements:\n${codeToAnalyze}`
+);
+```
+
+### 3. Multi-Step Problem Solving
+
+```typescript
+const problemSolver = new Agent({
+  modelClass: "reasoning",
+  instructions: "Break down complex problems into steps and solve systematically"
+});
+
+// Task handles meta-cognition and self-correction automatically
+const stream = runTask(problemSolver, `
+  I have a dataset of 10,000 customer transactions. I need to:
+  1. Identify suspicious patterns
+  2. Calculate risk scores
+  3. Generate a report with visualizations
+  
+  Design a solution architecture for this.
+`);
+```
+
+### 4. Custom Tools Integration
+
+```typescript
+import { createToolFunction } from "@just-every/ensemble";
+
+// Create custom tools
+const databaseTool = createToolFunction(
+  async ({ query }: { query: string }) => {
+    // Simulate database query
+    return `Query executed: ${query}. Found 42 records.`;
+  },
+  'Execute database queries',
+  {
+    query: { 
+      type: 'string', 
+      description: 'SQL query to execute' 
+    }
+  },
+  undefined,
+  'query_database'
+);
+
+const apiTool = createToolFunction(
+  async ({ endpoint, method }: { endpoint: string; method: string }) => {
+    // Simulate API call
+    return `API ${method} ${endpoint} returned: {"status": "success", "data": [...]}`;
+  },
+  'Make API calls',
+  {
+    endpoint: { type: 'string', description: 'API endpoint' },
+    method: { type: 'string', description: 'HTTP method', enum: ['GET', 'POST', 'PUT', 'DELETE'] }
+  },
+  ['endpoint', 'method'],
+  'call_api'
+);
+
+// Create agent with tools
+const agent = new Agent({
+  modelClass: "code",
+  tools: [databaseTool, apiTool],
+  instructions: "Use the available tools to gather data and complete tasks"
+});
+
+// Run task that uses tools
+const stream = runTask(agent, 
+  "Check the database for users created today and call the analytics API"
+);
+
+// Process events including tool calls
+for await (const event of stream) {
+  if (event.type === 'message_delta') {
+    process.stdout.write(event.content);
+  } else if (event.type === 'tool_start') {
+    console.log(`\n🔧 Using tool: ${event.tool_call?.function?.name}`);
+  }
+}
+```
+
+### 5. Advanced Configuration with MindState
+
+```typescript
+import { runTask, MindState } from "@just-every/task";
+
+// Create custom state configuration
+const state = new MindState();
+
+// Configure meta-cognition frequency (5, 10, 20, or 40 requests)
+state.setMetaFrequency(10);
+
+// Set thought delays (in seconds: 0, 2, 4, 8, 16, 32, 64, 128)
+state.setThoughtDelay(4);
+
+// Adjust model scores based on your needs
+state.setModelScore('claude-3-5-sonnet-20241022', 95);
+state.setModelScore('gpt-4', 85);
+state.setModelScore('gemini-1.5-pro', 80);
+
+// Disable specific models if needed
+state.disableModel('gpt-3.5-turbo');
+
+const agent = new Agent({
+  modelClass: "reasoning",
+  instructions: "Think step by step and verify your work"
+});
+
+// Run with custom state
+const stream = runTask(agent, 
+  "Design a distributed system for real-time data processing", 
+  state
+);
+
+// Monitor execution
+for await (const event of stream) {
+  if (event.type === 'message_delta') {
+    process.stdout.write(event.content);
+  } else if (event.type === 'tool_done' && event.tool_call?.function?.name === 'meta_cognition') {
+    console.log('\n🧠 Meta-cognition triggered - agent is self-reflecting...');
+  }
+}
+```
+
+### 6. Error Handling and Recovery
+
+```typescript
+const resilientAgent = new Agent({
+  modelClass: "code",
+  instructions: "If you encounter errors, analyze them and try alternative approaches"
+});
+
+try {
+  const stream = runTask(resilientAgent, "Parse this JSON and handle errors gracefully");
+  
+  for await (const event of stream) {
+    if (event.type === 'message_delta') {
+      process.stdout.write(event.content);
+    } else if (event.type === 'tool_done') {
+      const toolName = event.tool_call?.function?.name;
+      
+      if (toolName === 'task_fatal_error') {
+        console.error('\n❌ Fatal error encountered:', event.result);
+        // Handle fatal errors appropriately
+        break;
+      } else if (toolName === 'task_complete') {
+        console.log('\n✅ Task completed successfully');
+        break;
+      }
+    }
+  }
+} catch (error) {
+  console.error('Unexpected error:', error);
+}
+```
+
+### 7. Real-World Example: Data Processing Pipeline
+
+```typescript
+import { Agent, createToolFunction } from "@just-every/ensemble";
+import { runTask, MindState } from "@just-every/task";
+
+// Create data processing tools
+const tools = [
+  createToolFunction(
+    async ({ filename }: { filename: string }) => {
+      // Simulate reading CSV
+      return `Read 1000 rows from ${filename}`;
+    },
+    'Read CSV file',
+    { filename: { type: 'string' } },
+    undefined,
+    'read_csv'
+  ),
+  
+  createToolFunction(
+    async ({ data, operation }: { data: string; operation: string }) => {
+      return `Transformed data using ${operation}`;
+    },
+    'Transform data',
+    { 
+      data: { type: 'string' },
+      operation: { type: 'string', enum: ['normalize', 'aggregate', 'filter'] }
+    },
+    ['data', 'operation'],
+    'transform_data'
+  ),
+  
+  createToolFunction(
+    async ({ data, format }: { data: string; format: string }) => {
+      return `Exported data to ${format} format`;
+    },
+    'Export processed data',
+    {
+      data: { type: 'string' },
+      format: { type: 'string', enum: ['json', 'csv', 'parquet'] }
+    },
+    ['data', 'format'],
+    'export_data'
+  )
+];
+
+// Configure agent
+const dataAgent = new Agent({
+  name: "DataProcessor",
+  modelClass: "code",
+  tools,
+  instructions: `You are a data processing expert. When given a data task:
+    1. Read the input data
+    2. Apply appropriate transformations
+    3. Export in the requested format
+    4. Provide a summary of what was done`
+});
+
+// Configure state for longer tasks
+const state = new MindState();
+state.setMetaFrequency(20); // Less frequent meta-cognition for focused work
+state.setThoughtDelay(2); // Quick thinking for data tasks
+
+// Execute complex data pipeline
+const stream = runTask(dataAgent, `
+  Process the sales_data.csv file:
+  - Normalize the revenue columns
+  - Aggregate by region and product category
+  - Export as both JSON and Parquet formats
+  - Include data quality metrics in your summary
+`, state);
+
+// Track progress
+let toolCalls = 0;
+for await (const event of stream) {
+  if (event.type === 'message_delta') {
+    process.stdout.write(event.content);
+  } else if (event.type === 'tool_start') {
+    toolCalls++;
+    console.log(`\n[Step ${toolCalls}] ${event.tool_call?.function?.name}`);
+  }
+}
 ```
 
 ### Model Classes
@@ -112,17 +366,95 @@ const stream = runTask(agent, "Find all API endpoints in the codebase");
 | `code` | Code generation, review, debugging | gpt-4, claude-3-sonnet |
 | `standard` | General tasks, writing, Q&A | gpt-3.5, claude-3-haiku |
 
-### Advanced Configuration
+## Common Patterns
+
+### Streaming Output with Progress
 
 ```typescript
-import { runTask, MindState } from "@just-every/task";
+const stream = runTask(agent, task);
+let totalTokens = 0;
 
-// Initialize with custom state
-const state = new MindState();
-state.metaFrequency = 10; // Meta-cognition every 10 requests
-state.thoughtDelay = 2000; // 2 second delay between thoughts
+for await (const event of stream) {
+  switch (event.type) {
+    case 'message_delta':
+      process.stdout.write(event.content);
+      break;
+    case 'tool_start':
+      console.log(`\n🔧 ${event.tool_call?.function?.name} started`);
+      break;
+    case 'tool_done':
+      if (event.tool_call?.function?.name === 'task_complete') {
+        console.log(`\n✅ Complete! Total tokens: ${totalTokens}`);
+      }
+      break;
+    case 'usage':
+      totalTokens += event.usage?.total_tokens || 0;
+      break;
+  }
+}
+```
 
-const stream = runTask(agent, "Complex multi-step task", state);
+### Handling Different Task Types
+
+```typescript
+// For analysis tasks - use reasoning model with meta-cognition
+const analysisAgent = new Agent({ modelClass: "reasoning" });
+const analysisState = new MindState();
+analysisState.setMetaFrequency(5); // Frequent self-checking
+
+// For creative tasks - use standard model with thought delays
+const creativeAgent = new Agent({ modelClass: "standard" });
+const creativeState = new MindState();
+creativeState.setThoughtDelay(8); // Slower, more deliberate
+
+// For coding tasks - use code model with minimal delays
+const codingAgent = new Agent({ modelClass: "code" });
+const codingState = new MindState();
+codingState.setThoughtDelay(0); // Fast execution
+```
+
+### Building Reusable Agents
+
+```typescript
+// Create a reusable agent factory
+function createSpecializedAgent(specialty: string) {
+  const configs = {
+    researcher: {
+      modelClass: "reasoning" as const,
+      instructions: "Research thoroughly and cite sources",
+      metaFrequency: 10,
+      thoughtDelay: 4
+    },
+    developer: {
+      modelClass: "code" as const,
+      instructions: "Write clean, tested, documented code",
+      metaFrequency: 20,
+      thoughtDelay: 2
+    },
+    writer: {
+      modelClass: "standard" as const,
+      instructions: "Write engaging, clear content",
+      metaFrequency: 40,
+      thoughtDelay: 8
+    }
+  };
+  
+  const config = configs[specialty as keyof typeof configs];
+  const agent = new Agent({
+    modelClass: config.modelClass,
+    instructions: config.instructions
+  });
+  
+  const state = new MindState();
+  state.setMetaFrequency(config.metaFrequency);
+  state.setThoughtDelay(config.thoughtDelay);
+  
+  return { agent, state };
+}
+
+// Use the factory
+const { agent, state } = createSpecializedAgent('researcher');
+const stream = runTask(agent, "Research quantum computing applications", state);
 ```
 
 ## API Reference
@@ -172,14 +504,20 @@ npm run example:meta
 npm run example:tools
 ```
 
-## Examples
+## More Examples
 
-See the `examples/` directory for complete examples:
+The `examples/` directory contains complete, runnable examples:
 
-- `simple-mind.ts` - Basic usage
-- `meta-cognition.ts` - Meta-cognition in action
-- `custom-tools.ts` - Using custom tools
-- `thought-management.ts` - Controlling thought delays
+- **`simple-mind.ts`** - Basic usage with minimal setup
+- **`meta-cognition.ts`** - See meta-cognition in action with self-reflection
+- **`custom-tools.ts`** - Create and use custom tools for specific tasks
+- **`thought-management.ts`** - Control pacing with thought delays
+- **`pause-control.ts`** - Pause and resume task execution
+
+Run any example:
+```bash
+npm run build && node dist/examples/simple-mind.js
+```
 
 ## Contributing
 
