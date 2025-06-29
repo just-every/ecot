@@ -356,6 +356,34 @@ export function runTask(
 }
 
 /**
+ * Internal function to add a message to a messages array
+ * Used by both addMessageToTask and metacognition's inject_thought
+ */
+export function internalAddMessage(
+    messages: ResponseInput,
+    message: ResponseInput[0],
+    source: 'external' | 'metacognition' = 'external'
+): void {
+    // Validate the message
+    if (!message || typeof message !== 'object') {
+        throw new Error('Message must be a valid message object');
+    }
+    if (!message.type || message.type !== 'message') {
+        throw new Error('Message must have type "message"');
+    }
+    if (!message.role || !['system', 'user', 'assistant', 'developer'].includes(message.role)) {
+        throw new Error('Message must have a valid role: system, user, assistant, or developer');
+    }
+    if (!message.content || typeof message.content !== 'string') {
+        throw new Error('Message must have string content');
+    }
+    
+    // Add the message
+    messages.push(message);
+    console.log(`[Task] ${source === 'metacognition' ? 'Metacognition' : 'External'} message added with role: ${message.role}`);
+}
+
+/**
  * Add a message to an active task's message stream
  * 
  * @param taskGenerator - The generator returned by runTask
@@ -382,27 +410,13 @@ export function addMessageToTask(
         throw new Error('Task generator is required');
     }
     
-    if (!message || typeof message !== 'object') {
-        throw new Error('Message must be a valid message object');
-    }
-    if (!message.type || message.type !== 'message') {
-        throw new Error('Message must have type "message"');
-    }
-    if (!message.role || !['system', 'user', 'assistant', 'developer'].includes(message.role)) {
-        throw new Error('Message must have a valid role: system, user, assistant, or developer');
-    }
-    if (!message.content || typeof message.content !== 'string') {
-        throw new Error('Message must have string content');
-    }
-    
     // Get the messages array for this task
     const messages = activeTaskMessages.get(taskGenerator);
     if (!messages) {
         throw new Error('Task not found or already completed. Messages can only be added to active tasks.');
     }
     
-    // Add the message
-    messages.push(message);
-    console.log(`[Task] External message added with role: ${message.role}`);
+    // Use the internal function
+    internalAddMessage(messages, message, 'external');
 }
 

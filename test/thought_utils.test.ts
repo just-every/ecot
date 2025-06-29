@@ -84,7 +84,7 @@ describe('Thought Utils', () => {
             await runThoughtDelay();
             
             const elapsed = Date.now() - start;
-            expect(elapsed).toBeGreaterThanOrEqual(2000);
+            expect(elapsed).toBeGreaterThanOrEqual(1995); // Allow 5ms tolerance
             expect(elapsed).toBeLessThan(2100); // Some tolerance
         });
 

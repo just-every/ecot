@@ -12,6 +12,7 @@ import {
     listModelScores
 } from '../state/state.js';
 import { getThoughtDelay } from './thought_utils.js';
+import { internalAddMessage } from './engine.js';
 import { 
     ResponseInput, 
     Agent,
@@ -32,12 +33,15 @@ function getMetaCognitionTools(mainMessages: ResponseInput, taskLocalState: Task
     // Create named functions for better debugging and testing
     function inject_thought(content: string) { 
         // Add thought to the main messages array for next iteration
-        mainMessages.push({
-            type: 'message',
-            role: 'developer',
-            content: `**IMPORTANT - METACOGNITION:** ${content}`,
-        });
-        console.log(`[Task] metacognition injected thought: ${content}`);
+        internalAddMessage(
+            mainMessages,
+            {
+                type: 'message',
+                role: 'developer',
+                content: `**IMPORTANT - METACOGNITION:** ${content}`,
+            },
+            'metacognition'
+        );
         return `Successfully injected metacognition thought at ${new Date().toISOString()}`;
     }
     
