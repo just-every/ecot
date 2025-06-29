@@ -55,6 +55,8 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
             {
                 content: 'The thought to inject. Be detailed and explain why this is important.',
             },
+            undefined,
+            'inject_thought'
         ),
         createToolFunction(
             set_meta_frequency,
@@ -66,6 +68,8 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
                     enum: VALID_FREQUENCIES as unknown as string[],
                 },
             },
+            undefined,
+            'set_meta_frequency'
         ),
         createToolFunction(
             set_model_score,
@@ -74,6 +78,8 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
                 modelId: 'The model ID to score',
                 score: 'Score between 0-100, higher means the model is selected more often',
             },
+            undefined,
+            'set_model_score'
         ),
         createToolFunction(
             disable_model,
@@ -87,11 +93,15 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
                     default: true,
                 },
             },
+            undefined,
+            'disable_model'
         ),
         createToolFunction(
             no_changes_needed,
             'Everything is perfect. Use when no other tools are needed.',
             {},
+            undefined,
+            'no_changes_needed'
         ),
     );
     
