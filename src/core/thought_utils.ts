@@ -102,6 +102,40 @@ export async function runThoughtDelay(): Promise<void> {
 }
 
 /**
+ * Execute thought delay with a specific AbortController (task-scoped)
+ * 
+ * @param controller - Task-specific AbortController
+ * @param delaySeconds - Delay in seconds
+ */
+export async function runThoughtDelayWithController(controller: AbortController, delaySeconds: number): Promise<void> {
+    if (delaySeconds > 0) {
+        console.log(`[Task] Thought delay: ${delaySeconds} seconds`);
+        
+        const signal = controller.signal;
+
+        // Simple delay implementation
+        try {
+            await new Promise<void>((resolve, reject) => {
+                const timeoutId = setTimeout(resolve, delaySeconds * 1000);
+                
+                signal.addEventListener('abort', () => {
+                    clearTimeout(timeoutId);
+                    const error = new Error('Delay was aborted');
+                    error.name = 'AbortError';
+                    reject(error);
+                }, { once: true });
+            });
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                console.log('[Task] Thought delay interrupted');
+                throw error;
+            }
+            throw error;
+        }
+    }
+}
+
+/**
  * Set the thought delay for the agent
  * @param delay - The delay to set (0, 2, 4, 8, 16, 32, 64, or 128 seconds)
  * @returns The new delay value or error message

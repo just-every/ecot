@@ -145,10 +145,10 @@ describe('Meta-cognition', () => {
             taskState.modelScores['gpt-4'] = 85;
             taskState.disabledModels.add('claude-3');
             
-            await spawnMetaThought(mockAgent, mockMessages, startTime);
+            await spawnMetaThought(mockAgent, mockMessages, startTime, 25);
             
             const agentCall = (Agent as any).mock.calls[0][0];
-            expect(agentCall.instructions).toContain('LLM Requests: 25');
+            expect(agentCall.instructions).toContain('Task LLM Requests: 25');
             expect(agentCall.instructions).toContain('Meta Frequency: Every 10 requests');
             expect(agentCall.instructions).toContain('gpt-4: 85');
             expect(agentCall.instructions).toContain('claude-3');
@@ -214,7 +214,7 @@ describe('Meta-cognition', () => {
             const tools = agentCall.tools;
             
             // Check that we have the expected number of metacognition tools
-            expect(tools.length).toBeGreaterThanOrEqual(8); // At least 8 tools (5 meta + 3 thought)
+            expect(tools.length).toBeGreaterThanOrEqual(6); // At least 6 metacognition tools
             
             // Check that inject_thought is present (it has a clear name)
             const toolNames = tools.map((t: any) => t.definition.function.name);
@@ -231,12 +231,12 @@ describe('Meta-cognition', () => {
             const agentCall = (Agent as any).mock.calls[0][0];
             const tools = agentCall.tools;
             
-            // Check that we have thought management tools (at least 3)
+            // Check that we have thought management tools (at least 2 - inject_thought and set_thought_delay)
             const thoughtTools = tools.filter((t: any) => 
                 t.definition.function.description?.toLowerCase().includes('thought') ||
                 t.definition.function.description?.toLowerCase().includes('delay')
             );
-            expect(thoughtTools.length).toBeGreaterThanOrEqual(3);
+            expect(thoughtTools.length).toBeGreaterThanOrEqual(2);
         });
     });
 

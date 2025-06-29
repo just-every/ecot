@@ -9,12 +9,9 @@
 import {
     taskState,
     listDisabledModels,
-    listModelScores,
-    set_meta_frequency,
-    set_model_score,
-    disable_model
+    listModelScores
 } from '../state/state.js';
-import { getThoughtDelay, getThoughtTools } from './thought_utils.js';
+import { getThoughtDelay } from './thought_utils.js';
 import { 
     ResponseInput, 
     Agent,
@@ -23,12 +20,13 @@ import {
     type ToolFunction
 } from '@just-every/ensemble';
 import { VALID_FREQUENCIES } from '../utils/constants.js';
+import type { TaskLocalState } from '../types/task-state.js';
 
 /**
  * Get all metacognition tools as an array of tool definitions
  * These are available only to the metacognition agent, not the main agent
  */
-function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
+function getMetaCognitionTools(mainMessages: ResponseInput, taskLocalState: TaskLocalState): ToolFunction[] {
     const tools: ToolFunction[] = [];
     
     // Create named functions for better debugging and testing
@@ -48,6 +46,47 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
         return 'No changes made';
     }
     
+    // Task-local versions of state modification functions
+    function set_task_meta_frequency(frequency: string): string {
+        if (!VALID_FREQUENCIES.includes(frequency as any)) {
+            throw new Error(`Invalid frequency: ${frequency}. Must be one of: ${VALID_FREQUENCIES.join(', ')}`);
+        }
+        taskLocalState.metaFrequency = frequency;
+        console.log(`[Task] Meta-cognition frequency set to ${frequency} for this task`);
+        return taskLocalState.metaFrequency;
+    }
+    
+    function set_task_model_score(modelId: string, score: number): string {
+        if (score < 0 || score > 100) {
+            throw new Error(`Score must be between 0 and 100, got ${score}`);
+        }
+        taskLocalState.modelScores[modelId] = score;
+        console.log(`[Task] Model ${modelId} score set to ${score} for this task`);
+        return `Model ${modelId} score set to ${score}`;
+    }
+    
+    function disable_task_model(modelId: string, disabled: boolean = true): string {
+        if (disabled) {
+            taskLocalState.disabledModels.add(modelId);
+            console.log(`[Task] Model ${modelId} disabled for this task`);
+            return `Model ${modelId} has been disabled`;
+        } else {
+            taskLocalState.disabledModels.delete(modelId);
+            console.log(`[Task] Model ${modelId} enabled for this task`);
+            return `Model ${modelId} has been enabled`;
+        }
+    }
+    
+    function set_task_thought_delay(delay: string): string {
+        const validDelays = ['0', '2', '4', '8', '16', '32', '64', '128'];
+        if (!validDelays.includes(delay)) {
+            throw new Error(`Invalid delay: ${delay}. Must be one of: ${validDelays.join(', ')}`);
+        }
+        taskLocalState.thoughtDelay = delay;
+        console.log(`[Task] Thought delay set to ${delay} seconds for this task`);
+        return `Thought delay set to ${delay} seconds`;
+    }
+
     tools.push(
         createToolFunction(
             inject_thought,
@@ -59,8 +98,8 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
             'inject_thought'
         ),
         createToolFunction(
-            set_meta_frequency,
-            'Change how often metacognition should run (every N LLM requests)',
+            set_task_meta_frequency,
+            'Change how often metacognition should run (every N LLM requests) for this task',
             {
                 frequency: {
                     type: 'string',
@@ -72,8 +111,8 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
             'set_meta_frequency'
         ),
         createToolFunction(
-            set_model_score,
-            'Set a score for a specific model (affects selection frequency)',
+            set_task_model_score,
+            'Set a score for a specific model (affects selection frequency) for this task',
             {
                 modelId: 'The model ID to score',
                 score: 'Score between 0-100, higher means the model is selected more often',
@@ -82,8 +121,8 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
             'set_model_score'
         ),
         createToolFunction(
-            disable_model,
-            'Temporarily disable a model from being selected. Pass disabled=false to enable it again.',
+            disable_task_model,
+            'Temporarily disable a model from being selected for this task. Pass disabled=false to enable it again.',
             {
                 modelId: 'The model ID to change',
                 disabled: {
@@ -95,6 +134,19 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
             },
             undefined,
             'disable_model'
+        ),
+        createToolFunction(
+            set_task_thought_delay,
+            'Change the delay between agent thoughts for this task',
+            {
+                delay: {
+                    type: 'string',
+                    description: 'Delay in seconds (0, 2, 4, 8, 16, 32, 64, or 128)',
+                    enum: ['0', '2', '4', '8', '16', '32', '64', '128'],
+                },
+            },
+            undefined,
+            'set_thought_delay'
         ),
         createToolFunction(
             no_changes_needed,
@@ -141,7 +193,9 @@ function getMetaCognitionTools(mainMessages: ResponseInput): ToolFunction[] {
 export async function spawnMetaThought(
     agent: { agent_id?: string; name?: string }, 
     messages: ResponseInput,
-    startTime: Date
+    startTime: Date,
+    taskRequestCount?: number,
+    taskLocalState?: TaskLocalState
 ): Promise<void> {
     // Validate inputs
     if (!agent || typeof agent !== 'object') {
@@ -171,11 +225,11 @@ Though metacognition, you continuously improve ${agent.name || 'the agent'}'s pe
 
 System State:
 - Runtime: ${Math.round((Date.now() - startTime.getTime()) / 1000)} seconds
-- LLM Requests: ${taskState.llmRequestCount}
-- Meta Frequency: Every ${taskState.metaFrequency} requests
-- Thought Delay: ${getThoughtDelay()} seconds
-- Disabled Models: ${listDisabledModels()}
-- Model Scores: ${listModelScores()}
+- Task LLM Requests: ${taskRequestCount || 'Unknown'}
+- Meta Frequency: Every ${taskLocalState?.metaFrequency || taskState.metaFrequency} requests
+- Thought Delay: ${taskLocalState?.thoughtDelay || getThoughtDelay()} seconds
+- Disabled Models: ${taskLocalState ? Array.from(taskLocalState.disabledModels).join(', ') || 'None' : listDisabledModels()}
+- Model Scores: ${taskLocalState ? Object.entries(taskLocalState.modelScores).map(([id, score]) => `${id}: ${score}`).join(', ') || 'None set' : listModelScores()}
 
 Recent history shows ${messages.length} messages.
 
@@ -186,7 +240,14 @@ Analyze the agent's recent thoughts and:
 4. Use the no_changes_needed tool if everything is already optimal
 
 Be concise and strategic in your analysis.`,
-            tools: [...getMetaCognitionTools(messages), ...getThoughtTools()],
+            tools: taskLocalState ? [...getMetaCognitionTools(messages, taskLocalState)] : [...getMetaCognitionTools(messages, { 
+                requestCount: 0,
+                metaFrequency: taskState.metaFrequency,
+                thoughtDelay: getThoughtDelay(),
+                disabledModels: new Set(taskState.disabledModels),
+                modelScores: { ...taskState.modelScores },
+                delayAbortController: new AbortController()
+            })],
             modelClass: 'reasoning',
             modelSettings: {
                 tool_choice: 'required'

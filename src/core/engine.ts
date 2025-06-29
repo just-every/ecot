@@ -7,8 +7,9 @@
  */
 
 import { taskState } from '../state/state.js';
-import { runThoughtDelay, getThoughtDelay } from './thought_utils.js';
+import { getThoughtDelay, runThoughtDelayWithController } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
+import type { TaskLocalState } from '../types/task-state.js';
 import { 
     ensembleRequest,
     createToolFunction,
@@ -68,10 +69,21 @@ function getTaskTools(): ToolFunction[] {
 }
 
 /**
+ * Optional initial state for a task
+ */
+export interface InitialTaskState {
+    metaFrequency?: string;
+    thoughtDelay?: string;
+    disabledModels?: string[];
+    modelScores?: Record<string, number>;
+}
+
+/**
  * Run Mind with automatic everything
  * 
  * @param agent - The agent from ensemble
  * @param content - The task/prompt to execute
+ * @param initialState - Optional initial state for the task
  * @returns AsyncGenerator that yields all ProviderStreamEvents
  * 
  * @example
@@ -87,11 +99,18 @@ function getTaskTools(): ToolFunction[] {
  * for await (const event of runTask(agent, 'Analyze this code')) {
  *     console.log(event);
  * }
+ * 
+ * // With initial state
+ * const state = { metaFrequency: '10', thoughtDelay: '2' };
+ * for await (const event of runTask(agent, 'Complex task', state)) {
+ *     console.log(event);
+ * }
  * ```
  */
 export function runTask(
     agent: Agent,
-    content: string
+    content: string,
+    initialState?: InitialTaskState
 ): AsyncGenerator<ProviderStreamEvent> {
     // Basic validation
     if (!agent || typeof agent !== 'object') {
@@ -131,6 +150,19 @@ export function runTask(
         // Track completion state
         let isComplete = false;
         
+        // Task-local state (isolated from other tasks)
+        const taskLocalState: TaskLocalState = {
+            // Request counter for metacognition
+            requestCount: 0,
+            // Use initial state if provided, otherwise copy global state as starting point
+            metaFrequency: initialState?.metaFrequency || taskState.metaFrequency,
+            thoughtDelay: initialState?.thoughtDelay || getThoughtDelay(),
+            disabledModels: new Set(initialState?.disabledModels || taskState.disabledModels),
+            modelScores: initialState?.modelScores || { ...taskState.modelScores },
+            // Task-local abort controller for thought delays
+            delayAbortController: new AbortController()
+        };
+        
         try {
             console.log(`[Task] Starting execution for agent: ${agent.name}`);
             
@@ -145,21 +177,21 @@ export function runTask(
                 
                 // Apply thought delay (Mind-specific feature)
                 if (iteration > 1) {
-                    const delay = parseInt(getThoughtDelay());
+                    const delay = parseInt(taskLocalState.thoughtDelay);
                     if (delay > 0) {
-                        await runThoughtDelay();
+                        await runThoughtDelayWithController(taskLocalState.delayAbortController, delay);
                     }
                 }
                 
-                // Increment request counter for meta-cognition
-                taskState.llmRequestCount++;
+                // Increment task-local request counter for meta-cognition
+                taskLocalState.requestCount++;
                 
                 // Check meta-cognition trigger (Mind-specific feature)
-                const metaFrequency = parseInt(taskState.metaFrequency);
-                if (taskState.llmRequestCount % metaFrequency === 0) {
-                    console.log(`[Task] Triggering meta-cognition after ${taskState.llmRequestCount} requests`);
+                const metaFrequency = parseInt(taskLocalState.metaFrequency);
+                if (taskLocalState.requestCount % metaFrequency === 0) {
+                    console.log(`[Task] Triggering meta-cognition after ${taskLocalState.requestCount} requests`);
                     try {
-                        await spawnMetaThought(agentDef, messages, new Date(startTime));
+                        await spawnMetaThought(agentDef, messages, new Date(startTime), taskLocalState.requestCount, taskLocalState);
                     } catch (error) {
                         console.error('[Task] Error in meta-cognition:', error);
                     }
@@ -177,14 +209,20 @@ export function runTask(
                         
                         if (toolName === 'task_complete') {
                             isComplete = true;
-                            // Emit task_complete event
+                            // Emit task_complete event with final state
                             yield {
                                 type: 'task_complete' as any,
-                                result: toolEvent.result?.output || ''
+                                result: toolEvent.result?.output || '',
+                                finalState: {
+                                    metaFrequency: taskLocalState.metaFrequency,
+                                    thoughtDelay: taskLocalState.thoughtDelay,
+                                    disabledModels: Array.from(taskLocalState.disabledModels),
+                                    modelScores: { ...taskLocalState.modelScores }
+                                }
                             };
                         } else if (toolName === 'task_fatal_error') {
                             isComplete = true;
-                            // Emit task_fatal_error event
+                            // Emit task_fatal_error event with final state
                             yield {
                                 type: 'task_fatal_error' as any,
                                 result: toolEvent.result?.output || ''
