@@ -5,7 +5,7 @@
  * preventing interference between parallel or sequential tasks.
  */
 
-import { runTask, InitialTaskState } from '../index.js';
+import { runTask, InitialTaskState, TaskCompleteEvent, TaskFatalErrorEvent } from '../index.js';
 import { Agent } from '@just-every/ensemble';
 
 async function main() {
@@ -60,7 +60,7 @@ async function main() {
 
 async function runTaskAndCapture(agent: Agent, task: string, initialState?: InitialTaskState) {
     let result = '';
-    let finalState = null;
+    let finalState: InitialTaskState | null = null;
     
     console.log(`\n🚀 Starting: ${task}`);
     
@@ -68,8 +68,14 @@ async function runTaskAndCapture(agent: Agent, task: string, initialState?: Init
         if (event.type === 'message_delta' && 'content' in event) {
             process.stdout.write(event.content);
         } else if (event.type === 'task_complete') {
-            result = (event as any).result || '';
-            finalState = (event as any).finalState;
+            const completeEvent = event as TaskCompleteEvent;
+            result = completeEvent.result || '';
+            finalState = completeEvent.finalState || null;
+            break;
+        } else if (event.type === 'task_fatal_error') {
+            const errorEvent = event as TaskFatalErrorEvent;
+            console.error('\n❌ Task error:', errorEvent.result);
+            finalState = errorEvent.finalState || null;
             break;
         }
     }

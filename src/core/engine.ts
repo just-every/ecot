@@ -10,6 +10,7 @@ import { taskState } from '../state/state.js';
 import { getThoughtDelay, runThoughtDelayWithController } from './thought_utils.js';
 import { spawnMetaThought } from './meta_cognition.js';
 import type { TaskLocalState } from '../types/task-state.js';
+import type { TaskCompleteEvent, TaskFatalErrorEvent, TaskEvent } from '../types/events.js';
 import { 
     ensembleRequest,
     createToolFunction,
@@ -69,13 +70,63 @@ function getTaskTools(): ToolFunction[] {
 }
 
 /**
- * Optional initial state for a task
+ * Optional initial state for a task (can be used to resume from a previous task)
  */
 export interface InitialTaskState {
     metaFrequency?: string;
     thoughtDelay?: string;
     disabledModels?: string[];
     modelScores?: Record<string, number>;
+    messages?: ResponseInput;
+}
+
+/**
+ * Resume a task from a previous state
+ * 
+ * @param agent - The agent to use
+ * @param finalState - The final state from a previous task
+ * @param newContent - Optional new content to add to the conversation
+ * @returns AsyncGenerator that yields events
+ * 
+ * @example
+ * ```typescript
+ * // First task
+ * let finalState;
+ * for await (const event of runTask(agent, 'Start analysis')) {
+ *     if (event.type === 'task_complete') {
+ *         finalState = event.finalState;
+ *     }
+ * }
+ * 
+ * // Resume with additional instructions
+ * for await (const event of resumeTask(agent, finalState, 'Continue with security analysis')) {
+ *     // ...
+ * }
+ * ```
+ */
+export function resumeTask(
+    agent: Agent,
+    finalState: TaskEvent['finalState'],
+    newContent?: string
+): AsyncGenerator<ProviderStreamEvent | TaskCompleteEvent | TaskFatalErrorEvent> {
+    // If new content provided, add it to messages
+    const messages = finalState.messages;
+    if (newContent) {
+        messages.push({
+            type: 'message',
+            role: 'user',
+            content: newContent
+        });
+    }
+    
+    // Resume with the full state
+    return runTask(agent, newContent || 'Continue with the task', {
+        metaFrequency: finalState.metaFrequency,
+        thoughtDelay: finalState.thoughtDelay,
+        disabledModels: finalState.disabledModels,
+        modelScores: finalState.modelScores,
+        messages: messages
+    });
 }
 
 /**
@@ -84,7 +135,7 @@ export interface InitialTaskState {
  * @param agent - The agent from ensemble
  * @param content - The task/prompt to execute
  * @param initialState - Optional initial state for the task
- * @returns AsyncGenerator that yields all ProviderStreamEvents
+ * @returns AsyncGenerator that yields all ProviderStreamEvents and TaskEvents
  * 
  * @example
  * ```typescript
@@ -105,13 +156,21 @@ export interface InitialTaskState {
  * for await (const event of runTask(agent, 'Complex task', state)) {
  *     console.log(event);
  * }
+ * 
+ * // Handle task completion with state
+ * for await (const event of runTask(agent, 'Task')) {
+ *     if (event.type === 'task_complete') {
+ *         console.log('Result:', event.result);
+ *         console.log('Final state:', event.finalState);
+ *     }
+ * }
  * ```
  */
 export function runTask(
     agent: Agent,
     content: string,
     initialState?: InitialTaskState
-): AsyncGenerator<ProviderStreamEvent> {
+): AsyncGenerator<ProviderStreamEvent | TaskCompleteEvent | TaskFatalErrorEvent> {
     // Basic validation
     if (!agent || typeof agent !== 'object') {
         throw new Error('Agent must be a valid Agent instance');
@@ -128,7 +187,8 @@ export function runTask(
         agent.instructions = agent.instructions ? `${agent.instructions}\n\n${toolGuidance}` : toolGuidance;
     }
     
-    const messages: ResponseInput = [
+    // Use provided messages or create new ones
+    const messages: ResponseInput = initialState?.messages ? [...initialState.messages] : [
         {
             type: 'message',
             role: 'user',
@@ -210,23 +270,33 @@ export function runTask(
                         if (toolName === 'task_complete') {
                             isComplete = true;
                             // Emit task_complete event with final state
-                            yield {
-                                type: 'task_complete' as any,
+                            const completeEvent: TaskCompleteEvent = {
+                                type: 'task_complete',
                                 result: toolEvent.result?.output || '',
                                 finalState: {
                                     metaFrequency: taskLocalState.metaFrequency,
                                     thoughtDelay: taskLocalState.thoughtDelay,
                                     disabledModels: Array.from(taskLocalState.disabledModels),
-                                    modelScores: { ...taskLocalState.modelScores }
+                                    modelScores: { ...taskLocalState.modelScores },
+                                    messages: messages
                                 }
                             };
+                            yield completeEvent;
                         } else if (toolName === 'task_fatal_error') {
                             isComplete = true;
                             // Emit task_fatal_error event with final state
-                            yield {
-                                type: 'task_fatal_error' as any,
-                                result: toolEvent.result?.output || ''
+                            const errorEvent: TaskFatalErrorEvent = {
+                                type: 'task_fatal_error',
+                                result: toolEvent.result?.output || '',
+                                finalState: {
+                                    metaFrequency: taskLocalState.metaFrequency,
+                                    thoughtDelay: taskLocalState.thoughtDelay,
+                                    disabledModels: Array.from(taskLocalState.disabledModels),
+                                    modelScores: { ...taskLocalState.modelScores },
+                                    messages: messages
+                                }
                             };
+                            yield errorEvent;
                         }
                     }
                     

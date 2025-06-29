@@ -16,8 +16,12 @@
 export {
     // The one and only function you need
     runTask,
+    // Resume a task from a previous state
+    resumeTask,
     // Add messages to an active task
     addMessageToTask,
+    // Types for initial state
+    type InitialTaskState
 } from './src/core/engine.js';
 
 // ============================================================================
@@ -26,6 +30,13 @@ export {
 
 // Re-export Agent from ensemble
 export type { Agent } from '@just-every/ensemble';
+
+// Export task-specific event types
+export type { 
+    TaskCompleteEvent, 
+    TaskFatalErrorEvent, 
+    TaskEvent 
+} from './src/types/events.js';
 
 // ============================================================================
 // State Management (for debugging/monitoring)
