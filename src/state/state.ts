@@ -11,6 +11,7 @@ import { findModel } from '@just-every/ensemble';
 import { DEFAULT_MODEL_SCORE, DEFAULT_META_FREQUENCY } from '../utils/constants.js';
 import { validateModelScore, validateMetaFrequency } from '../utils/validation.js';
 import { withErrorHandling } from '../utils/errors.js';
+import type { MetamemoryOptions } from '../metamemory/types.js';
 
 /**
  * State container for the Task system
@@ -27,6 +28,12 @@ export interface TaskState {
 
     /** Model effectiveness scores (0-100) - higher scores mean the model is selected more often */
     modelScores: Record<string, number>;
+    
+    /** Metamemory configuration for conversation compaction */
+    metamemoryOptions?: MetamemoryOptions;
+    
+    /** Whether metamemory is enabled globally */
+    metamemoryEnabled: boolean;
 }
 
 // Re-export types for external use
@@ -56,6 +63,8 @@ export const taskState: TaskState = {
     metaFrequency: DEFAULT_META_FREQUENCY,
     disabledModels: new Set<string>(),
     modelScores: {},
+    metamemoryEnabled: false,
+    metamemoryOptions: undefined,
 };
 
 /**
@@ -233,5 +242,27 @@ export function incrementLLMRequestCount(): {
  */
 export function resetLLMRequestCount(): void {
     taskState.llmRequestCount = 0;
+}
+
+/**
+ * Configure metamemory options
+ * @param options - Metamemory configuration options
+ * @returns Success message
+ */
+export function configureMetamemory(options: MetamemoryOptions): string {
+    taskState.metamemoryOptions = options;
+    console.log('[Task] Metamemory configured with options:', options);
+    return 'Metamemory configuration updated';
+}
+
+/**
+ * Enable or disable metamemory globally
+ * @param enabled - Whether to enable metamemory
+ * @returns Status message
+ */
+export function setMetamemoryEnabled(enabled: boolean): string {
+    taskState.metamemoryEnabled = enabled;
+    console.log(`[Task] Metamemory ${enabled ? 'enabled' : 'disabled'}`);
+    return `Metamemory ${enabled ? 'enabled' : 'disabled'}`;
 }
 

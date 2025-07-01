@@ -21,6 +21,7 @@ import {
     type ResponseInput,
     type ProviderStreamEvent
 } from '@just-every/ensemble';
+import { Metamemory, createMetamemoryState, type MetamemoryState } from '../metamemory/index.js';
 
 // WeakMap to store message arrays for active tasks
 const activeTaskMessages = new WeakMap<AsyncGenerator<ProviderStreamEvent>, ResponseInput>();
@@ -35,7 +36,7 @@ function getTaskTools(): ToolFunction[] {
     return [
         createToolFunction(
             (result: string ) => {
-                console.log('[Task] Task completed:', result);
+                //console.log('[Task] Task completed:', result);
                 // Return the result so it can be captured in the tool_done event
                 return result;
             },
@@ -78,6 +79,8 @@ export interface InitialTaskState {
     disabledModels?: string[];
     modelScores?: Record<string, number>;
     messages?: ResponseInput;
+    metamemoryEnabled?: boolean;
+    metamemoryState?: MetamemoryState;
 }
 
 /**
@@ -115,7 +118,8 @@ export function resumeTask(
         messages.push({
             type: 'message',
             role: 'user',
-            content: newContent
+            content: newContent,
+            id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         });
     }
     
@@ -192,7 +196,8 @@ export function runTask(
         {
             type: 'message',
             role: 'user',
-            content
+            content,
+            id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         }
     ];
 
@@ -210,6 +215,12 @@ export function runTask(
         // Track completion state
         let isComplete = false;
         
+        // Initialize metamemory if enabled
+        let metamemory: Metamemory | undefined;
+        if (initialState?.metamemoryEnabled || taskState.metamemoryEnabled) {
+            metamemory = new Metamemory(taskState.metamemoryOptions);
+        }
+        
         // Task-local state (isolated from other tasks)
         const taskLocalState: TaskLocalState = {
             // Request counter for metacognition
@@ -220,11 +231,15 @@ export function runTask(
             disabledModels: new Set(initialState?.disabledModels || taskState.disabledModels),
             modelScores: initialState?.modelScores || { ...taskState.modelScores },
             // Task-local abort controller for thought delays
-            delayAbortController: new AbortController()
+            delayAbortController: new AbortController(),
+            // Metamemory state
+            metamemoryEnabled: initialState?.metamemoryEnabled ?? taskState.metamemoryEnabled,
+            metamemoryState: initialState?.metamemoryState || (metamemory ? createMetamemoryState() : undefined),
+            metamemoryProcessing: false
         };
         
         try {
-            console.log(`[Task] Starting execution for agent: ${agent.name}`);
+            //console.log(`[Task] Starting execution for agent: ${agent.name}`);
             
             // Run the request loop
             let iteration = 0;
@@ -249,7 +264,7 @@ export function runTask(
                 // Check meta-cognition trigger (Mind-specific feature)
                 const metaFrequency = parseInt(taskLocalState.metaFrequency);
                 if (taskLocalState.requestCount % metaFrequency === 0) {
-                    console.log(`[Task] Triggering meta-cognition after ${taskLocalState.requestCount} requests`);
+                    //console.log(`[Task] Triggering meta-cognition after ${taskLocalState.requestCount} requests`);
                     try {
                         await spawnMetaThought(agentDef, messages, new Date(startTime), taskLocalState.requestCount, taskLocalState);
                     } catch (error) {
@@ -269,6 +284,35 @@ export function runTask(
                         
                         if (toolName === 'task_complete') {
                             isComplete = true;
+                            
+                            // Wait for metamemory processing to complete if enabled
+                            if (taskLocalState.metamemoryEnabled && taskLocalState.metamemoryProcessing) {
+                                console.log('[Task] Waiting for metamemory to complete processing...');
+                                // Default to 60s (increased from 30s)
+                                const maxWaitTime = 60000;
+                                const startWait = Date.now();
+                                let lastLog = startWait;
+                                
+                                while (taskLocalState.metamemoryProcessing && (Date.now() - startWait) < maxWaitTime) {
+                                    await new Promise(resolve => setTimeout(resolve, 100));
+                                    
+                                    // Log progress every 5 seconds
+                                    if (Date.now() - lastLog > 5000) {
+                                        const elapsed = Math.round((Date.now() - startWait) / 1000);
+                                        console.log(`[Task] Still waiting for metamemory... (${elapsed}s elapsed)`);
+                                        lastLog = Date.now();
+                                    }
+                                }
+                                
+                                if (taskLocalState.metamemoryProcessing) {
+                                    console.log(`[Task] Warning: Metamemory processing timed out after ${maxWaitTime/1000}s`);
+                                    console.log('[Task] Proceeding anyway - metamemory may complete in background');
+                                } else {
+                                    const totalTime = Math.round((Date.now() - startWait) / 1000);
+                                    console.log(`[Task] Metamemory processing completed in ${totalTime}s`);
+                                }
+                            }
+                            
                             // Emit task_complete event with final state
                             const completeEvent: TaskCompleteEvent = {
                                 type: 'task_complete',
@@ -278,7 +322,9 @@ export function runTask(
                                     thoughtDelay: taskLocalState.thoughtDelay,
                                     disabledModels: Array.from(taskLocalState.disabledModels),
                                     modelScores: { ...taskLocalState.modelScores },
-                                    messages: messages
+                                    messages: messages,
+                                    metamemoryEnabled: taskLocalState.metamemoryEnabled,
+                                    metamemoryState: taskLocalState.metamemoryState
                                 }
                             };
                             yield completeEvent;
@@ -293,7 +339,9 @@ export function runTask(
                                     thoughtDelay: taskLocalState.thoughtDelay,
                                     disabledModels: Array.from(taskLocalState.disabledModels),
                                     modelScores: { ...taskLocalState.modelScores },
-                                    messages: messages
+                                    messages: messages,
+                                    metamemoryEnabled: taskLocalState.metamemoryEnabled,
+                                    metamemoryState: taskLocalState.metamemoryState
                                 }
                             };
                             yield errorEvent;
@@ -305,6 +353,43 @@ export function runTask(
                         const responseEvent = event as any;
                         if (responseEvent.message) {
                             messages.push(responseEvent.message);
+                            
+                            // Process with metamemory if enabled
+                            if (metamemory && taskLocalState.metamemoryState && taskLocalState.metamemoryEnabled) {
+                                const trigger = metamemory.shouldProcess(
+                                    messages,
+                                    taskLocalState.metamemoryState,
+                                    responseEvent.message.content?.length
+                                );
+                                
+                                if (trigger && !taskLocalState.metamemoryProcessing) {
+                                    // Process metamemory in the background - don't block!
+                                    const currentState = taskLocalState.metamemoryState;
+                                    const messagesCopy = [...messages];
+                                    
+                                    // Mark as processing to prevent concurrent runs
+                                    taskLocalState.metamemoryProcessing = true;
+                                    
+                                    // Fire and forget - process in background
+                                    const processingStart = Date.now();
+                                    metamemory.processMessages(
+                                        messagesCopy,
+                                        currentState,
+                                        agent,
+                                        trigger
+                                    ).then(newState => {
+                                        const processingTime = Math.round((Date.now() - processingStart) / 1000);
+                                        taskLocalState.metamemoryState = newState;
+                                        taskLocalState.metamemoryProcessing = false;
+                                        console.log(`[Task] Metamemory background processing completed in ${processingTime}s`);
+                                    }).catch(error => {
+                                        console.error('[Task] Error processing metamemory in background:', error);
+                                        taskLocalState.metamemoryProcessing = false;
+                                    });
+                                } else if (trigger && taskLocalState.metamemoryProcessing) {
+                                    //console.log('[Task] Metamemory already processing, skipping trigger');
+                                }
+                            }
                         }
                     }
                 }
@@ -362,7 +447,7 @@ export function runTask(
 export function internalAddMessage(
     messages: ResponseInput,
     message: ResponseInput[0],
-    source: 'external' | 'metacognition' = 'external'
+    _source: 'external' | 'metacognition' = 'external'
 ): void {
     // Validate the message
     if (!message || typeof message !== 'object') {
@@ -378,9 +463,14 @@ export function internalAddMessage(
         throw new Error('Message must have string content');
     }
     
+    // Add ID if not present
+    if (!message.id) {
+        message.id = `${message.role}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
     // Add the message
     messages.push(message);
-    console.log(`[Task] ${source === 'metacognition' ? 'Metacognition' : 'External'} message added with role: ${message.role}`);
+    //console.log(`[Task] ${source === 'metacognition' ? 'Metacognition' : 'External'} message added with role: ${message.role}`);
 }
 
 /**
@@ -418,5 +508,58 @@ export function addMessageToTask(
     
     // Use the internal function
     internalAddMessage(messages, message, 'external');
+}
+
+/**
+ * Get compacted message history from metamemory
+ * 
+ * @param state - The final state from a task with metamemory
+ * @param options - Optional compaction options
+ * @returns Promise of compacted messages or null if metamemory not enabled
+ * 
+ * @example
+ * ```typescript
+ * let finalState;
+ * for await (const event of runTask(agent, 'Analyze codebase', { metamemoryEnabled: true })) {
+ *     if (event.type === 'task_complete') {
+ *         finalState = event.finalState;
+ *     }
+ * }
+ * 
+ * // Get compacted history
+ * const compacted = await getCompactedHistory(finalState);
+ * if (compacted) {
+ *     console.log(`Compacted ${compacted.metadata.originalCount} messages to ${compacted.metadata.compactedCount}`);
+ * }
+ * ```
+ */
+export async function getCompactedHistory(
+    state: TaskEvent['finalState'],
+    options?: import('../metamemory/types.js').CompactionOptions
+): Promise<import('../metamemory/types.js').CompactionResult | null> {
+    if (!state.metamemoryEnabled || !state.metamemoryState) {
+        return null;
+    }
+    
+    const metamemory = new Metamemory(taskState.metamemoryOptions);
+    return await metamemory.compactHistory(state.messages, state.metamemoryState, options);
+}
+
+/**
+ * Check if metamemory has processed enough messages for meaningful compaction
+ * 
+ * @param state - The final state from task completion
+ * @returns true if metamemory is ready for compaction
+ */
+export function isMetamemoryReady(state: TaskEvent['finalState']): boolean {
+    if (!state.metamemoryEnabled || !state.metamemoryState) {
+        return false;
+    }
+    
+    const totalMessages = state.messages.filter(m => m.type === 'message').length;
+    const processedMessages = state.metamemoryState.metamemory.size;
+    
+    // Consider ready if at least 50% of messages are processed
+    return processedMessages / totalMessages >= 0.5;
 }
 

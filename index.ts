@@ -20,6 +20,10 @@ export {
     resumeTask,
     // Add messages to an active task
     addMessageToTask,
+    // Get compacted history from metamemory
+    getCompactedHistory,
+    // Check if metamemory is ready
+    isMetamemoryReady,
     // Types for initial state
     type InitialTaskState
 } from './src/core/engine.js';
@@ -49,7 +53,9 @@ export {
     getModelScore,
     disable_model,
     listDisabledModels,
-    listModelScores
+    listModelScores,
+    configureMetamemory,
+    setMetamemoryEnabled
 } from './src/state/state.js';
 
 export { 
@@ -68,6 +74,28 @@ export {
     waitWhilePaused,
     type PauseController
 } from '@just-every/ensemble';
+
+// ============================================================================
+// Metamemory (for conversation compaction)
+// ============================================================================
+export {
+    // Main class and functions
+    Metamemory,
+    initializeMetamemory,
+    processMessages,
+    summarizeThreads,
+    compactHistory,
+    createMetamemoryState,
+    // Types
+    type MetamemoryState,
+    type MetamemoryOptions,
+    type CompactionResult,
+    type CompactionOptions,
+    type ThreadClass,
+    type Thread,
+    type MetamemoryEntry,
+    type ProcessingTrigger
+} from './src/metamemory/index.js';
 
 // That's it! Just use runTask(agent, content) and everything else is automatic.
 

@@ -250,7 +250,10 @@ Be concise and strategic in your analysis.`,
                 thoughtDelay: getThoughtDelay(),
                 disabledModels: new Set(taskState.disabledModels),
                 modelScores: { ...taskState.modelScores },
-                delayAbortController: new AbortController()
+                delayAbortController: new AbortController(),
+                metamemoryEnabled: false,
+                metamemoryState: undefined,
+                metamemoryProcessing: false
             })],
             modelClass: 'reasoning',
             modelSettings: {

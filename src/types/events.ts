@@ -4,6 +4,7 @@
  */
 
 import type { TaskEvent as EnsembleTaskEvent, ResponseInput } from '@just-every/ensemble';
+import type { MetamemoryState } from '../metamemory/types.js';
 
 /**
  * Task's stricter version of TaskEvent with required finalState
@@ -15,6 +16,8 @@ export interface TaskEvent extends EnsembleTaskEvent {
         disabledModels: string[];
         modelScores: Record<string, number>;
         messages: ResponseInput;
+        metamemoryEnabled?: boolean;
+        metamemoryState?: MetamemoryState;
     };
 }
 

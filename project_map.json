@@ -1,0 +1,53 @@
+{
+  "root": "task",
+  "summary": "A thoughtful task loop for orchestrating AI agents, focusing on chain-of-thought, meta-cognition, and model rotation.",
+  "primary_language": "TypeScript",
+  "frameworks": ["Node.js", "Vitest"],
+  "entry_points": [
+    "index.ts",
+    "examples/simple-mind.ts",
+    "examples/meta-cognition.ts"
+  ],
+  "tests": [
+    "test/",
+    "package.json#scripts.test"
+  ],
+  "build_commands": [
+    "npm run build"
+  ],
+  "setup_instructions": [
+    "npm install",
+    "cp .env.example .env"
+  ],
+  "directories": [
+    {
+      "path": "src/",
+      "summary": "Core source code for the Task library, including the main engine, state management, and type definitions.",
+      "languages": ["TypeScript"],
+      "important_files": [
+        "index.ts",
+        "src/core/engine.ts",
+        "src/state/state.ts",
+        "src/types/task-state.ts"
+      ]
+    },
+    {
+      "path": "examples/",
+      "summary": "Runnable examples demonstrating various features and use cases of the Task library.",
+      "languages": ["TypeScript", "JavaScript"],
+      "important_files": [
+        "simple-mind.ts",
+        "meta-cognition.ts"
+      ]
+    },
+    {
+      "path": "test/",
+      "summary": "Unit and integration tests for the project, using Vitest.",
+      "languages": ["TypeScript"],
+      "important_files": [
+        "api.test.ts",
+        "mech_state.test.ts"
+      ]
+    }
+  ]
+}
