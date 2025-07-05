@@ -6,7 +6,57 @@ import {
   type MetamemoryState,
   type CompactionResult,
   type ThreadClass,
-} from '../src/metamemory/index.js';
+} from '../src/metamemory-old/index.js';
+
+vi.mock('@just-every/ensemble', async (importOriginal) => {
+  const original: any = await importOriginal();
+  return {
+    ...original,
+    ensembleRequest: vi.fn(async function* (_messages: any, agent: any) {
+      const instr = agent.instructions as string;
+      if (instr.includes('Analyze the following conversation messages')) {
+        yield {
+          type: 'response_output',
+          message: {
+            type: 'message',
+            role: 'assistant',
+            content: JSON.stringify({
+              messageAnalysis: [
+                { messageId: 'msg1', threadIds: ['thread1'], confidence: 0.9 },
+                { messageId: 'msg2', threadIds: ['thread1'], confidence: 0.85 }
+              ],
+              threadOperations: {
+                create: [
+                  { id: 'thread1', name: 'Test Thread', initialMessages: ['msg1'] }
+                ]
+              },
+              reasoning: ''
+            })
+          }
+        };
+      } else if (instr.includes('Summarize the following conversation thread')) {
+        yield {
+          type: 'response_output',
+          message: {
+            type: 'message',
+            role: 'assistant',
+            content: JSON.stringify({
+              threadId: 'thread1',
+              title: 'Test Thread Summary',
+              class: 'active',
+              keySummary: 'This thread discusses testing the metamemory system.',
+              keyPoints: ['Created test messages', 'Analyzed thread structure'],
+              status: 'active',
+              importance: 75
+            })
+          }
+        };
+      } else {
+        yield { type: 'response_output', message: { type: 'message', role: 'assistant', content: '{}' } };
+      }
+    })
+  };
+});
 
 // Mock agent for testing
 const createMockAgent = () => {
@@ -244,8 +294,8 @@ describe('Metamemory System', () => {
       expect(coreMessage?.isCompacted).toBe(false);
 
       // Ephemeral thread should be summarized
-      const ephemeralSummary = result.messages.find(m => 
-        m.content.includes('Thread: Casual Chat') && m.isCompacted
+      const ephemeralSummary = result.messages.find(m =>
+        m.content.includes('Brief social interaction') && m.isCompacted
       );
       expect(ephemeralSummary).toBeDefined();
       expect(ephemeralSummary?.isCompacted).toBe(true);
