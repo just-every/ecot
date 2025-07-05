@@ -352,9 +352,9 @@ export function runTask(
                         }
                     }
                     
-                    // Break out of the event loop if task is complete
+                    // Continue yielding remaining events even after completion
                     if (isComplete) {
-                        break;
+                        continue;
                     }
                     
                     // Add response to history
@@ -459,7 +459,7 @@ export function runTask(
 export function internalAddMessage(
     messages: ResponseInput,
     message: ResponseInput[0],
-    _source: 'external' | 'metacognition' = 'external'
+    source: 'external' | 'metacognition' = 'external'
 ): void {
     // Validate the message
     if (!message || typeof message !== 'object') {
@@ -482,7 +482,9 @@ export function internalAddMessage(
     
     // Add the message
     messages.push(message);
-    //console.log(`[Task] ${source === 'metacognition' ? 'Metacognition' : 'External'} message added with role: ${message.role}`);
+    console.log(
+        `[Task] ${source === 'metacognition' ? 'Metacognition' : 'External'} message added with role: ${message.role}`
+    );
 }
 
 /**
