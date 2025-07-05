@@ -32,6 +32,8 @@
     "node_modules",
     "dist",
     "test/**/*.test.ts",
-    "examples/**/*.ts"
+    "examples/**/*.ts",
+    "demo/**/*.ts",
+    "demo-old/**/*.ts"
   ]
 }

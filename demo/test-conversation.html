@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Conversation</title>
+    <script>
+        // Function to manually add a test message
+        function addTestMessage() {
+            // Create a test task state with a message
+            const testState = {
+                id: 'test-1',
+                prompt: 'Test prompt',
+                status: 'running',
+                messages: [{
+                    id: 'msg-1',
+                    role: 'user',
+                    content: 'Tell me about quantum computing',
+                    timestamp: Date.now(),
+                    threadId: 'main-thread'
+                }, {
+                    id: 'msg-2', 
+                    role: 'assistant',
+                    content: 'Quantum computing is a revolutionary approach to computation that leverages quantum mechanical phenomena...',
+                    timestamp: Date.now() + 1000,
+                    threadId: 'main-thread'
+                }],
+                thinking: [{
+                    id: 'think-1',
+                    content: 'I need to explain quantum computing in a clear and accessible way...',
+                    timestamp: Date.now() + 500,
+                    threadId: 'main-thread',
+                    type: 'reasoning'
+                }],
+                toolCalls: [],
+                threads: [{
+                    id: 'main-thread',
+                    name: 'Main Conversation',
+                    type: 'main',
+                    messages: []
+                }],
+                modelRotation: {},
+                errors: [],
+                startTime: Date.now(),
+                endTime: null,
+                metadata: {}
+            };
+
+            // Find the React app and update its state
+            const event = new CustomEvent('updateTaskState', { detail: testState });
+            window.dispatchEvent(event);
+        }
+
+        // Wait for page to load then add button
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const button = document.createElement('button');
+                button.textContent = 'Add Test Messages';
+                button.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 9999; padding: 10px; background: #4a9eff; color: white; border: none; border-radius: 5px; cursor: pointer;';
+                button.onclick = addTestMessage;
+                document.body.appendChild(button);
+            }, 1000);
+        });
+    </script>
+</head>
+<body>
+    <h1>Navigate to http://localhost:3022 and click the button to test</h1>
+</body>
+</html>

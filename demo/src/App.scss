@@ -1,0 +1,20 @@
+// App-specific styles that complement demo-ui
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.sidebar {
+  @media (max-width: 1024px) {
+    position: relative !important;
+    width: 100% !important;
+    margin-bottom: 20px;
+  }
+}
+
+.main-content {
+  @media (max-width: 1024px) {
+    width: 100%;
+  }
+}

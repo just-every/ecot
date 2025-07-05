@@ -4,7 +4,7 @@
  */
 
 import type { TaskEvent as EnsembleTaskEvent, ResponseInput } from '@just-every/ensemble';
-import type { MetamemoryState } from '../metamemory/types.js';
+import type { MetamemoryState } from '../metamemory/index.js';
 
 /**
  * Task's stricter version of TaskEvent with required finalState

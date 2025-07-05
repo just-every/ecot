@@ -11,7 +11,8 @@ import { findModel } from '@just-every/ensemble';
 import { DEFAULT_MODEL_SCORE, DEFAULT_META_FREQUENCY } from '../utils/constants.js';
 import { validateModelScore, validateMetaFrequency } from '../utils/validation.js';
 import { withErrorHandling } from '../utils/errors.js';
-import type { MetamemoryOptions } from '../metamemory/types.js';
+// MetamemoryOptions is now defined in the old metamemory types
+type MetamemoryOptions = any;
 
 /**
  * State container for the Task system

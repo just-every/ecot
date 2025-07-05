@@ -1,4 +1,4 @@
-import type { MetamemoryState } from '../metamemory/types.js';
+import type { MetamemoryState } from '../metamemory/index.js';
 
 /**
  * Task-local state that is isolated per runTask invocation

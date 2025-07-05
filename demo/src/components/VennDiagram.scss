@@ -1,0 +1,35 @@
+.venn-diagram {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0.5rem;
+  
+  svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+
+  .diagram-info {
+    margin-top: 0.5rem;
+    text-align: center;
+  }
+
+  .label {
+    fill: white;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .size {
+    fill: white;
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  .overlap-count {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 2px 4px;
+    border-radius: 2px;
+  }
+}

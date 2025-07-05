@@ -22,6 +22,7 @@ import {
     type ProviderStreamEvent
 } from '@just-every/ensemble';
 import { Metamemory, createMetamemoryState, type MetamemoryState } from '../metamemory/index.js';
+import { v4 as uuidv4 } from 'uuid';
 
 // WeakMap to store message arrays for active tasks
 const activeTaskMessages = new WeakMap<AsyncGenerator<ProviderStreamEvent>, ResponseInput>();
@@ -119,7 +120,7 @@ export function resumeTask(
             type: 'message',
             role: 'user',
             content: newContent,
-            id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            id: uuidv4()
         });
     }
     
@@ -218,7 +219,10 @@ export function runTask(
         // Initialize metamemory if enabled
         let metamemory: Metamemory | undefined;
         if (initialState?.metamemoryEnabled || taskState.metamemoryEnabled) {
-            metamemory = new Metamemory(taskState.metamemoryOptions);
+            metamemory = new Metamemory({
+                agent: agent,
+                config: taskState.metamemoryOptions as any
+            });
         }
         
         // Task-local state (isolated from other tasks)
@@ -348,23 +352,27 @@ export function runTask(
                         }
                     }
                     
+                    // Break out of the event loop if task is complete
+                    if (isComplete) {
+                        break;
+                    }
+                    
                     // Add response to history
                     if (event.type === 'response_output') {
                         const responseEvent = event as any;
                         if (responseEvent.message) {
+                            if(!responseEvent.message.id) {
+                                responseEvent.message.id = uuidv4();
+                            }
                             messages.push(responseEvent.message);
                             
                             // Process with metamemory if enabled
                             if (metamemory && taskLocalState.metamemoryState && taskLocalState.metamemoryEnabled) {
-                                const trigger = metamemory.shouldProcess(
-                                    messages,
-                                    taskLocalState.metamemoryState,
-                                    responseEvent.message.content?.length
-                                );
+                                // Check if we should process (simple check based on message count)
+                                const shouldProcess = messages.length % 10 === 0; // Process every 10 messages
                                 
-                                if (trigger && !taskLocalState.metamemoryProcessing) {
+                                if (shouldProcess && !taskLocalState.metamemoryProcessing) {
                                     // Process metamemory in the background - don't block!
-                                    const currentState = taskLocalState.metamemoryState;
                                     const messagesCopy = [...messages];
                                     
                                     // Mark as processing to prevent concurrent runs
@@ -372,21 +380,25 @@ export function runTask(
                                     
                                     // Fire and forget - process in background
                                     const processingStart = Date.now();
-                                    metamemory.processMessages(
-                                        messagesCopy,
-                                        currentState,
-                                        agent,
-                                        trigger
-                                    ).then(newState => {
+                                    metamemory.processMessages(messagesCopy).then(() => {
                                         const processingTime = Math.round((Date.now() - processingStart) / 1000);
-                                        taskLocalState.metamemoryState = newState;
+                                        taskLocalState.metamemoryState = metamemory.getState();
                                         taskLocalState.metamemoryProcessing = false;
                                         console.log(`[Task] Metamemory background processing completed in ${processingTime}s`);
+                                        
+                                        // Emit state update for live streaming
+                                        const state = taskLocalState.metamemoryState;
+                                        if (state) {
+                                            console.log('[Metamemory] LIVE_STATE_UPDATE:', JSON.stringify({
+                                                threads: state.threads ? state.threads.size : 0,
+                                                lastProcessedIndex: state.lastProcessedIndex
+                                            }));
+                                        }
                                     }).catch(error => {
                                         console.error('[Task] Error processing metamemory in background:', error);
                                         taskLocalState.metamemoryProcessing = false;
                                     });
-                                } else if (trigger && taskLocalState.metamemoryProcessing) {
+                                } else if (shouldProcess && taskLocalState.metamemoryProcessing) {
                                     //console.log('[Task] Metamemory already processing, skipping trigger');
                                 }
                             }
@@ -465,7 +477,7 @@ export function internalAddMessage(
     
     // Add ID if not present
     if (!message.id) {
-        message.id = `${message.role}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        message.id = uuidv4();
     }
     
     // Add the message
@@ -534,15 +546,15 @@ export function addMessageToTask(
  * ```
  */
 export async function getCompactedHistory(
-    state: TaskEvent['finalState'],
-    options?: import('../metamemory/types.js').CompactionOptions
-): Promise<import('../metamemory/types.js').CompactionResult | null> {
+    state: TaskEvent['finalState']
+): Promise<any> {
     if (!state.metamemoryEnabled || !state.metamemoryState) {
         return null;
     }
     
-    const metamemory = new Metamemory(taskState.metamemoryOptions);
-    return await metamemory.compactHistory(state.messages, state.metamemoryState, options);
+    // Need to pass an agent for the new metamemory implementation
+    // This is a limitation of the current design - we need an agent to compact history
+    throw new Error('getCompactedHistory is not supported with the new metamemory implementation. Use metamemory through runTask instead.');
 }
 
 /**
@@ -557,7 +569,7 @@ export function isMetamemoryReady(state: TaskEvent['finalState']): boolean {
     }
     
     const totalMessages = state.messages.filter(m => m.type === 'message').length;
-    const processedMessages = state.metamemoryState.metamemory.size;
+    const processedMessages = state.metamemoryState.lastProcessedIndex || 0;
     
     // Consider ready if at least 50% of messages are processed
     return processedMessages / totalMessages >= 0.5;

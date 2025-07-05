@@ -81,20 +81,9 @@ export {
 export {
     // Main class and functions
     Metamemory,
-    initializeMetamemory,
-    processMessages,
-    summarizeThreads,
-    compactHistory,
     createMetamemoryState,
     // Types
-    type MetamemoryState,
-    type MetamemoryOptions,
-    type CompactionResult,
-    type CompactionOptions,
-    type ThreadClass,
-    type Thread,
-    type MetamemoryEntry,
-    type ProcessingTrigger
+    type MetamemoryState
 } from './src/metamemory/index.js';
 
 // That's it! Just use runTask(agent, content) and everything else is automatic.
