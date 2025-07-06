@@ -3,6 +3,7 @@ import { spawn, exec } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { promisify } from 'util'
+import dotenv from 'dotenv'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const execAsync = promisify(exec)
@@ -43,45 +44,56 @@ async function killExistingProcesses(ports) {
 async function startDemo() {
   console.log('🚀 Starting Task Demo...\n')
 
+  dotenv.config({ path: join(__dirname, '..', '.env') })
+  const hasKeys = Boolean(
+    process.env.OPENAI_API_KEY ||
+    process.env.ANTHROPIC_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.XAI_API_KEY ||
+    process.env.DEEPSEEK_API_KEY ||
+    process.env.OPENROUTER_API_KEY ||
+    process.env.BRAVE_API_KEY
+  )
+
   // Kill any existing processes on ports 3020 (server) and 3021 (vite)
   await killExistingProcesses([3020, 3021])
 
-  // Start the WebSocket server
-  console.log('📡 Starting WebSocket server on port 3020...')
-  const server = spawn('node', ['server.js'], {
-    cwd: __dirname,
-    stdio: 'inherit',
-    shell: true
-  })
-
-  // Wait a bit for server to start
-  setTimeout(() => {
-    console.log('\n🌐 Starting Vite dev server on port 3021...')
-    const vite = spawn('npm', ['run', 'dev'], {
+  let server
+  if (hasKeys) {
+    console.log('📡 Starting WebSocket server on port 3020...')
+    server = spawn('node', ['server.js'], {
       cwd: __dirname,
       stdio: 'inherit',
-      shell: true
+      shell: true,
+      env: { ...process.env, VITE_USE_SERVER: 'true' }
     })
+  }
 
-    console.log('\n✅ Task demo is running!')
-    console.log(`   • WebSocket server: ws://localhost:3020`)
-    console.log(`   • Web interface: http://localhost:3021`)
-    console.log('\nPress Ctrl+C to stop all servers\n')
+  console.log('\n🌐 Starting Vite dev server on port 3021...')
+  const vite = spawn('npm', ['run', 'dev'], {
+    cwd: __dirname,
+    stdio: 'inherit',
+    shell: true,
+    env: { ...process.env, VITE_USE_SERVER: hasKeys ? 'true' : 'false' }
+  })
 
-    // Handle cleanup
-    const cleanup = () => {
-      console.log('\n🛑 Shutting down demo...')
-      server.kill()
-      vite.kill()
-      process.exit(0)
-    }
+  console.log('\n✅ Task demo is running!')
+  if (hasKeys) console.log(`   • WebSocket server: ws://localhost:3020`)
+  console.log(`   • Web interface: http://localhost:3021`)
+  console.log('\nPress Ctrl+C to stop all servers\n')
 
-    process.on('SIGINT', cleanup)
-    process.on('SIGTERM', cleanup)
-    
-    vite.on('exit', cleanup)
-    server.on('exit', cleanup)
-  }, 1000)
+  const cleanup = () => {
+    console.log('\n🛑 Shutting down demo...')
+    if (server) server.kill()
+    vite.kill()
+    process.exit(0)
+  }
+
+  process.on('SIGINT', cleanup)
+  process.on('SIGTERM', cleanup)
+
+  vite.on('exit', cleanup)
+  if (server) server.on('exit', cleanup)
 }
 
 // Start the demo
