@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from 'react'
 import useWebSocket, { ReadyState } from 'react-use-websocket'
 import { TaskState, LLMRequest, MetaAnalysis, Thread } from '../types'
+// @ts-ignore - JS module
+import { startDemoTask } from '../../task-core.js'
 
 interface UseTaskRunnerProps {
   onStateUpdate: (state: TaskState) => void
@@ -9,6 +11,7 @@ interface UseTaskRunnerProps {
 }
 
 export function useTaskRunner({ onStateUpdate, onLLMRequest, onMetaAnalysis }: UseTaskRunnerProps) {
+  const useServer = import.meta.env.VITE_USE_SERVER === 'true'
   const [socketUrl, setSocketUrl] = useState<string | null>(null)
   const currentStateRef = useRef<TaskState>({
     messages: [],
@@ -18,6 +21,7 @@ export function useTaskRunner({ onStateUpdate, onLLMRequest, onMetaAnalysis }: U
     status: 'idle'
   })
   const llmRequestsRef = useRef<Map<string, LLMRequest>>(new Map())
+  const localSessionRef = useRef<any>(null)
 
   const { sendMessage, readyState } = useWebSocket(socketUrl, {
     onMessage: (event) => {
@@ -152,7 +156,6 @@ export function useTaskRunner({ onStateUpdate, onLLMRequest, onMetaAnalysis }: U
   }, [updateState, onLLMRequest, onMetaAnalysis])
 
   const runTask = useCallback(async (prompt: string) => {
-    // Clear previous state and LLM requests
     llmRequestsRef.current.clear()
     currentStateRef.current = {
       messages: [],
@@ -163,17 +166,25 @@ export function useTaskRunner({ onStateUpdate, onLLMRequest, onMetaAnalysis }: U
     }
     onStateUpdate(currentStateRef.current)
 
-    const wsUrl = `ws://localhost:3020/ws?prompt=${encodeURIComponent(prompt)}`
-    setSocketUrl(wsUrl)
-  }, [onStateUpdate])
+    if (useServer) {
+      const wsUrl = `ws://localhost:3020/ws?prompt=${encodeURIComponent(prompt)}`
+      setSocketUrl(wsUrl)
+    } else {
+      localSessionRef.current = startDemoTask(prompt, handleWebSocketMessage)
+    }
+  }, [onStateUpdate, useServer, handleWebSocketMessage])
 
   const stopTask = useCallback(() => {
-    if (readyState === ReadyState.OPEN) {
-      sendMessage(JSON.stringify({ type: 'stop' }))
+    if (useServer) {
+      if (readyState === ReadyState.OPEN) {
+        sendMessage(JSON.stringify({ type: 'stop' }))
+      }
+      setSocketUrl(null)
+    } else if (localSessionRef.current) {
+      localSessionRef.current.abort()
     }
-    setSocketUrl(null)
     updateState({ status: 'completed' })
-  }, [readyState, sendMessage, updateState])
+  }, [readyState, sendMessage, updateState, useServer])
 
   return { runTask, stopTask }
 }

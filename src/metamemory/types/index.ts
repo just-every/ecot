@@ -1,7 +1,18 @@
 export type TopicState = 'core' | 'active' | 'idle' | 'archived' | 'ephemeral';
 
 // Add the missing type for backwards compatibility
-export type { MetamemoryState } from '../../metamemory-old/types.js';
+import type { MetamemoryState as LegacyMetamemoryState } from '../../metamemory-old/types.js';
+
+export interface VectorEmbeddings {
+  [topicName: string]: {
+    summary: string;
+    embedding: number[];
+  };
+}
+
+export interface MetamemoryState extends LegacyMetamemoryState {
+  vectorEmbeddings?: VectorEmbeddings;
+}
 
 export interface Message {
   id: string;
@@ -40,6 +51,10 @@ export interface MetaMemoryConfig {
   };
   slidingWindowSize: number;
   compactionInterval: number;
+  /**
+   * Minimum number of queued messages before automatic processing
+   */
+  processingThreshold: number;
 }
 
 export interface CompactionLevel {

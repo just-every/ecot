@@ -15,7 +15,7 @@ import { InMemoryVectorSearch } from './utils/vector-search.js';
 import type { ResponseInput, ResponseInputItem, Agent } from '@just-every/ensemble';
 
 // Re-export types for backward compatibility
-export type { MetamemoryState } from '../metamemory-old/types';
+export type { MetamemoryState } from './types';
 
 export interface MetaMemoryOptions {
   config?: Partial<MetaMemoryConfig>;
@@ -30,6 +30,7 @@ export class Metamemory {
   private tagger: MessageTagger;
   private compactor: ThreadCompactor;
   private contextAssembler: ContextAssembler;
+  private vectorSearch: InMemoryVectorSearch;
   private config: MetaMemoryConfig;
   private isProcessing: boolean = false;
   private messageQueue: ResponseInputItem[] = [];
@@ -46,6 +47,7 @@ export class Metamemory {
       },
       slidingWindowSize: 20,
       compactionInterval: 300000, // 5 minutes
+      processingThreshold: 5,
       ...options.config
     };
     
@@ -56,10 +58,10 @@ export class Metamemory {
     this.tagger = new MessageTagger(taggerLLM, this.config);
     
     const summarizer = options.summarizer || new LLMSummarizer(options.agent);
-    const vectorSearch = options.vectorSearch as InMemoryVectorSearch || new InMemoryVectorSearch();
-    
-    this.compactor = new ThreadCompactor(this.threadManager, this.config, summarizer, vectorSearch);
-    this.contextAssembler = new ContextAssembler(this.threadManager, vectorSearch);
+    this.vectorSearch = options.vectorSearch as InMemoryVectorSearch || new InMemoryVectorSearch();
+
+    this.compactor = new ThreadCompactor(this.threadManager, this.config, summarizer, this.vectorSearch);
+    this.contextAssembler = new ContextAssembler(this.threadManager, this.vectorSearch);
   }
   
   /**
@@ -67,7 +69,8 @@ export class Metamemory {
    */
   async processMessages(messages: ResponseInput): Promise<void> {
     // Add new messages to the queue
-    this.messageQueue.push(...messages.slice(this.lastProcessedIndex));
+    const newMessages = messages.slice(this.lastProcessedIndex);
+    this.messageQueue.push(...newMessages);
     this.lastProcessedIndex = messages.length;
     
     // Don't process if already processing
@@ -75,8 +78,9 @@ export class Metamemory {
       return;
     }
     
-    // Process if we have enough messages or if force processing
-    if (this.messageQueue.length < 5) {
+    // Determine if processing should run
+    const threshold = this.config.processingThreshold;
+    if (newMessages.length === 0 && this.messageQueue.length < threshold) {
       return;
     }
     
@@ -200,7 +204,8 @@ export class Metamemory {
       metamemory: new Map(), // Empty for now
       threads: threadMap,
       lastProcessedIndex: this.lastProcessedIndex,
-      lastProcessedTime: Date.now()
+      lastProcessedTime: Date.now(),
+      vectorEmbeddings: this.vectorSearch.exportEmbeddings()
     };
   }
   
@@ -229,6 +234,17 @@ export class Metamemory {
     
     this.threadManager.importThreads(threads);
     this.lastProcessedIndex = state.lastProcessedIndex;
+
+    this.vectorSearch.clear();
+    if (state.vectorEmbeddings) {
+      this.vectorSearch.loadEmbeddings(state.vectorEmbeddings);
+    } else {
+      for (const thread of Object.values(threads)) {
+        if (thread.state === 'archived') {
+          void this.vectorSearch.addThread(thread);
+        }
+      }
+    }
   }
   
   /**
@@ -249,6 +265,27 @@ export class Metamemory {
   async forceCompaction(): Promise<void> {
     await this.compactor.runCompactionCycle();
   }
+
+  /**
+   * Build a compacted history using current threads and vector search.
+   * This runs a compaction cycle to update summaries before assembling context.
+   */
+  async compactHistory(
+    recentMessages: ResponseInput,
+    options?: Partial<ContextAssemblyOptions>
+  ): Promise<ResponseInput> {
+    await this.compactor.runCompactionCycle();
+
+    const assemblyOptions: ContextAssemblyOptions = {
+      maxTokens: 100000,
+      includeIdleSummaries: true,
+      includeArchivedSearch: true,
+      recentMessageCount: 30,
+      ...options
+    };
+
+    return this.contextAssembler.buildContext(recentMessages, assemblyOptions);
+  }
   
   /**
    * Get memory statistics
@@ -266,6 +303,7 @@ export function createMetamemoryState(): MetamemoryStateType {
     metamemory: new Map(),
     threads: new Map(),
     lastProcessedIndex: 0,
-    lastProcessedTime: Date.now()
+    lastProcessedTime: Date.now(),
+    vectorEmbeddings: {}
   };
 }

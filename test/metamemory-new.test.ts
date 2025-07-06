@@ -4,6 +4,7 @@ import { TopicThreadManager } from '../src/metamemory/utils/topic-thread-manager
 import { InMemoryVectorSearch } from '../src/metamemory/utils/vector-search';
 import { MessageTagger, TaggerLLM } from '../src/metamemory/tagger';
 import { ThreadCompactor, SummarizerInterface } from '../src/metamemory/compactor';
+import { ContextAssembler } from '../src/metamemory/context';
 import type { 
   Message, 
   TaggedMessage, 
@@ -240,7 +241,45 @@ describe('MetaMemory System', () => {
       expect(results[0].relevanceScore).toBeGreaterThan(results[1].relevanceScore);
     });
   });
-  
+
+  describe('ContextAssembler', () => {
+    let manager: TopicThreadManager;
+    let assembler: ContextAssembler;
+
+    beforeEach(() => {
+      manager = new TopicThreadManager();
+      assembler = new ContextAssembler(manager);
+    });
+
+    it('includes summaries of related threads for active topics', async () => {
+      const active = manager.createThread('active_topic', 'active');
+      active.summary = 'Active summary';
+      manager.addMessageToThread('active_topic', {
+        id: 'a1',
+        role: 'user',
+        content: 'hello',
+        timestamp: Date.now()
+      });
+
+      const related = manager.createThread('related_topic', 'idle');
+      related.summary = 'Related summary';
+      manager.addThreadRelationship('active_topic', 'related_topic');
+
+      const spy = vi.spyOn(manager, 'getRelatedThreads');
+
+      const context = await assembler.buildContext([], {
+        maxTokens: 1000,
+        includeIdleSummaries: false,
+        includeArchivedSearch: false,
+        recentMessageCount: 5
+      });
+
+      expect(spy).toHaveBeenCalledWith('active_topic');
+      const combined = context.map(m => ('content' in m ? m.content : '')).join(' ');
+      expect(combined).toContain('Related summary');
+    });
+  });
+
   describe('Metamemory Integration', () => {
     let metamemory: Metamemory;
     
@@ -316,6 +355,81 @@ describe('MetaMemory System', () => {
       
       const newState = metamemory.getState();
       expect(newState.threads.size).toBe(1);
+    });
+
+    it('should preserve vector search data after restoring state', async () => {
+      // Create an archived thread and index it
+      const manager: any = (metamemory as any).threadManager;
+      const search: InMemoryVectorSearch = (metamemory as any).vectorSearch;
+
+      const thread = manager.createThread('archived_topic', 'archived');
+      manager.updateThreadSummary('archived_topic', 'Discussion about caching data');
+      await search.addThread(thread);
+
+      const saved = metamemory.getState();
+
+      const restored = new Metamemory({
+        agent: mockAgent,
+        taggerLLM: new MockTaggerLLM(),
+        summarizer: new MockSummarizer(),
+      });
+
+      restored.restoreState(saved);
+      const results = await (restored as any).vectorSearch.search('caching', 1);
+      expect(results[0].topicName).toBe('archived_topic');
+    });
+  });
+
+  describe('Processing thresholds', () => {
+    it('processes small conversations', async () => {
+      const metamemory = new Metamemory({
+        agent: mockAgent,
+        taggerLLM: new MockTaggerLLM(),
+        summarizer: new MockSummarizer(),
+        config: { processingThreshold: 5, compactionInterval: 0 }
+      });
+
+      const mmAny = metamemory as any;
+      const tagSpy = vi.spyOn(mmAny.tagger, 'tagMessages');
+      const compSpy = vi.spyOn(mmAny.compactor, 'runCompactionCycle').mockResolvedValue();
+
+      const messages: ResponseInput = [
+        { id: 'm1', role: 'user', content: 'Hello' },
+        { id: 'm2', role: 'assistant', content: 'Hi' }
+      ];
+
+      await metamemory.processMessages(messages);
+
+      expect(tagSpy).toHaveBeenCalled();
+      expect(compSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('History Compaction', () => {
+    it('should compact history to fewer messages', async () => {
+      const metamemory = new Metamemory({
+        agent: mockAgent,
+        taggerLLM: new MockTaggerLLM(),
+        summarizer: new MockSummarizer()
+      });
+
+      const messages: ResponseInput = [];
+      for (let i = 0; i < 50; i++) {
+        messages.push({
+          id: `msg_${i}`,
+          role: i % 2 === 0 ? 'user' : 'assistant',
+          content: `Message number ${i}`
+        });
+      }
+
+      await metamemory.processMessages(messages);
+
+      const compacted = await metamemory.compactHistory(messages, {
+        maxTokens: 40,
+        recentMessageCount: 5
+      });
+
+      expect(compacted.length).toBeLessThan(messages.length);
     });
   });
 });
