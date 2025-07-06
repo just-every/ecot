@@ -4,6 +4,7 @@ import { TopicThreadManager } from '../src/metamemory/utils/topic-thread-manager
 import { InMemoryVectorSearch } from '../src/metamemory/utils/vector-search';
 import { MessageTagger, TaggerLLM } from '../src/metamemory/tagger';
 import { ThreadCompactor, SummarizerInterface } from '../src/metamemory/compactor';
+import { ContextAssembler } from '../src/metamemory/context';
 import type { 
   Message, 
   TaggedMessage, 
@@ -240,7 +241,45 @@ describe('MetaMemory System', () => {
       expect(results[0].relevanceScore).toBeGreaterThan(results[1].relevanceScore);
     });
   });
-  
+
+  describe('ContextAssembler', () => {
+    let manager: TopicThreadManager;
+    let assembler: ContextAssembler;
+
+    beforeEach(() => {
+      manager = new TopicThreadManager();
+      assembler = new ContextAssembler(manager);
+    });
+
+    it('includes summaries of related threads for active topics', async () => {
+      const active = manager.createThread('active_topic', 'active');
+      active.summary = 'Active summary';
+      manager.addMessageToThread('active_topic', {
+        id: 'a1',
+        role: 'user',
+        content: 'hello',
+        timestamp: Date.now()
+      });
+
+      const related = manager.createThread('related_topic', 'idle');
+      related.summary = 'Related summary';
+      manager.addThreadRelationship('active_topic', 'related_topic');
+
+      const spy = vi.spyOn(manager, 'getRelatedThreads');
+
+      const context = await assembler.buildContext([], {
+        maxTokens: 1000,
+        includeIdleSummaries: false,
+        includeArchivedSearch: false,
+        recentMessageCount: 5
+      });
+
+      expect(spy).toHaveBeenCalledWith('active_topic');
+      const combined = context.map(m => ('content' in m ? m.content : '')).join(' ');
+      expect(combined).toContain('Related summary');
+    });
+  });
+
   describe('Metamemory Integration', () => {
     let metamemory: Metamemory;
     
