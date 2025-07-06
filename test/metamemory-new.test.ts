@@ -312,4 +312,29 @@ describe('MetaMemory System', () => {
       expect(newState.threads.size).toBe(1);
     });
   });
+
+  describe('Processing thresholds', () => {
+    it('processes small conversations', async () => {
+      const metamemory = new Metamemory({
+        agent: mockAgent,
+        taggerLLM: new MockTaggerLLM(),
+        summarizer: new MockSummarizer(),
+        config: { processingThreshold: 5, compactionInterval: 0 }
+      });
+
+      const mmAny = metamemory as any;
+      const tagSpy = vi.spyOn(mmAny.tagger, 'tagMessages');
+      const compSpy = vi.spyOn(mmAny.compactor, 'runCompactionCycle').mockResolvedValue();
+
+      const messages: ResponseInput = [
+        { id: 'm1', role: 'user', content: 'Hello' },
+        { id: 'm2', role: 'assistant', content: 'Hi' }
+      ];
+
+      await metamemory.processMessages(messages);
+
+      expect(tagSpy).toHaveBeenCalled();
+      expect(compSpy).toHaveBeenCalled();
+    });
+  });
 });

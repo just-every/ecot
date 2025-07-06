@@ -40,6 +40,10 @@ export interface MetaMemoryConfig {
   };
   slidingWindowSize: number;
   compactionInterval: number;
+  /**
+   * Minimum number of queued messages before automatic processing
+   */
+  processingThreshold: number;
 }
 
 export interface CompactionLevel {
