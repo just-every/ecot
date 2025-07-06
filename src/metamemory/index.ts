@@ -46,6 +46,7 @@ export class Metamemory {
       },
       slidingWindowSize: 20,
       compactionInterval: 300000, // 5 minutes
+      processingThreshold: 5,
       ...options.config
     };
     
@@ -67,7 +68,8 @@ export class Metamemory {
    */
   async processMessages(messages: ResponseInput): Promise<void> {
     // Add new messages to the queue
-    this.messageQueue.push(...messages.slice(this.lastProcessedIndex));
+    const newMessages = messages.slice(this.lastProcessedIndex);
+    this.messageQueue.push(...newMessages);
     this.lastProcessedIndex = messages.length;
     
     // Don't process if already processing
@@ -75,8 +77,9 @@ export class Metamemory {
       return;
     }
     
-    // Process if we have enough messages or if force processing
-    if (this.messageQueue.length < 5 && this.messageQueue.length < messages.length) {
+    // Determine if processing should run
+    const threshold = this.config.processingThreshold;
+    if (newMessages.length === 0 && this.messageQueue.length < threshold) {
       return;
     }
     
