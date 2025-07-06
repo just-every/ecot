@@ -104,12 +104,37 @@ export class InMemoryVectorSearch implements VectorSearchInterface {
   clear(): void {
     this.embeddings.clear();
   }
-  
+
   /**
    * Get the number of indexed threads
    */
   size(): number {
     return this.embeddings.size;
+  }
+
+  /**
+   * Export embeddings for persistence
+   */
+  exportEmbeddings(): Record<string, { summary: string; embedding: number[] }> {
+    const data: Record<string, { summary: string; embedding: number[] }> = {};
+    for (const [topicName, value] of this.embeddings) {
+      data[topicName] = { summary: value.summary, embedding: value.embedding };
+    }
+    return data;
+  }
+
+  /**
+   * Load embeddings from persisted state
+   */
+  loadEmbeddings(data: Record<string, { summary: string; embedding: number[] }>): void {
+    this.embeddings.clear();
+    for (const [topicName, value] of Object.entries(data)) {
+      this.embeddings.set(topicName, {
+        topicName,
+        summary: value.summary,
+        embedding: value.embedding,
+      });
+    }
   }
 }
 
