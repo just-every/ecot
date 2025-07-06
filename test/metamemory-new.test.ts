@@ -359,4 +359,32 @@ describe('MetaMemory System', () => {
       expect(compSpy).toHaveBeenCalled();
     });
   });
+
+  describe('History Compaction', () => {
+    it('should compact history to fewer messages', async () => {
+      const metamemory = new Metamemory({
+        agent: mockAgent,
+        taggerLLM: new MockTaggerLLM(),
+        summarizer: new MockSummarizer()
+      });
+
+      const messages: ResponseInput = [];
+      for (let i = 0; i < 50; i++) {
+        messages.push({
+          id: `msg_${i}`,
+          role: i % 2 === 0 ? 'user' : 'assistant',
+          content: `Message number ${i}`
+        });
+      }
+
+      await metamemory.processMessages(messages);
+
+      const compacted = await metamemory.compactHistory(messages, {
+        maxTokens: 40,
+        recentMessageCount: 5
+      });
+
+      expect(compacted.length).toBeLessThan(messages.length);
+    });
+  });
 });

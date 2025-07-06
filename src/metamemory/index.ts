@@ -265,6 +265,27 @@ export class Metamemory {
   async forceCompaction(): Promise<void> {
     await this.compactor.runCompactionCycle();
   }
+
+  /**
+   * Build a compacted history using current threads and vector search.
+   * This runs a compaction cycle to update summaries before assembling context.
+   */
+  async compactHistory(
+    recentMessages: ResponseInput,
+    options?: Partial<ContextAssemblyOptions>
+  ): Promise<ResponseInput> {
+    await this.compactor.runCompactionCycle();
+
+    const assemblyOptions: ContextAssemblyOptions = {
+      maxTokens: 100000,
+      includeIdleSummaries: true,
+      includeArchivedSearch: true,
+      recentMessageCount: 30,
+      ...options
+    };
+
+    return this.contextAssembler.buildContext(recentMessages, assemblyOptions);
+  }
   
   /**
    * Get memory statistics
