@@ -311,5 +311,27 @@ describe('MetaMemory System', () => {
       const newState = metamemory.getState();
       expect(newState.threads.size).toBe(1);
     });
+
+    it('should preserve vector search data after restoring state', async () => {
+      // Create an archived thread and index it
+      const manager: any = (metamemory as any).threadManager;
+      const search: InMemoryVectorSearch = (metamemory as any).vectorSearch;
+
+      const thread = manager.createThread('archived_topic', 'archived');
+      manager.updateThreadSummary('archived_topic', 'Discussion about caching data');
+      await search.addThread(thread);
+
+      const saved = metamemory.getState();
+
+      const restored = new Metamemory({
+        agent: mockAgent,
+        taggerLLM: new MockTaggerLLM(),
+        summarizer: new MockSummarizer(),
+      });
+
+      restored.restoreState(saved);
+      const results = await (restored as any).vectorSearch.search('caching', 1);
+      expect(results[0].topicName).toBe('archived_topic');
+    });
   });
 });

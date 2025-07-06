@@ -15,7 +15,7 @@ import { InMemoryVectorSearch } from './utils/vector-search.js';
 import type { ResponseInput, ResponseInputItem, Agent } from '@just-every/ensemble';
 
 // Re-export types for backward compatibility
-export type { MetamemoryState } from '../metamemory-old/types';
+export type { MetamemoryState } from './types';
 
 export interface MetaMemoryOptions {
   config?: Partial<MetaMemoryConfig>;
@@ -30,6 +30,7 @@ export class Metamemory {
   private tagger: MessageTagger;
   private compactor: ThreadCompactor;
   private contextAssembler: ContextAssembler;
+  private vectorSearch: InMemoryVectorSearch;
   private config: MetaMemoryConfig;
   private isProcessing: boolean = false;
   private messageQueue: ResponseInputItem[] = [];
@@ -56,10 +57,10 @@ export class Metamemory {
     this.tagger = new MessageTagger(taggerLLM, this.config);
     
     const summarizer = options.summarizer || new LLMSummarizer(options.agent);
-    const vectorSearch = options.vectorSearch as InMemoryVectorSearch || new InMemoryVectorSearch();
-    
-    this.compactor = new ThreadCompactor(this.threadManager, this.config, summarizer, vectorSearch);
-    this.contextAssembler = new ContextAssembler(this.threadManager, vectorSearch);
+    this.vectorSearch = options.vectorSearch as InMemoryVectorSearch || new InMemoryVectorSearch();
+
+    this.compactor = new ThreadCompactor(this.threadManager, this.config, summarizer, this.vectorSearch);
+    this.contextAssembler = new ContextAssembler(this.threadManager, this.vectorSearch);
   }
   
   /**
@@ -200,7 +201,8 @@ export class Metamemory {
       metamemory: new Map(), // Empty for now
       threads: threadMap,
       lastProcessedIndex: this.lastProcessedIndex,
-      lastProcessedTime: Date.now()
+      lastProcessedTime: Date.now(),
+      vectorEmbeddings: this.vectorSearch.exportEmbeddings()
     };
   }
   
@@ -229,6 +231,17 @@ export class Metamemory {
     
     this.threadManager.importThreads(threads);
     this.lastProcessedIndex = state.lastProcessedIndex;
+
+    this.vectorSearch.clear();
+    if (state.vectorEmbeddings) {
+      this.vectorSearch.loadEmbeddings(state.vectorEmbeddings);
+    } else {
+      for (const thread of Object.values(threads)) {
+        if (thread.state === 'archived') {
+          void this.vectorSearch.addThread(thread);
+        }
+      }
+    }
   }
   
   /**
@@ -266,6 +279,7 @@ export function createMetamemoryState(): MetamemoryStateType {
     metamemory: new Map(),
     threads: new Map(),
     lastProcessedIndex: 0,
-    lastProcessedTime: Date.now()
+    lastProcessedTime: Date.now(),
+    vectorEmbeddings: {}
   };
 }
