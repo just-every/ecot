@@ -127,6 +127,24 @@ export class ContextAssembler {
         content: `Summary of earlier discussion:\n${thread.summary}`
       } as ResponseInputItem);
     }
+
+    // Add summaries of related threads
+    const relatedThreads = this.threadManager.getRelatedThreads(thread.name);
+    if (relatedThreads.length > 0) {
+      let relatedText = 'Related topic summaries:\n';
+      for (const rel of relatedThreads) {
+        if (rel.summary) {
+          relatedText += `Topic: ${rel.name}\nSummary: ${rel.summary}\n`;
+        }
+      }
+      if (relatedText.trim() !== 'Related topic summaries:') {
+        items.push({
+          type: 'message',
+          role: 'system',
+          content: relatedText.trimEnd()
+        } as ResponseInputItem);
+      }
+    }
     
     // Add recent messages from the thread
     const recentMessages = this.threadManager.getRecentMessages(thread, recentMessageCount);
