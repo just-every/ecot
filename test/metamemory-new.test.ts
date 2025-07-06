@@ -255,7 +255,10 @@ describe('MetaMemory System', () => {
     it('should process messages and create topic threads', async () => {
       const messages: ResponseInput = [
         { id: 'msg_1', role: 'user', content: 'Setup instructions' },
-        { id: 'msg_2', role: 'assistant', content: 'Working on the task' }
+        { id: 'msg_2', role: 'assistant', content: 'Working on the task' },
+        { id: 'msg_3', role: 'user', content: 'Another task' },
+        { id: 'msg_4', role: 'assistant', content: 'Continuing work' },
+        { id: 'msg_5', role: 'user', content: 'Final instruction' }
       ];
       
       await metamemory.processMessages(messages);
@@ -269,7 +272,10 @@ describe('MetaMemory System', () => {
       // First process some messages to create threads
       const messages: ResponseInput = [
         { id: 'msg_1', role: 'user', content: 'Core instructions' },
-        { id: 'msg_2', role: 'assistant', content: 'Working on task' }
+        { id: 'msg_2', role: 'assistant', content: 'Working on task' },
+        { id: 'msg_3', role: 'user', content: 'More instructions' },
+        { id: 'msg_4', role: 'assistant', content: 'Continuing work' },
+        { id: 'msg_5', role: 'user', content: 'Final task' }
       ];
       
       await metamemory.processMessages(messages);

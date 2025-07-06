@@ -482,7 +482,7 @@ export function internalAddMessage(
     
     // Add the message
     messages.push(message);
-    //console.log(`[Task] ${source === 'metacognition' ? 'Metacognition' : 'External'} message added with role: ${message.role}`);
+    console.log(`[Task] ${_source === 'metacognition' ? 'Metacognition' : 'External'} message added with role: ${message.role}`);
 }
 
 /**

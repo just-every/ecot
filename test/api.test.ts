@@ -100,6 +100,9 @@ describe('Mind API', () => {
                 events.push(event);
             }
             
+            // Debug: log events to see what we actually get
+            console.log('Events received:', events.map(e => ({ type: e.type, name: (e as any).tool_call?.function?.name })));
+            
             // Should have yielded all events including task_complete
             expect(events).toHaveLength(4);
             expect(events[0]).toMatchObject({

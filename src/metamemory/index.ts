@@ -76,7 +76,7 @@ export class Metamemory {
     }
     
     // Process if we have enough messages or if force processing
-    if (this.messageQueue.length < 5 && this.messageQueue.length < messages.length) {
+    if (this.messageQueue.length < 5) {
       return;
     }
     
