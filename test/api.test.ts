@@ -104,12 +104,15 @@ describe('Mind API', () => {
             console.log('Events received:', events.map(e => ({ type: e.type, name: (e as any).tool_call?.function?.name })));
             
             // Should have yielded all events including task_complete
-            expect(events).toHaveLength(4);
-            expect(events[0]).toMatchObject({
+            // Filter out metamemory events for this test
+            const coreEvents = events.filter(e => e.type !== 'metamemory_event');
+            
+            expect(coreEvents).toHaveLength(4);
+            expect(coreEvents[0]).toMatchObject({
                 type: 'message_delta',
                 content: 'Processing task...'
             });
-            expect(events[1]).toMatchObject({
+            expect(coreEvents[1]).toMatchObject({
                 type: 'tool_done',
                 tool_call: {
                     function: {
@@ -117,11 +120,11 @@ describe('Mind API', () => {
                     }
                 }
             });
-            expect(events[2]).toMatchObject({
+            expect(coreEvents[2]).toMatchObject({
                 type: 'task_complete',
                 result: 'Task completed successfully'
             });
-            expect(events[3]).toMatchObject({
+            expect(coreEvents[3]).toMatchObject({
                 type: 'response_output'
             });
         });

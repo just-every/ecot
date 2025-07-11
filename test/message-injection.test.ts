@@ -5,10 +5,13 @@ import { Agent } from '@just-every/ensemble';
 // Mock ensemble
 vi.mock('@just-every/ensemble', async (importOriginal) => {
     const original = await importOriginal() as any;
+    let callCount = 0;
     return {
         ...original,
-        ensembleRequest: vi.fn()
-            .mockImplementationOnce(async function* (messages: any) {
+        ensembleRequest: vi.fn().mockImplementation(async function* (messages: any) {
+            callCount++;
+            
+            if (callCount === 1) {
                 // First call - no injected message yet
                 yield {
                     type: 'response_output',
@@ -18,9 +21,8 @@ vi.mock('@just-every/ensemble', async (importOriginal) => {
                         content: 'Let me analyze this...'
                     }
                 };
-            })
-            .mockImplementationOnce(async function* (messages: any) {
-                // Second call - should see the injected message
+            } else {
+                // Subsequent calls - check for injected message
                 const lastMessage = messages[messages.length - 1];
                 if (lastMessage?.role === 'developer') {
                     // Acknowledge the injected message
@@ -46,7 +48,8 @@ vi.mock('@just-every/ensemble', async (importOriginal) => {
                         output: 'Task completed successfully'
                     }
                 };
-            }),
+            }
+        }),
         Agent: vi.fn().mockImplementation(function(config: any) {
             return { ...config, name: config.name || 'TestAgent' };
         }),

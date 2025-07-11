@@ -26,25 +26,25 @@ describe('Mind State Management', () => {
     describe('Meta-cognition frequency', () => {
         it('should set and get meta frequency', () => {
             set_meta_frequency('10');
-            expect(taskState.metaFrequency).toBe('10');
+            expect(taskState.metaFrequency).toBe(10);
 
             set_meta_frequency('20');
-            expect(taskState.metaFrequency).toBe('20');
+            expect(taskState.metaFrequency).toBe(20);
 
             set_meta_frequency('40');
-            expect(taskState.metaFrequency).toBe('40');
+            expect(taskState.metaFrequency).toBe(40);
         });
 
         it('should handle invalid frequency values', () => {
             expect(() => set_meta_frequency('invalid' as any)).toThrow(/Meta frequency must be one of/);
-            expect(taskState.metaFrequency).toBe('5'); // Should remain at default
+            expect(taskState.metaFrequency).toBe(5); // Should remain at default
         });
 
         it('should only accept valid frequencies', () => {
             const validFreqs = ['5', '10', '20', '40'];
             validFreqs.forEach(freq => {
                 set_meta_frequency(freq as any);
-                expect(taskState.metaFrequency).toBe(freq);
+                expect(taskState.metaFrequency).toBe(parseInt(freq));
             });
         });
     });

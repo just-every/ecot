@@ -67,7 +67,21 @@ export function validateMetaFrequency(frequency: unknown): void {
  * Validate thought delay input
  */
 export function validateThoughtDelay(delay: unknown): void {
-    if (typeof delay !== 'string' || !VALID_THOUGHT_DELAYS.includes(delay as any)) {
+    if (typeof delay !== 'string') {
+        throw new TaskValidationError(
+            `Thought delay must be a string`,
+            {
+                metadata: { 
+                    delayValue: delay,
+                    delayType: typeof delay,
+                    validDelays: VALID_THOUGHT_DELAYS
+                }
+            }
+        );
+    }
+    
+    const numericDelay = parseInt(delay);
+    if (isNaN(numericDelay) || !VALID_THOUGHT_DELAYS.includes(numericDelay as any)) {
         throw new TaskValidationError(
             `Thought delay must be one of: ${VALID_THOUGHT_DELAYS.join(', ')} (seconds)`,
             {

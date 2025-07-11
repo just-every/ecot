@@ -18,28 +18,28 @@ describe('Thought Utils', () => {
 
     describe('Thought delay management', () => {
         it('should set and get thought delay', () => {
-            expect(getThoughtDelay()).toBe('0');
+            expect(getThoughtDelay()).toBe(0);
             
             setThoughtDelay('2');
-            expect(getThoughtDelay()).toBe('2');
+            expect(getThoughtDelay()).toBe(2);
             
             setThoughtDelay('8');
-            expect(getThoughtDelay()).toBe('8');
+            expect(getThoughtDelay()).toBe(8);
             
             setThoughtDelay('32');
-            expect(getThoughtDelay()).toBe('32');
+            expect(getThoughtDelay()).toBe(32);
         });
 
         it('should validate delay values', () => {
             expect(() => setThoughtDelay('invalid' as any)).toThrow(/Thought delay must be one of/);
-            expect(getThoughtDelay()).toBe('0'); // Should remain at previous value
+            expect(getThoughtDelay()).toBe(0); // Should remain at previous value
         });
 
         it('should only accept valid delays', () => {
             const validDelays = ['0', '2', '4', '8', '16', '32', '64', '128'];
             validDelays.forEach(delay => {
                 setThoughtDelay(delay as any);
-                expect(getThoughtDelay()).toBe(delay);
+                expect(getThoughtDelay()).toBe(parseInt(delay));
             });
         });
     });
@@ -133,7 +133,7 @@ describe('Thought Utils', () => {
             const setDelayTool = tools.find(t => t.definition.function.name === 'set_thought_delay');
             const result = setDelayTool!.function('4');
             expect(result).toBe('Thought delay set to 4 seconds');
-            expect(getThoughtDelay()).toBe('4');
+            expect(getThoughtDelay()).toBe(4);
         });
 
         it('should provide interrupt delay tool', () => {
