@@ -43,7 +43,6 @@ debug-*.html
 test-async-completion.js
 
 # Development notes
-todo.md
 
 # Demo summaries (if generated)
 demo/summaries/
