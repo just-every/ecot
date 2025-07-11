@@ -7,6 +7,21 @@ export default defineConfig(() => {
     plugins: [react()],
     server: {
       port: 3021,
+      host: true,
+      hmr: {
+        // Enable HMR
+        overlay: true,
+        // Use same port for HMR WebSocket
+        port: 3021,
+        // Client-side HMR host
+        host: 'localhost'
+      },
+      // Watch for changes in all files
+      watch: {
+        // Use polling on macOS for better file detection
+        usePolling: process.platform === 'darwin',
+        interval: 100
+      },
       ...(useServer ? {
         proxy: {
           '/ws': {
@@ -16,6 +31,15 @@ export default defineConfig(() => {
           }
         }
       } : {})
-    }
+    },
+    // Handle client-side routing
+    appType: 'spa',
+    // Optimize deps for faster HMR
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-use-websocket', 'd3'],
+      exclude: ['@just-every/task']
+    },
+    // Clear screen on restart
+    clearScreen: false
   }
 })

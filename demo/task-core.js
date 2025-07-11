@@ -1,11 +1,12 @@
 import { runTask } from '../dist/index.js';
 import { Agent, ensembleRequest, createToolFunction } from '@just-every/ensemble';
 
-export async function generateMockResponse(toolName, args, context) {
+export async function generateMockResponse(toolName, args, context, send = null) {
   try {
     const mockAgent = new Agent({
       name: 'MockResponseGenerator',
       modelClass: 'mini',
+      tags: ['mock_api'],
       instructions: `You are generating realistic mock data for a tool called "${toolName}".
                     Generate a brief, realistic response based on the provided arguments.
                     Keep responses concise but informative. Use realistic data formats.`
@@ -21,6 +22,7 @@ export async function generateMockResponse(toolName, args, context) {
     }];
 
     let response = '';
+    const startTime = Date.now();
     for await (const event of ensembleRequest(messages, mockAgent)) {
       if (event.type === 'message_delta' && event.content) {
         response += event.content;
@@ -28,18 +30,52 @@ export async function generateMockResponse(toolName, args, context) {
     }
 
     return response || `Mock result for ${toolName}`;
-  } catch {
+  } catch (error) {
     return `Mock ${toolName} result: Successfully processed ${JSON.stringify(args)}`;
   }
 }
 
-export function createDemoTools() {
+function extractTopicsFromContent(content) {
+  // Simple topic extraction based on keywords
+  const topics = [];
+  const lowerContent = content.toLowerCase();
+
+  // Define topic patterns
+  const topicPatterns = [
+    { pattern: /machine learning|ml|neural|ai|artificial intelligence/i, topic: 'Machine Learning' },
+    { pattern: /quantum|qubit|superposition|entanglement/i, topic: 'Quantum Computing' },
+    { pattern: /react|vue|angular|framework|component/i, topic: 'Web Frameworks' },
+    { pattern: /recursion|algorithm|data structure|complexity/i, topic: 'Programming Concepts' },
+    { pattern: /travel|flight|hotel|destination/i, topic: 'Travel Planning' },
+    { pattern: /weather|temperature|forecast|climate/i, topic: 'Weather Information' },
+    { pattern: /code|programming|software|development/i, topic: 'Software Development' },
+    { pattern: /analysis|data|statistics|metrics/i, topic: 'Data Analysis' }
+  ];
+
+  topicPatterns.forEach(({ pattern, topic }) => {
+    if (pattern.test(content) && !topics.includes(topic)) {
+      topics.push(topic);
+    }
+  });
+
+  // If no specific topics found, extract from first sentence
+  if (topics.length === 0 && content.length > 20) {
+    const firstSentence = content.split(/[.!?]/)[0];
+    if (firstSentence.length < 50) {
+      topics.push(firstSentence.trim());
+    }
+  }
+
+  return topics.slice(0, 3); // Return max 3 topics
+}
+
+export function createDemoTools(send = null) {
   return [
     createToolFunction(
       async (query, options = {}) => {
         const results = options.max_results || 5;
         return await generateMockResponse('web_search', { query, results },
-          'Web search tool that returns relevant search results with titles, URLs, and snippets');
+          'Web search tool that returns relevant search results with titles, URLs, and snippets', send);
       },
       'Search the web for information',
       {
@@ -57,7 +93,7 @@ export function createDemoTools() {
     createToolFunction(
       async (url) => {
         return await generateMockResponse('fetch_page', { url },
-          'Fetches and extracts content from a web page, returning the main text content');
+          'Fetches and extracts content from a web page, returning the main text content', send);
       },
       'Fetch and extract content from a web page',
       { url: { type: 'string', description: 'URL to fetch' } },
@@ -67,7 +103,7 @@ export function createDemoTools() {
     createToolFunction(
       async (path) => {
         return await generateMockResponse('read_file', { path },
-          'Reads a file from the filesystem and returns its contents');
+          'Reads a file from the filesystem and returns its contents', send);
       },
       'Read a file from the filesystem',
       { path: { type: 'string', description: 'File path to read' } },
@@ -77,7 +113,7 @@ export function createDemoTools() {
     createToolFunction(
       async (code, language) => {
         return await generateMockResponse('analyze_code', { code, language },
-          'Analyzes code for issues, patterns, complexity, and suggestions');
+          'Analyzes code for issues, patterns, complexity, and suggestions', send);
       },
       'Analyze code for quality, issues, and improvements',
       {
@@ -90,7 +126,7 @@ export function createDemoTools() {
     createToolFunction(
       async (location, date) => {
         return await generateMockResponse('check_weather', { location, date },
-          'Gets weather forecast for a location, including temperature, conditions, precipitation');
+          'Gets weather forecast for a location, including temperature, conditions, precipitation', send);
       },
       'Check weather forecast for a location',
       {
@@ -103,7 +139,7 @@ export function createDemoTools() {
     createToolFunction(
       async (from, to, date) => {
         return await generateMockResponse('search_flights', { from, to, date },
-          'Searches for available flights between cities with prices and times');
+          'Searches for available flights between cities with prices and times', send);
       },
       'Search for flights between cities',
       {
@@ -117,7 +153,7 @@ export function createDemoTools() {
     createToolFunction(
       async (city, checkin, checkout) => {
         return await generateMockResponse('search_hotels', { city, checkin, checkout },
-          'Searches for available hotels with ratings, prices, and amenities');
+          'Searches for available hotels with ratings, prices, and amenities', send);
       },
       'Search for hotels in a city',
       {
@@ -135,7 +171,7 @@ export function createDemoTools() {
           return `Result: ${result}`;
         } catch {
           return await generateMockResponse('calculate', { expression },
-            'Evaluates mathematical expressions and returns the result');
+            'Evaluates mathematical expressions and returns the result', send);
         }
       },
       'Calculate mathematical expressions',
@@ -146,116 +182,36 @@ export function createDemoTools() {
   ];
 }
 
-function createDemoAgent() {
+function createDemoAgent(send = null) {
   return new Agent({
     name: 'TaskDemoAgent',
     modelClass: 'standard',
-    instructions: `You are a helpful AI assistant demonstrating the Task framework. You have access to various tools for web search, file operations, data analysis, planning, and more. Use these tools as needed to complete the task thoroughly. Be detailed in your work and use multiple tools when appropriate. When you have fully completed the task, use the task_complete tool with a comprehensive summary.`,
-    tools: createDemoTools()
+    instructions: `You are a helpful AI assistant demonstrating the Task framework. You have access to various tools for web search, file operations, data analysis, planning, and more. Use these tools as needed to complete the task thoroughly. Be detailed in your work and use multiple tools when appropriate. When you have fully completed the task, use the task_complete tool with a comprehensive summary.\n\nYour knowledge cut off is from a past date. Today's date is ${new Date().toLocaleDateString()}.`,
+    tools: createDemoTools(send)
   });
 }
 
-export function startDemoTask(prompt, send) {
+export function startDemoTask(prompt, send, options = {}) {
   const controller = new AbortController();
   (async () => {
-    send({ type: 'status', status: 'running' });
-
-    const agent = createDemoAgent();
-    const mainThreadId = 'main-thread';
-    const threads = new Map();
-    const metamemoryThreads = new Map();
-    let messageCount = 0;
-    let toolCallCount = 0;
-
-    threads.set(mainThreadId, { id: mainThreadId, name: 'Main Conversation', type: 'main', messages: [] });
-    send({ type: 'thread', id: mainThreadId, name: 'Main Conversation', threadType: 'main', messages: [] });
-    send({ type: 'message', id: `msg-${++messageCount}`, role: 'user', content: prompt, threadId: mainThreadId, timestamp: Date.now() });
-
-    let lastMessageRole = null;
-    let lastMessageContent = [];
-    let currentToolCall = null;
-    let messageStartTime = Date.now();
-
     try {
-      const taskGenerator = runTask(agent, prompt, { metamemoryEnabled: true, processInterval: 2, windowSize: 10, metaFrequency: 10 });
-      for await (const event of taskGenerator) {
-        if (controller.signal.aborted) break;
-        switch (event.type) {
-          case 'message_start':
-            lastMessageRole = event.message?.role || 'assistant';
-            lastMessageContent = [];
-            messageStartTime = Date.now();
-            break;
-          case 'message_delta':
-            if (event.content) lastMessageContent.push(event.content);
-            break;
-          case 'message_done':
-            const full = lastMessageContent.join('');
-            if (full) {
-              const id = `msg-${++messageCount}`;
-              send({ type: 'message', id, role: lastMessageRole, content: full, threadId: mainThreadId, timestamp: Date.now() });
-            }
-            break;
-          case 'thinking':
-            if (event.content) {
-              send({ type: 'thinking', content: event.content, threadId: mainThreadId, thinkingType: 'reasoning' });
-            }
-            break;
-          case 'tool_start':
-            if (event.tool_call) {
-              currentToolCall = { id: event.tool_call.id || `tool-${++toolCallCount}`, name: event.tool_call.function?.name, arguments: event.tool_call.function?.arguments };
-              send({ type: 'tool_call', ...currentToolCall, threadId: mainThreadId });
-            }
-            break;
-          case 'tool_done':
-            if (currentToolCall && event.result) {
-              send({ type: 'tool_result', toolId: currentToolCall.id, result: event.result.output, duration: Date.now() - messageStartTime });
-            }
-            if (event.tool_call?.function?.name === 'task_complete') {
-              send({ type: 'status', status: 'completed', result: event.result?.output });
-            } else if (event.tool_call?.function?.name === 'task_fatal_error') {
-              send({ type: 'error', message: event.result?.output });
-              send({ type: 'status', status: 'error' });
-            }
-            break;
-          case 'metamemory_processing':
-            if (event.data) {
-              const tid = `metamemory-${event.data.threadClass || 'unknown'}`;
-              if (!metamemoryThreads.has(tid)) {
-                metamemoryThreads.set(tid, { id: tid, name: event.data.threadClass || 'Metamemory', size: 0, overlap: new Set(), messages: [] });
-              }
-              const thread = metamemoryThreads.get(tid);
-              thread.size++;
-              send({ type: 'thread', id: tid, name: thread.name, threadType: 'metamemory', metadata: { triggerReason: event.data.trigger } });
-            }
-            break;
-          case 'metacognition_trigger':
-            if (event.data) {
-              send({ type: 'thinking', content: event.data.reasoning, threadId: 'metacognition', thinkingType: 'reflection' });
-              send({ type: 'thread', id: 'metacognition', name: 'Metacognition', threadType: 'metacognition', metadata: { triggerReason: event.data.trigger } });
-            }
-            break;
-          case 'error':
-            send({ type: 'error', message: event.error || 'Unknown error' });
-            break;
-        }
-      }
+        const agent = createDemoAgent(send);
 
-      const metaAnalysis = {
-        threads: Array.from(metamemoryThreads.values()),
-        metacognition: [],
-        summary: {
-          totalThreads: threads.size + metamemoryThreads.size,
-          totalMessages: messageCount,
-          avgOverlap: metamemoryThreads.size > 0 ? 0.2 : 0,
-          mostActiveThread: 'Main Conversation'
+        const taskGenerator = runTask(agent, prompt, options);
+
+        // Simply pipe all events directly to the client
+        for await (const event of taskGenerator) {
+            if (controller.signal.aborted) break;
+
+            // Send the event as-is to the client
+            send(event);
         }
-      };
-      send({ type: 'meta_analysis', analysis: metaAnalysis });
-      send({ type: 'status', status: 'completed' });
+
+        // All events have been sent, signal completion
+        console.log('[Demo] All events sent, closing connection');
+        send({ type: 'all_events_complete' });
     } catch (err) {
-      send({ type: 'error', message: err.message });
-      send({ type: 'status', status: 'error' });
+      send({ type: 'error', error: err.message });
     }
   })();
   return { abort: () => controller.abort() };

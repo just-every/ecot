@@ -1,10 +1,10 @@
 import { MessageData, ToolCallData } from '@just-every/demo-ui';
 import { Message, ThinkingState, ToolCall, Thread } from '../types';
 
-export function convertMessageToMessageData(message: Message, threadInfo?: Thread): MessageData {
+export function convertMessageToMessageData(message: Message, threadInfo?: Thread): MessageData | null {
   // Filter out system messages as demo-ui doesn't support them
   if (message.role === 'system') {
-    return null as any; // Will be filtered out
+    return null; // Will be filtered out
   }
 
   const messageData: MessageData = {
@@ -121,7 +121,7 @@ export function prepareConversationData(
         break;
     }
     
-    if (messageData && (messageData.role === 'user' || messageData.role === 'assistant')) {
+    if (messageData && messageData !== null && (messageData.role === 'user' || messageData.role === 'assistant')) {
       messageDataList.push(messageData);
     }
   }

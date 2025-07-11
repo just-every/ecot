@@ -1,8 +1,4 @@
 export interface TaskState {
-  messages: Message[]
-  threads: Thread[]
-  thinking: ThinkingState[]
-  toolCalls: ToolCall[]
   status: 'idle' | 'running' | 'completed' | 'error'
   error?: string
 }
@@ -24,6 +20,12 @@ export interface Thread {
   metadata?: {
     overlap?: string[]
     triggerReason?: string
+    tags?: string[]
+    lastUpdate?: string
+    lastCheck?: string
+    adjustments?: string[]
+    summary?: string
+    lastActive?: string
   }
 }
 
@@ -42,24 +44,6 @@ export interface ToolCall {
   result?: any
   timestamp: number
   threadId?: string
-  duration?: number
-}
-
-export interface LLMRequest {
-  id: string
-  model: string
-  messages: Message[]
-  temperature?: number
-  maxTokens?: number
-  timestamp: number
-  response?: {
-    content: string
-    usage?: {
-      promptTokens: number
-      completionTokens: number
-      totalTokens: number
-    }
-  }
   duration?: number
 }
 
@@ -89,4 +73,18 @@ export interface MetacognitionAnalysis {
   decision: string
   impact: string
   timestamp: number
+}
+
+// This should match the LLMRequestData type from demo-ui
+export interface LLMRequest {
+  requestId: string
+  agentId: string
+  providerName: string
+  model: string
+  timestamp: Date
+  requestData: unknown
+  responseData?: unknown
+  errorData?: unknown
+  status: 'running' | 'complete' | 'error'
+  duration?: number
 }

@@ -34,6 +34,7 @@
     "test/**/*.test.ts",
     "examples/**/*.ts",
     "demo/**/*.ts",
-    "demo-old/**/*.ts"
+    "demo-old/**/*.ts",
+    "reactor/**/*.ts"
   ]
 }

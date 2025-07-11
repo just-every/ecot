@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Task Demo server with metamemory and metacognition visualization
- * 
+ *
  * This server demonstrates the Task framework with detailed visualization of:
  * - Metamemory thread management and processing
  * - Metacognition triggers and thoughts
@@ -16,6 +16,7 @@ import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { enableRequestDemoLogger } from '@just-every/demo-ui';
 import { setEnsembleLogger } from '@just-every/ensemble';
 import { startDemoTask } from './task-core.js';
 
@@ -30,73 +31,6 @@ console.log('   OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '✅ Set' : '❌ 
 console.log('   ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? '✅ Set' : '❌ Not set');
 console.log('   GOOGLE_API_KEY:', process.env.GOOGLE_API_KEY ? '✅ Set' : '❌ Not set');
 console.log('   XAI_API_KEY:', process.env.XAI_API_KEY ? '✅ Set' : '❌ Not set');
-
-// Custom logger to track all LLM requests
-class TaskDemoLogger {
-  constructor() {
-    this.activeWebSocket = null;
-  }
-  
-  setActiveWebSocket(ws) {
-    this.activeWebSocket = ws;
-  }
-  
-  log_llm_request(agentId, providerName, model, requestData, timestamp) {
-    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const time = timestamp || new Date();
-    
-    // Send to active WebSocket if available
-    if (this.activeWebSocket) {
-      this.activeWebSocket.send(JSON.stringify({
-        type: 'llm_request',
-        id: requestId,
-        agentId,
-        provider: providerName,
-        model,
-        timestamp: time.toISOString(),
-        messages: requestData.messages || [],
-        temperature: requestData.temperature,
-        maxTokens: requestData.max_tokens
-      }));
-    }
-    
-    return requestId;
-  }
-
-  log_llm_response(requestId, responseData, timestamp) {
-    if (!requestId || !this.activeWebSocket) return;
-    
-    const time = timestamp || new Date();
-    
-    this.activeWebSocket.send(JSON.stringify({
-      type: 'llm_response',
-      requestId,
-      content: responseData.content?.[0]?.text || '',
-      usage: responseData.usage ? {
-        promptTokens: responseData.usage.input_tokens || 0,
-        completionTokens: responseData.usage.output_tokens || 0,
-        totalTokens: (responseData.usage.input_tokens || 0) + (responseData.usage.output_tokens || 0)
-      } : null,
-      duration: time.getTime() - Date.now() // This will be negative, but we'll fix it in the client
-    }));
-  }
-
-  log_llm_error(requestId, errorData, timestamp) {
-    if (!requestId || !this.activeWebSocket) return;
-    
-    this.activeWebSocket.send(JSON.stringify({
-      type: 'llm_error',
-      requestId,
-      error: errorData,
-      timestamp: timestamp?.toISOString() || new Date().toISOString()
-    }));
-  }
-}
-
-// Create and set the logger
-const logger = new TaskDemoLogger();
-setEnsembleLogger(logger);
-
 
 const app = express();
 const server = createServer(app);
@@ -115,7 +49,9 @@ const wss = new WebSocketServer({ server });
 wss.on('connection', (ws, req) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const prompt = url.searchParams.get('prompt');
-  
+
+  const { logger, disconnect } = enableRequestDemoLogger(ws, setEnsembleLogger);
+
   if (!prompt) {
     ws.send(JSON.stringify({ type: 'error', message: 'No prompt provided' }));
     ws.close();
@@ -124,21 +60,18 @@ wss.on('connection', (ws, req) => {
 
   const sessionId = Math.random().toString(36).substr(2, 9);
   console.log(`🔗 New Task demo connection: ${sessionId}`);
-  
-  let session = null;
 
-  // Set this WebSocket as active for the logger
-  logger.setActiveWebSocket(ws);
+  let taskController = null;
 
-  session = startDemoTask(prompt, (data) => {
+  taskController = startDemoTask(prompt, (data) => {
     ws.send(JSON.stringify(data));
   });
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message.toString());
-      if (data.type === 'stop' && session) {
-        session.abort();
+      if (data.type === 'stop' && taskController) {
+        taskController.abort();
         ws.send(JSON.stringify({
           type: 'status',
           status: 'stopped'
@@ -154,10 +87,8 @@ wss.on('connection', (ws, req) => {
     // Cleanup if needed
     console.log(`🔌 Task demo connection closed: ${sessionId}`);
 
-    if (session) session.abort();
-
-    // Clear the active WebSocket from logger
-    logger.setActiveWebSocket(null);
+    disconnect();
+    if (taskController) taskController.abort();
   });
 });
 
@@ -179,18 +110,18 @@ server.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n🔄 Shutting down Task Demo Server...');
-  
+
   // Close WebSocket server
   wss.close(() => {
     console.log('✅ WebSocket server closed');
   });
-  
+
   // Close HTTP server
   server.close(() => {
     console.log('✅ Task Demo Server stopped');
     process.exit(0);
   });
-  
+
   // Force exit after 5 seconds if graceful shutdown fails
   setTimeout(() => {
     console.log('⚠️  Forcing shutdown after timeout');

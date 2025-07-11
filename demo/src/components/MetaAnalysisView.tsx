@@ -149,18 +149,26 @@ export default function MetaAnalysisView({ analysis }: MetaAnalysisViewProps) {
       <TabGroup
         tabs={tabs}
         activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab as any)}
-      >
-        <TabPanel id="overview">
+        onChange={(tab: string) => setActiveTab(tab as 'overview' | 'threads' | 'metacognition')}
+      />
+      
+      {activeTab === 'overview' && (
+        <TabPanel tabId="overview" activeTab={activeTab}>
           {renderOverview()}
         </TabPanel>
-        <TabPanel id="threads">
+      )}
+      
+      {activeTab === 'threads' && (
+        <TabPanel tabId="threads" activeTab={activeTab}>
           {renderThreads()}
         </TabPanel>
-        <TabPanel id="metacognition">
+      )}
+      
+      {activeTab === 'metacognition' && (
+        <TabPanel tabId="metacognition" activeTab={activeTab}>
           {renderMetacognition()}
         </TabPanel>
-      </TabGroup>
+      )}
     </div>
   )
 }

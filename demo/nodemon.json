@@ -1,0 +1,14 @@
+{
+  "watch": ["server.js", "task-core.js", "../dist/**/*.js"],
+  "ext": "js,mjs,json",
+  "ignore": ["node_modules/**", "dist/**", "public/**", "*.test.js", "*.spec.js"],
+  "delay": "500",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "verbose": true,
+  "execMap": {
+    "js": "node"
+  },
+  "restartable": "rs"
+}

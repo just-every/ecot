@@ -8,30 +8,30 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "server": "node server.js",
+    "server:watch": "nodemon server.js",
     "demo": "node run-demo.js",
-    "start": "node run-demo.js"
+    "start": "node run-demo.js",
+    "postinstall": "node setup-demo-ui.js",
+    "setup-demo-ui": "node setup-demo-ui.js"
   },
   "dependencies": {
-    "@just-every/demo-ui": "^0.1.1",
     "d3": "^7.9.0",
-    "dompurify": "^3.2.3",
     "dotenv": "^17.0.1",
-    "marked": "^16.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-use-websocket": "^4.10.1"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
-    "@types/dompurify": "^3.2.0",
-    "@types/react": "^18.3.17",
-    "@types/react-dom": "^18.3.5",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "nodemon": "^3.1.10",
     "postcss": "^8.5.2",
     "sass": "^1.83.0",
-    "tailwindcss": "^3.4.15",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
-    "vite": "^6.0.7"
+    "vite": "^6.3.5"
   }
 }

@@ -16,7 +16,7 @@ const EXAMPLE_TASKS = [
   {
     id: 'research',
     name: 'Research Task',
-    prompt: 'Research the latest developments in quantum computing and summarize the key breakthroughs from 2024.',
+    prompt: 'Research the latest developments in quantum computing and summarize the key breakthroughs in 2025.',
     icon: '🔬'
   },
   {
@@ -70,9 +70,9 @@ export default function TaskExamples({
   if (compact) {
     return (
       <div>
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
           gap: '10px',
           marginBottom: '20px'
         }}>
@@ -81,14 +81,18 @@ export default function TaskExamples({
               key={example.id}
               onClick={() => handleExampleClick(example.prompt)}
               variant={selectedExample === example.prompt ? 'primary' : 'default'}
-              fullWidth
-              style={{ 
-                justifyContent: 'flex-start',
+              style={{
+                width: '100%',
+                justifyContent: 'center',
                 padding: '12px 16px',
-                fontSize: '14px'
+                fontSize: '14px',
+                textAlign: 'center'
               }}
             >
-              <span>{example.icon} {example.name}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>{example.icon}</span>
+                <span>{example.name}</span>
+              </span>
             </GlassButton>
           ))}
         </div>
@@ -117,13 +121,24 @@ export default function TaskExamples({
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          width: '100%',
+          justifyContent: 'center',
+          marginTop: '16px'
+        }}>
           {isRunning ? (
             <GlassButton
               onClick={onStop}
-              variant="secondary"
-              fullWidth
-              style={{ fontSize: '14px' }}
+              variant="danger"
+              style={{
+                width: '100%',
+                fontSize: '16px',
+                padding: '12px 24px',
+                fontWeight: '600',
+                justifyContent: 'center'
+              }}
             >
               Stop Task
             </GlassButton>
@@ -131,16 +146,21 @@ export default function TaskExamples({
             <GlassButton
               onClick={onRunTask}
               variant="primary"
-              fullWidth
               disabled={!canRun}
-              style={{ 
-                fontSize: '14px',
+              style={{
+                fontSize: '16px',
+                padding: '12px 24px',
+                fontWeight: '600',
                 background: 'linear-gradient(135deg, #4A9EFF 0%, #0066CC 100%)',
                 color: 'white',
-                border: 'none'
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(74, 158, 255, 0.3)',
+                transition: 'all 0.3s ease',
+                width: '100%',
+                justifyContent: 'center'
               }}
             >
-              Run Task
+              <span>Run Task</span>
             </GlassButton>
           )}
         </div>
@@ -151,20 +171,20 @@ export default function TaskExamples({
   return (
     <div>
       <h2 style={{ marginBottom: '20px', fontSize: '20px', fontWeight: '600' }}>Task Input</h2>
-      
+
       <div style={{ marginBottom: '20px' }}>
-        <label style={{ 
-          display: 'block', 
-          marginBottom: '12px', 
-          fontSize: '14px', 
+        <label style={{
+          display: 'block',
+          marginBottom: '12px',
+          fontSize: '14px',
           fontWeight: '500',
           color: 'var(--text-secondary)'
         }}>
           Example Tasks
         </label>
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '10px',
           marginBottom: '20px'
         }}>
@@ -173,13 +193,17 @@ export default function TaskExamples({
               key={example.id}
               onClick={() => handleExampleClick(example.prompt)}
               variant={selectedExample === example.prompt ? 'primary' : 'default'}
-              style={{ 
-                justifyContent: 'flex-start',
+              style={{
+                justifyContent: 'center',
                 padding: '12px 16px',
-                fontSize: '14px'
+                fontSize: '14px',
+                textAlign: 'center'
               }}
             >
-              <span>{example.icon} {example.name}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>{example.icon}</span>
+                <span>{example.name}</span>
+              </span>
             </GlassButton>
           ))}
         </div>
@@ -197,7 +221,6 @@ export default function TaskExamples({
           isStreaming={isRunning}
           disabled={!canRun && !isRunning}
           placeholder="Enter your custom task prompt or select an example above..."
-          style={{ fontSize: '14px' }}
         />
       </div>
 

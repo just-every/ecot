@@ -1,190 +1,129 @@
 import { useState, useCallback, useRef } from 'react'
 import useWebSocket, { ReadyState } from 'react-use-websocket'
-import { TaskState, LLMRequest, MetaAnalysis, Thread } from '../types'
-// @ts-ignore - JS module
-import { startDemoTask } from '../../task-core.js'
+import { useTaskEventProcessors } from '@just-every/demo-ui'
+import { TaskState } from '../types'
 
 interface UseTaskRunnerProps {
-  onStateUpdate: (state: TaskState) => void
-  onLLMRequest: (request: LLMRequest) => void
-  onMetaAnalysis: (analysis: MetaAnalysis) => void
+    onStateUpdate: (state: TaskState) => void
 }
 
-export function useTaskRunner({ onStateUpdate, onLLMRequest, onMetaAnalysis }: UseTaskRunnerProps) {
-  const useServer = import.meta.env.VITE_USE_SERVER === 'true'
-  const [socketUrl, setSocketUrl] = useState<string | null>(null)
-  const currentStateRef = useRef<TaskState>({
-    messages: [],
-    threads: [],
-    thinking: [],
-    toolCalls: [],
-    status: 'idle'
-  })
-  const llmRequestsRef = useRef<Map<string, LLMRequest>>(new Map())
-  const localSessionRef = useRef<any>(null)
+export function useTaskRunner({ onStateUpdate }: UseTaskRunnerProps) {
+    const useServer = import.meta.env.VITE_USE_SERVER === 'true'
+    const [socketUrl, setSocketUrl] = useState<string | null>(null)
+    const currentStateRef = useRef<TaskState>({
+        status: 'idle'
+    })
 
-  const { sendMessage, readyState } = useWebSocket(socketUrl, {
-    onMessage: (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        handleWebSocketMessage(data)
-      } catch (error) {
-        console.error('Failed to parse WebSocket message:', error)
-      }
-    },
-    onError: (error) => {
-      console.error('WebSocket error:', error)
-      updateState({ status: 'error', error: 'WebSocket connection failed' })
-    },
-    shouldReconnect: () => false,
-  })
+    const { processEvent, reset, llmRequests, messages, requestAgents, totalCost, totalTokens, memoryData, cognitionData, taskProcessor } = useTaskEventProcessors();
 
-  const updateState = useCallback((updates: Partial<TaskState>) => {
-    const newState = { ...currentStateRef.current, ...updates }
-    currentStateRef.current = newState
-    onStateUpdate(newState)
-  }, [onStateUpdate])
+    const { addUserMessage } = taskProcessor;
 
-  const handleWebSocketMessage = useCallback((data: any) => {
-    switch (data.type) {
-      case 'message':
-        updateState({
-          messages: [...currentStateRef.current.messages, {
-            id: data.id || crypto.randomUUID(),
-            role: data.role,
-            content: data.content,
-            threadId: data.threadId,
-            timestamp: Date.now(),
-            metadata: data.metadata
-          }]
-        })
-        break
+    const { sendMessage, readyState } = useWebSocket(socketUrl, {
+        onMessage: (event) => {
+            try {
+                const data = JSON.parse(event.data)
 
-      case 'thread':
-        const thread: Thread = {
-          id: data.id,
-          name: data.name,
-          type: data.threadType || data.type || 'main',
-          messages: data.messages || [],
-          metadata: data.metadata
+                // Process the event with the new processor
+                processEvent(data)
+
+                // Handle additional task-specific events
+                handleWebSocketMessage(data)
+            } catch (error) {
+                console.error('Failed to parse WebSocket message:', error)
+            }
+        },
+        onError: (error) => {
+            console.error('WebSocket error:', error)
+            updateState({ status: 'error', error: 'WebSocket connection failed' })
+        },
+        shouldReconnect: () => false,
+    })
+
+    const updateState = useCallback((updates: Partial<TaskState>) => {
+        const newState = { ...currentStateRef.current, ...updates }
+        currentStateRef.current = newState
+        onStateUpdate(newState)
+    }, [onStateUpdate])
+
+    const handleWebSocketMessage = useCallback((data: any) => {
+        if (data.type && !['message_delta', 'tool_delta'].includes(data.type)) {
+            console.log('[useTaskRunner] Websocket message:', data.type, data)
         }
-        updateState({
-          threads: [...currentStateRef.current.threads.filter(t => t.id !== thread.id), thread]
-        })
-        break
 
-      case 'thinking':
-        updateState({
-          thinking: [...currentStateRef.current.thinking, {
-            id: crypto.randomUUID(),
-            content: data.content,
-            timestamp: Date.now(),
-            threadId: data.threadId,
-            type: data.thinkingType || data.type || 'reasoning'
-          }]
-        })
-        break
+        // Handle task-specific events not covered by the processor
+        switch (data.type) {
+            // Task completion events
+            case 'task_complete':
+                updateState({ status: 'completed' })
+                // Don't close the connection yet - wait for async operations like metamemory
+                // The server will close the connection when everything is done
+                break
 
-      case 'tool_call':
-        updateState({
-          toolCalls: [...currentStateRef.current.toolCalls, {
-            id: data.id || crypto.randomUUID(),
-            name: data.name,
-            arguments: data.arguments,
-            timestamp: Date.now(),
-            threadId: data.threadId
-          }]
-        })
-        break
+            case 'task_fatal_error':
+                updateState({ status: 'error', error: data.result || 'Task failed' })
+                // Don't close the connection yet - wait for async operations
+                break
 
-      case 'tool_result':
-        updateState({
-          toolCalls: currentStateRef.current.toolCalls.map(tc =>
-            tc.id === data.toolId
-              ? { ...tc, result: data.result, duration: data.duration }
-              : tc
-          )
-        })
-        break
-
-      case 'llm_request':
-        const request: LLMRequest = {
-          id: data.id,
-          model: data.model,
-          messages: data.messages,
-          temperature: data.temperature,
-          maxTokens: data.maxTokens,
-          timestamp: data.timestamp || Date.now()
+            case 'all_events_complete':
+                // Now it's safe to close the connection
+                console.log('[useTaskRunner] All events received, closing connection')
+                setSocketUrl(null)
+                break
         }
-        llmRequestsRef.current.set(data.id, request)
-        onLLMRequest(request)
-        break
+    }, [updateState])
 
-      case 'llm_response':
-        if (data.requestId && llmRequestsRef.current.has(data.requestId)) {
-          // Update the existing request with response data
-          const existingRequest = llmRequestsRef.current.get(data.requestId)!
-          const updatedRequest: LLMRequest = {
-            ...existingRequest,
-            response: {
-              content: data.content,
-              usage: data.usage
-            },
-            duration: data.duration
-          }
-          llmRequestsRef.current.set(data.requestId, updatedRequest)
-          onLLMRequest(updatedRequest)
+    const runTask = useCallback(async (prompt: string, taskOptions?: {
+        metaFrequency?: string;
+        metamemoryEnabled?: boolean;
+    }) => {
+        // Reset the processor for a new task
+        reset()
+
+        // Don't clear messages - let the processor handle them
+        updateState({
+            status: 'running',
+        })
+
+        addUserMessage(prompt)
+
+        if (useServer) {
+            // Build URL with options
+            const params = new URLSearchParams({
+                prompt: prompt,
+                ...(taskOptions?.metaFrequency && { metaFrequency: taskOptions.metaFrequency }),
+                ...(taskOptions?.metamemoryEnabled !== undefined && { metamemoryEnabled: String(taskOptions.metamemoryEnabled) })
+            })
+            const wsUrl = `ws://localhost:3020/ws?${params.toString()}`
+            setSocketUrl(wsUrl)
+        } else {
+            // For now, we require the server to be running
+            updateState({
+                status: 'error',
+                error: 'Demo requires the WebSocket server. Please run "npm run demo" from the project root.'
+            })
         }
-        break
+    }, [onStateUpdate, useServer, updateState, reset])
 
-      case 'meta_analysis':
-        onMetaAnalysis(data.analysis)
-        break
-
-      case 'status':
-        updateState({ status: data.status })
-        if (data.status === 'completed' || data.status === 'error') {
-          setSocketUrl(null)
+    const stopTask = useCallback(() => {
+        if (useServer) {
+            if (readyState === ReadyState.OPEN) {
+                sendMessage(JSON.stringify({ type: 'stop' }))
+            }
+            setSocketUrl(null)
         }
-        break
+        updateState({ status: 'completed' })
+    }, [readyState, sendMessage, updateState, useServer])
 
-      case 'error':
-        updateState({ status: 'error', error: data.message })
-        setSocketUrl(null)
-        break
+    return {
+        runTask,
+        stopTask,
+        llmRequests,
+        messages,
+        requestAgents,
+        totalCost,
+        totalTokens,
+        memoryData,
+        cognitionData,
+        taskProcessor,
     }
-  }, [updateState, onLLMRequest, onMetaAnalysis])
-
-  const runTask = useCallback(async (prompt: string) => {
-    llmRequestsRef.current.clear()
-    currentStateRef.current = {
-      messages: [],
-      threads: [],
-      thinking: [],
-      toolCalls: [],
-      status: 'running'
-    }
-    onStateUpdate(currentStateRef.current)
-
-    if (useServer) {
-      const wsUrl = `ws://localhost:3020/ws?prompt=${encodeURIComponent(prompt)}`
-      setSocketUrl(wsUrl)
-    } else {
-      localSessionRef.current = startDemoTask(prompt, handleWebSocketMessage)
-    }
-  }, [onStateUpdate, useServer, handleWebSocketMessage])
-
-  const stopTask = useCallback(() => {
-    if (useServer) {
-      if (readyState === ReadyState.OPEN) {
-        sendMessage(JSON.stringify({ type: 'stop' }))
-      }
-      setSocketUrl(null)
-    } else if (localSessionRef.current) {
-      localSessionRef.current.abort()
-    }
-    updateState({ status: 'completed' })
-  }, [readyState, sendMessage, updateState, useServer])
-
-  return { runTask, stopTask }
 }

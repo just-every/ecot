@@ -124,9 +124,9 @@ export function listModelScores(): string {
 export const set_meta_frequency = withErrorHandling(
     (frequency: string): string => {
         validateMetaFrequency(frequency);
-        taskState.metaFrequency = frequency as MetaFrequency;
+        taskState.metaFrequency = parseInt(frequency) as MetaFrequency;
         console.log(`[Task] Meta-cognition frequency set to ${frequency}`);
-        return taskState.metaFrequency;
+        return taskState.metaFrequency.toString();
     },
     'state_management'
 );
@@ -210,14 +210,13 @@ export function incrementLLMRequestCount(): {
     shouldTriggerMeta: boolean;
 } {
     taskState.llmRequestCount++;
-    const frequency = parseInt(taskState.metaFrequency);
+    const frequency = taskState.metaFrequency;
     
     // Validate frequency to avoid division by zero
-    if (isNaN(frequency) || frequency <= 0) {
+    if (frequency <= 0) {
         console.error(`[Task] Invalid meta frequency: ${taskState.metaFrequency}. Using default.`);
         taskState.metaFrequency = DEFAULT_META_FREQUENCY;
-        const defaultFreq = parseInt(DEFAULT_META_FREQUENCY);
-        const shouldTriggerMeta = taskState.llmRequestCount % defaultFreq === 0;
+        const shouldTriggerMeta = taskState.llmRequestCount % DEFAULT_META_FREQUENCY === 0;
         return {
             count: taskState.llmRequestCount,
             shouldTriggerMeta,

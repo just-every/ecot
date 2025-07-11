@@ -37,10 +37,10 @@ export function getDelayAbortSignal(): AbortSignal {
     return delayAbortController.signal;
 }
 
-export function getThoughtDelay(): string {
+export function getThoughtDelay(): number {
     return thoughtDelay;
 }
-export function getValidThoughtDelays(): readonly string[] {
+export function getValidThoughtDelays(): readonly number[] {
     return VALID_THOUGHT_DELAYS;
 }
 
@@ -70,10 +70,8 @@ export function getValidThoughtDelays(): readonly string[] {
  * ```
  */
 export async function runThoughtDelay(): Promise<void> {
-    const delayMs = parseInt(thoughtDelay);
-    
-    if (thoughtDelay && !isNaN(delayMs) && delayMs > 0) {
-        console.log(`[Task] Thought delay: ${delayMs} seconds`);
+    if (thoughtDelay > 0) {
+        console.log(`[Task] Thought delay: ${thoughtDelay} seconds`);
         
         // Create a new controller for this delay
         delayAbortController = new AbortController();
@@ -82,7 +80,7 @@ export async function runThoughtDelay(): Promise<void> {
         // Simple delay implementation
         try {
             await new Promise<void>((resolve, reject) => {
-                const timeoutId = setTimeout(resolve, delayMs * 1000);
+                const timeoutId = setTimeout(resolve, thoughtDelay * 1000);
                 
                 signal.addEventListener('abort', () => {
                     clearTimeout(timeoutId);
@@ -143,8 +141,8 @@ export async function runThoughtDelayWithController(controller: AbortController,
 export const setThoughtDelay = withErrorHandling(
     (delay: string): string => {
         validateThoughtDelay(delay);
-        thoughtDelay = delay as ThoughtDelay;
-        console.log(`[Task] Thought delay set to ${delay} seconds`);
+        thoughtDelay = parseInt(delay) as ThoughtDelay;
+        console.log(`[Task] Thought delay set to ${thoughtDelay} seconds`);
         return `Thought delay set to ${thoughtDelay} seconds`;
     },
     'thought_management'

@@ -1,86 +1,208 @@
-import { useState, useCallback } from 'react'
-import { 
-  DemoHeader, 
-  Card, 
-  GlassButton, 
-  ConnectionStatus,
-  StatsGrid,
+import { useState, useCallback, useEffect, useRef } from 'react'
+import {
+  Card,
   ShowCodeButton,
   formatNumber,
-  formatCurrency
+  formatCurrency,
+  LLMRequestLog,
+  Conversation,
+  CognitionView,
+  MemoryView,
+  useTaskState
 } from '@just-every/demo-ui'
-import ConversationView from './components/ConversationView'
-import LLMRequestLog from './components/LLMRequestLog'
-import MetaAnalysisView from './components/MetaAnalysisView'
-import MemoryView from './components/MemoryView'
 import TaskExamples from './components/TaskExamples'
-import { useTaskRunner } from './hooks/useTaskRunner'
-import { TaskState, LLMRequest, MetaAnalysis } from './types'
+import TaskSettings from './components/TaskSettings'
 import './App.scss'
 
 type TabType = 'conversation' | 'requests' | 'memory' | 'cognition'
 
 function App() {
-  const [taskState, setTaskState] = useState<TaskState | null>(null)
-  const [llmRequests, setLLMRequests] = useState<LLMRequest[]>([])
-  const [metaAnalysis, setMetaAnalysis] = useState<MetaAnalysis | null>(null)
   const [selectedExample, setSelectedExample] = useState<string>('')
   const [customPrompt, setCustomPrompt] = useState('')
-  const [isRunning, setIsRunning] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('conversation')
-  const [totalTokens, setTotalTokens] = useState(0)
-  const [totalCost, setTotalCost] = useState(0)
-
-  const { runTask, stopTask } = useTaskRunner({
-    onStateUpdate: setTaskState,
-    onLLMRequest: (request) => {
-      setLLMRequests(prev => {
-        // Check if this is an update to an existing request
-        const existingIndex = prev.findIndex(r => r.id === request.id)
-        if (existingIndex >= 0) {
-          // Update existing request
-          const updated = [...prev]
-          updated[existingIndex] = request
-          return updated
-        } else {
-          // Add new request
-          return [...prev, request]
-        }
-      })
-      
-      // Update stats when we have a response
-      if (request.response?.usage) {
-        setTotalTokens(prev => prev + (request.response?.usage?.totalTokens || 0))
-        setTotalCost(prev => prev + ((request.response?.usage?.totalTokens || 0) * 0.00001)) // Mock cost calculation
-      }
-    },
-    onMetaAnalysis: setMetaAnalysis,
+  const [taskSettings, setTaskSettings] = useState({
+    metaFrequency: '5',
+    metamemoryEnabled: true
   })
 
-  const handleRunTask = useCallback(async () => {
+  const [, setIsConnected] = useState(false)
+  const [taskStatus, setTaskStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle')
+  const [, setTaskError] = useState<string | undefined>()
+  const wsRef = useRef<WebSocket | null>(null)
+  
+  const { state: taskState, processEvent, reset } = useTaskState()
+  
+  // WebSocket connection management
+  const connectWebSocket = useCallback((prompt: string, settings?: any) => {
+    // Close existing connection if any
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    
+    try {
+      // Build URL with options
+      const params = new URLSearchParams({
+        prompt: prompt,
+        ...(settings?.metaFrequency && { metaFrequency: settings.metaFrequency }),
+        ...(settings?.metamemoryEnabled !== undefined && { metamemoryEnabled: String(settings.metamemoryEnabled) })
+      });
+      const wsUrl = `ws://localhost:3020/ws?${params.toString()}`;
+      
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setIsConnected(true);
+        setTaskError(undefined);
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          // Process event through task state
+          processEvent(data);
+          
+          // Handle task-specific events
+          switch (data.type) {
+            case 'task_start':
+              setTaskStatus('running');
+              setTaskError(undefined);
+              break;
+            case 'task_complete':
+              setTaskStatus('completed');
+              // Don't close yet - wait for all events
+              break;
+            case 'task_fatal_error':
+              setTaskStatus('error');
+              setTaskError(data.result || 'Task failed');
+              break;
+            case 'all_events_complete':
+              // Now safe to close
+              console.log('All events received, closing connection');
+              ws.close();
+              break;
+            case 'error':
+              setTaskStatus('error');
+              setTaskError(data.message || 'Unknown error occurred');
+              break;
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setIsConnected(false);
+        setTaskStatus('error');
+        setTaskError('WebSocket connection error');
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        setIsConnected(false);
+        wsRef.current = null;
+      };
+      
+      wsRef.current = ws;
+    } catch (error) {
+      console.error('Failed to connect WebSocket:', error);
+      setIsConnected(false);
+      setTaskStatus('error');
+      setTaskError('Failed to connect to server');
+    }
+  }, [processEvent]);
+  
+  const runTask = useCallback((prompt: string, _taskId?: string, settings?: any) => {
+    // Reset task state
+    reset();
+    
+    // Add user message to display
+    taskState.taskProcessor?.addUserMessage?.(prompt);
+    
+    setTaskStatus('running');
+    setTaskError(undefined);
+    
+    // Connect with the prompt
+    connectWebSocket(prompt, settings);
+  }, [reset, connectWebSocket, taskState.taskProcessor]);
+  
+  const stopTask = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'stop' }));
+    }
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setTaskStatus('completed');
+    setIsConnected(false);
+  }, []);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, []);
+  
+
+  const handleRunTask = useCallback(() => {
     const prompt = selectedExample || customPrompt
     if (!prompt) return
 
-    setIsRunning(true)
-    setTaskState(null)
-    setLLMRequests([])
-    setMetaAnalysis(null)
-    setTotalTokens(0)
-    setTotalCost(0)
-
-    try {
-      await runTask(prompt)
-    } catch (error) {
-      console.error('Task failed:', error)
-    } finally {
-      setIsRunning(false)
-    }
-  }, [selectedExample, customPrompt, runTask])
+    runTask(prompt, undefined, taskSettings)
+  }, [selectedExample, customPrompt, runTask, taskSettings])
 
   const handleStop = useCallback(() => {
     stopTask()
-    setIsRunning(false)
   }, [stopTask])
+
+  // Handle URL routing
+  useEffect(() => {
+    // Check URL path on mount
+    const path = window.location.pathname.substring(1) // Remove leading slash
+    const validTabs: TabType[] = ['conversation', 'requests', 'memory', 'cognition']
+    if (validTabs.includes(path as TabType)) {
+      setActiveTab(path as TabType)
+    }
+
+    // Handle browser back/forward
+    const handlePopState = () => {
+      const path = window.location.pathname.substring(1)
+      if (validTabs.includes(path as TabType)) {
+        setActiveTab(path as TabType)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  // Handle tab changes
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    // Update URL without page reload
+    window.history.pushState(null, '', `/${tab}`)
+  }
+
+  // Handle initial task from environment variable
+  useEffect(() => {
+    const initialTask = import.meta.env.VITE_INITIAL_TASK
+    if (initialTask && taskStatus === 'idle') {
+      console.log('Running initial task:', initialTask)
+      setCustomPrompt(initialTask)
+      // Delay to ensure everything is loaded
+      setTimeout(() => {
+        runTask(initialTask, undefined, taskSettings)
+      }, 2000)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 
   return (
@@ -97,17 +219,15 @@ function App() {
           overflow: 'auto'
         }}
       >
-        <div style={{ 
-          fontSize: '24px', 
-          fontWeight: '700', 
+        <div style={{
+          fontSize: '24px',
+          fontWeight: '700',
           color: 'var(--accent-primary)',
           marginBottom: '20px',
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
           padding: '16px 20px',
-          background: 'linear-gradient(135deg, rgba(74, 158, 255, 0.1), rgba(74, 158, 255, 0.05))',
-          border: '1px solid rgba(74, 158, 255, 0.2)',
           borderRadius: '12px',
           backdropFilter: 'blur(10px)'
         }}>
@@ -118,82 +238,137 @@ function App() {
         </div>
 
         <Card>
-          <TaskExamples 
+          <TaskExamples
             selectedExample={selectedExample}
             onSelectExample={setSelectedExample}
             customPrompt={customPrompt}
             onCustomPromptChange={setCustomPrompt}
             onRunTask={handleRunTask}
             onStop={handleStop}
-            isRunning={isRunning}
+            isRunning={taskStatus === 'running'}
             canRun={!!(selectedExample || customPrompt)}
             compact
           />
         </Card>
 
+        <TaskSettings onSettingsChange={setTaskSettings} />
+
         <Card>
-          <div style={{ marginBottom: '16px' }}>
-            <ShowCodeButton onClick={() => {}} disabled style={{ width: '100%' }} />
+          <div style={{ marginBottom: '16px', width: '100%' }}>
+            <ShowCodeButton onClick={() => {}} />
           </div>
-          
+
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px'
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '8px'
           }}>
+            {/* Core stats */}
             <div style={{
+              flex: '1 1 80px',
+              minWidth: '80px',
               padding: '12px',
               background: 'var(--surface-glass)',
               borderRadius: '8px',
               textAlign: 'center'
             }}>
               <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                {formatNumber(totalTokens)}
+                {formatNumber(taskState.totalTokens)}
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Tokens</div>
             </div>
-            
+
             <div style={{
+              flex: '1 1 80px',
+              minWidth: '80px',
               padding: '12px',
               background: 'var(--surface-glass)',
               borderRadius: '8px',
               textAlign: 'center'
             }}>
               <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                {formatCurrency(totalCost)}
+                {formatCurrency(taskState.totalCost)}
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Cost</div>
             </div>
-            
+
             <div style={{
+              flex: '1 1 80px',
+              minWidth: '80px',
               padding: '12px',
               background: 'var(--surface-glass)',
               borderRadius: '8px',
               textAlign: 'center'
             }}>
               <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                {llmRequests.length.toString()}
+                {taskState.llmRequests.length.toString()}
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Requests</div>
             </div>
-            
+
+            {/* Metamemory stats */}
             <div style={{
+              flex: '1 1 80px',
+              minWidth: '80px',
               padding: '12px',
               background: 'var(--surface-glass)',
               borderRadius: '8px',
               textAlign: 'center'
             }}>
               <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                {taskState?.threads.length.toString() || '0'}
+                {taskState.memoryData?.stats?.totalTaggingSessions?.toString() || '0'}
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Threads</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Sessions</div>
+            </div>
+
+            <div style={{
+              flex: '1 1 80px',
+              minWidth: '80px',
+              padding: '12px',
+              background: 'var(--surface-glass)',
+              borderRadius: '8px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
+                {taskState.memoryData?.stats?.totalTopics?.toString() || '0'}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Topics</div>
+            </div>
+
+            {/* Cognition stats */}
+            <div style={{
+              flex: '1 1 80px',
+              minWidth: '80px',
+              padding: '12px',
+              background: 'var(--surface-glass)',
+              borderRadius: '8px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
+                {taskState.cognitionData?.stats?.totalAnalyses?.toString() || '0'}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Analyses</div>
+            </div>
+
+            <div style={{
+              flex: '1 1 80px',
+              minWidth: '80px',
+              padding: '12px',
+              background: 'var(--surface-glass)',
+              borderRadius: '8px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
+                {taskState.cognitionData?.stats?.completedAnalyses?.toString() || '0'}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Completed</div>
             </div>
           </div>
         </Card>
       </div>
 
       {/* Main Panel - Full Height Tabs */}
-      <div style={{ 
+      <div style={{
         flex: 1,
         height: '100vh',
         display: 'flex',
@@ -217,10 +392,11 @@ function App() {
           }}>
             <button
               className={`nav-tab ${activeTab === 'conversation' ? 'active' : ''}`}
-              onClick={() => setActiveTab('conversation')}
+              onClick={() => handleTabChange('conversation')}
+              title="💬Conversation"
               style={{
                 border: 'none',
-                background: activeTab === 'conversation' 
+                background: activeTab === 'conversation'
                   ? 'linear-gradient(135deg, rgba(74, 158, 255, 0.2), rgba(74, 158, 255, 0.1))'
                   : 'var(--surface-glass)',
                 color: activeTab === 'conversation' ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -240,7 +416,8 @@ function App() {
 
             <button
               className={`nav-tab ${activeTab === 'requests' ? 'active' : ''}`}
-              onClick={() => setActiveTab('requests')}
+              onClick={() => handleTabChange('requests')}
+              title="📊Requests"
               style={{
                 border: 'none',
                 background: activeTab === 'requests'
@@ -258,12 +435,13 @@ function App() {
                 gap: '8px'
               }}
             >
-              📋 Requests {llmRequests.length > 0 && `(${llmRequests.length})`}
+              📋 Requests {taskState.llmRequests.length > 0 && `(${taskState.llmRequests.length})`}
             </button>
-            
+
             <button
               className={`nav-tab ${activeTab === 'memory' ? 'active' : ''}`}
-              onClick={() => setActiveTab('memory')}
+              onClick={() => handleTabChange('memory')}
+              title="🧠Memory"
               style={{
                 border: 'none',
                 background: activeTab === 'memory'
@@ -283,10 +461,11 @@ function App() {
             >
               🧠 Memory
             </button>
-            
+
             <button
               className={`nav-tab ${activeTab === 'cognition' ? 'active' : ''}`}
-              onClick={() => setActiveTab('cognition')}
+              onClick={() => handleTabChange('cognition')}
+              title="🔮Cognition"
               style={{
                 border: 'none',
                 background: activeTab === 'cognition'
@@ -317,81 +496,28 @@ function App() {
           }}>
             {activeTab === 'conversation' && (
               <div style={{ height: '100%' }}>
-                {taskState ? (
-                  <ConversationView
+                <Conversation
                     taskState={taskState}
-                    isCompactView={false}
-                  />
-                ) : (
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    height: '100%',
-                    color: 'var(--text-secondary)'
-                  }}>
-                    No conversation yet. Run a task to start.
-                  </div>
-                )}
-              </div>
+                    emptyMessage="No messages yet. Run a task to start the conversation."
+                    />
+                </div>
             )}
 
             {activeTab === 'requests' && (
               <div style={{ height: '100%' }}>
-                {llmRequests.length > 0 ? (
-                  <LLMRequestLog requests={llmRequests} />
-                ) : (
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    height: '100%',
-                    color: 'var(--text-secondary)'
-                  }}>
-                    No LLM requests yet.
-                  </div>
-                )}
+                <LLMRequestLog taskState={taskState} />
               </div>
             )}
-            
+
             {activeTab === 'memory' && (
               <div style={{ height: '100%' }}>
-                <MemoryView threads={taskState?.threads || []} metaAnalysis={metaAnalysis} />
+                <MemoryView taskState={taskState} />
               </div>
             )}
-            
+
             {activeTab === 'cognition' && (
-              <div style={{ height: '100%', overflow: 'auto' }}>
-                {metaAnalysis && metaAnalysis.metacognition.length > 0 ? (
-                  <div style={{ padding: '20px' }}>
-                    <h3 style={{ 
-                      marginBottom: '20px', 
-                      fontSize: '18px', 
-                      fontWeight: '600',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      <span style={{ color: 'var(--metacognition)' }}>🔮</span>
-                      Metacognition Analysis
-                    </h3>
-                    <MetaAnalysisView analysis={metaAnalysis} />
-                  </div>
-                ) : (
-                  <div style={{ padding: '20px' }}>
-                    <div style={{
-                      textAlign: 'center',
-                      color: 'var(--text-secondary)',
-                      marginTop: '40px'
-                    }}>
-                      <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>🔮</div>
-                      <p>No metacognition analysis available yet.</p>
-                      <p style={{ fontSize: '14px', marginTop: '8px' }}>
-                        Metacognition triggers periodically to analyze the task's progress and strategy.
-                      </p>
-                    </div>
-                  </div>
-                )}
+              <div style={{ height: '100%' }}>
+                <CognitionView taskState={taskState} />
               </div>
             )}
           </div>

@@ -40,7 +40,7 @@ export default function MemoryView({ threads, metaAnalysis }: MemoryViewProps) {
           alignItems: 'center',
           gap: '8px'
         }}>
-          <span style={{ color: 'var(--metamemory)' }}>📚</span>
+          <span style={{ color: 'var(--metamemory)' }}>🧠</span>
           Metamemory Threads ({metamemoryThreads.length})
         </h3>
         
