@@ -55,7 +55,13 @@ vi.mock('@just-every/ensemble', async (importOriginal) => {
         }),
         cloneAgent: vi.fn().mockImplementation((agent: any) => ({ ...agent })),
         createToolFunction: original.createToolFunction,
-        waitWhilePaused: vi.fn().mockResolvedValue(undefined)
+        waitWhilePaused: vi.fn().mockResolvedValue(undefined),
+        truncateLargeValues: vi.fn().mockImplementation((obj, maxLength = 1000) => {
+            if (typeof obj === 'string') {
+                return obj.length > maxLength ? obj.substring(0, maxLength) + '...' : obj;
+            }
+            return obj;
+        })
     };
 });
 
@@ -83,7 +89,7 @@ describe('Message Injection', () => {
                 events.push(event);
                 
                 // After first response, inject a message
-                if (events.length === 1 && event.type === 'response_output') {
+                if (event.type === 'response_output' && events.filter(e => e.type === 'response_output').length === 1) {
                     addMessageToTask(task, {
                         type: 'message',
                         role: 'developer',

@@ -36,7 +36,7 @@ export default defineConfig(() => {
     appType: 'spa',
     // Optimize deps for faster HMR
     optimizeDeps: {
-      include: ['react', 'react-dom', 'react-use-websocket', 'd3'],
+      include: ['react', 'react-dom', '@just-every/demo-ui'],
       exclude: ['@just-every/task']
     },
     // Clear screen on restart

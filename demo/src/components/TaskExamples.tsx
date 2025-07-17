@@ -81,18 +81,9 @@ export default function TaskExamples({
               key={example.id}
               onClick={() => handleExampleClick(example.prompt)}
               variant={selectedExample === example.prompt ? 'primary' : 'default'}
-              style={{
-                width: '100%',
-                justifyContent: 'center',
-                padding: '12px 16px',
-                fontSize: '14px',
-                textAlign: 'center'
-              }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>{example.icon}</span>
                 <span>{example.name}</span>
-              </span>
             </GlassButton>
           ))}
         </div>

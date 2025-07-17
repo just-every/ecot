@@ -1,7 +1,6 @@
 import { MessageMetadata, TopicTagMetadata } from '../types/index.js';
 import type { Agent, AgentDefinition, ResponseJSONSchema, ResponseInput } from '@just-every/ensemble';
-import { ensembleRequest } from '@just-every/ensemble';
-import { truncateLargeValues } from '../../utils/format.js';
+import { ensembleRequest, truncateLargeValues } from '@just-every/ensemble';
 
 // JSON Schema for the tagger response
 const TAGGER_RESPONSE_SCHEMA: ResponseJSONSchema = {
@@ -32,7 +31,18 @@ const TAGGER_RESPONSE_SCHEMA: ResponseJSONSchema = {
                         },
                         summary: {
                             type: 'string',
-                            description: 'A 2-10 word summary of the message. Used past tense and focus on the outcome. For example, say you a summarize a tool result \'{"query": "latest breakthroughs in quantum computing", "results":[{"title": "IBM Unveils 1000-Qubit Quantum Processor"}]}\', a bad summary would be "Web search results on quantum advances". A good summary would be "Found that IBM unveiled a 1000-qubit quantum processor".'
+                            description: `A 2-10 word summary of the message. Focus on the outcome and try to provide the key points of the message so it does not need to be read fully to understand what happened. Avoid generic summaries that do not convey specific information about the message content.
+
+For example, say you a summarize a tool result \'{"query": "latest breakthroughs in quantum computing", "results":[{"title": "IBM Unveils 1000-Qubit Quantum Processor"}]}\', a bad summary would be "Web search results on quantum advances". A good summary would be "Found that IBM unveiled a 1000-qubit quantum processor".
+
+Use the following style for each type of message:
+- thinking: Present tense. Use words like, thinking, exploring, understanding etc... e.g. "Thinking about why API requests fail with 400 errors."
+- function_call: Past tense. Convey an action was performed, e.g. "Searched for latest breakthroughs in quantum computing."
+- function_call_output: Past tense. Convey action completed. e.g. "Found that IBM unveiled a 1000-qubit quantum processor." NB: focus on the outcome (what was found, result of action), not the process.
+- function_call_with_output: Past tense. This combines a function call with its result. Focus on what was done AND what was found. e.g. "Searched quantum computing, found IBM's 1000-qubit processor."
+- message: Past tense.
+-- If role is user, system or developer, mention them in the summary e.g. "User asked for latest breakthroughs in quantum computing."
+-- If role is assistant, this will be the AI explaining its reasoning or actions. Don't use the word Assistant, just describe give a straight summary e.g. "Explained why API requests fail with 400 errors."`
                         }
                     },
                     required: ['message_id', 'topic_tags', 'summary'],
@@ -72,6 +82,43 @@ Ephemeral: Discarded after a short time. This is for conversational filler or tr
                     required: ['topic_tag', 'type', 'description'],
                     additionalProperties: false
                 }
+            },
+            merge_topic_tags: {
+                type: 'array',
+                description: 'Suggested topic merges when one topic is a subset of another or very similar',
+                items: {
+                    type: 'object',
+                    properties: {
+                        source_tags: {
+                            type: 'array',
+                            description: 'The topic tags to merge (usually 2 or more)',
+                            items: {
+                                type: 'string',
+                                description: 'Topic tag to merge'
+                            },
+                            minItems: 2
+                        },
+                        merged_tag: {
+                            type: 'string',
+                            description: 'The resulting merged topic tag name'
+                        },
+                        type: {
+                            type: 'string',
+                            description: 'Type for the merged topic',
+                            enum: ['core', 'active', 'idle', 'archived', 'ephemeral']
+                        },
+                        description: {
+                            type: 'string',
+                            description: 'Description for the merged topic'
+                        },
+                        merge_reason: {
+                            type: 'string',
+                            description: 'Brief explanation of why these topics should be merged'
+                        }
+                    },
+                    required: ['source_tags', 'merged_tag', 'type', 'description', 'merge_reason'],
+                    additionalProperties: false
+                }
             }
         },
         required: ['messages', 'topic_tag_types'],
@@ -105,6 +152,14 @@ export class LLMTagger {
         updatedTopicCount: number;
         newMessageCount: number;
         updatedMessageCount: number;
+        mergedTopics?: Array<{
+            source_tags: string[];
+            merged_tag: string;
+            type: string;
+            description: string;
+            merge_reason: string;
+            messages_to_retag: string[];
+        }>;
     }> {
 
         // Create a new agent for tagging based on the original
@@ -118,24 +173,88 @@ export class LLMTagger {
             parent_id: parent.agent_id,
             instructions: `You are an expert AI librarian and conversation analyst. Your task is to analyze a list of recent messages from a conversation or task performed by an AI and assign one or more topic tags to each message. You must also provide a brief 2-5 word summary of each message. Use the existing topics provided, and create new ones as needed. Your goal is to help organize and summarize the conversation effectively, so it can be compacted down and to ensure the most important information is retained as time passes.
 
-Guidelines:
+Message Topic Tags:
 - Be Consistent: Use the same topic tag for the same underlying concept (e.g., use api_integration_research if it exists, and don't create a new researching_apis).
 - Be Granular: Identify distinct tasks, goals, or conversational themes. Good tags are specific, like database_schema_design or user_feedback_analysis_mar2025. Bad tags are generic, like chat or work.
-- Create Summaries: For each message, create a 2-10 word summary that captures its essence. Use shorter summaries for simple messages.
+- Be Minimal: Use the fewest tags necessary. Avoid over-tagging. Remove redundant tags from past messages.
+
+Message Summaries:
+For each message, create a 2-10 word summary that captures its essence. Use shorter summaries for simple messages.
+Use the following style for each type of message:
+- thinking: Present tense. Use words like, thinking, exploring, understanding etc... e.g. "Thinking about why API requests fail with 400 errors."
+- function_call: Past tense. Convey an action was performed, e.g. "Searched for latest breakthroughs in quantum computing."
+- function_call_output: Past tense. Convey action completed. e.g. "Found that IBM unveiled a 1000-qubit quantum processor." NB: focus on the outcome (what was found, result of action), not the process.
+- function_call_with_output: Past tense. This combines a function call with its result. Focus on what was done AND what was found. e.g. "Searched quantum computing, found IBM's 1000-qubit processor."
+- message: Past tense.
+-- If role is user, system or developer, mention them in the summary e.g. "User asked for latest breakthroughs in quantum computing."
+-- If role is assistant, this will be the AI explaining its reasoning or actions. Don't use the word Assistant, just describe give a straight summary e.g. "Explained why API requests fail with 400 errors."
 
 Clarify Topics:
 - For new topics, provide a brief description of what the CURRENT type of the topic is.
-- Include a 1 sentence description of the topic to help future AI librarians include similar messages in the same topic tag.`,
+- Include a 1 sentence description of the topic to help future AI librarians include similar messages in the same topic tag.
+
+Topic Merging:
+- Detect when topics are subsets of each other or highly similar (e.g., "api_design" and "api_implementation" might be merged into "api_development").
+- When you notice that all messages tagged with one topic are also tagged with another topic, suggest merging them.
+- Suggest topic merges ONLY when you see recent messages with either of the tags to be merged.
+- You don't need to manually retag messages when suggesting a merge - the system will automatically handle retagging all messages from the source topics to the merged topic.
+- When suggesting a merge, provide a clear reason explaining the relationship between the topics.`,
         };
+
+        // First, create a map to find function_call_outputs by their corresponding function_call IDs
+        const functionCallOutputMap = new Map<string, any>();
+        for (const message of messages) {
+            if (message.type === 'function_call_output' && message.function_call_id) {
+                functionCallOutputMap.set(message.function_call_id, message);
+            }
+        }
 
         // Prepare messages with existing tags
         const messagesWithTags: any[] = [];
         const newMessagesToTag: any[] = [];
+        const processedMessageIds = new Set<string>();
 
         for (const message of messages) {
             const messageId = message.id || message.message_id;
-            const existingTag = existingTaggedMessages.get(messageId);
+            
+            // Skip if already processed (e.g., as part of a function_call combo)
+            if (processedMessageIds.has(messageId)) {
+                continue;
+            }
 
+            // If this is a function_call, check for corresponding output
+            if (message.type === 'function_call' && messageId) {
+                const output = functionCallOutputMap.get(messageId);
+                if (output) {
+                    // Mark both as processed
+                    processedMessageIds.add(messageId);
+                    const outputId = output.id || output.message_id;
+                    if (outputId) processedMessageIds.add(outputId);
+
+                    // Create combined message for tagging
+                    const combinedMessage = {
+                        ...output, // Use output as base (it has the result)
+                        function_call: message.function_call, // Include the function call details
+                        combined_from_function_call: true,
+                        original_function_call_id: messageId
+                    };
+
+                    const existingTag = existingTaggedMessages.get(outputId);
+                    if (existingTag) {
+                        messagesWithTags.push({
+                            ...combinedMessage,
+                            existing_tags: existingTag.topic_tags,
+                            existing_summary: existingTag.summary
+                        });
+                    } else {
+                        newMessagesToTag.push(combinedMessage);
+                    }
+                    continue;
+                }
+            }
+
+            // Regular message processing
+            const existingTag = existingTaggedMessages.get(messageId);
             if (existingTag) {
                 // Include full message with its existing tags
                 messagesWithTags.push({
@@ -147,6 +266,8 @@ Clarify Topics:
                 // Message has no tags yet
                 newMessagesToTag.push(message);
             }
+            
+            processedMessageIds.add(messageId);
         }
 
         const requestMessages: ResponseInput = [];
@@ -156,7 +277,7 @@ Clarify Topics:
         if (existingTopicTags.size > 0) {
             for (const [topicTag, metadata] of existingTopicTags) {
                 formattedTopics += `Topic Tag: ${topicTag}\n`;
-                formattedTopics += `Type: ${metadata.type}\n`;
+                formattedTopics += `Topic Type: ${metadata.type}\n`;
                 formattedTopics += `Description: ${metadata.description}\n\n---\n\n`;
             }
         } else {
@@ -174,9 +295,22 @@ Clarify Topics:
             for (const msg of messagesWithTags) {
                 const messageId = msg.id || msg.message_id;
                 formattedMessages += `Message ID: ${messageId}\n`;
+                
+                // Handle combined function_call + output messages
+                if (msg.combined_from_function_call) {
+                    formattedMessages += `Message Type: function_call_with_output\n`;
+                } else {
+                    formattedMessages += `Message Type: ${msg.type}\n`;
+                }
+                
                 formattedMessages += `Current Tags: ${msg.existing_tags.join(', ')}\n`;
                 formattedMessages += `Current Summary: ${msg.existing_summary}\n`;
-                formattedMessages += `Full Message:\n${JSON.stringify(truncateLargeValues(msg), null, 2)}\n\n---\n\n`;
+                
+                // Format the message, removing the original_function_call_id from display
+                const msgCopy = { ...msg };
+                delete msgCopy.original_function_call_id;
+                delete msgCopy.combined_from_function_call;
+                formattedMessages += `Full Message:\n${JSON.stringify(truncateLargeValues(msgCopy), null, 2)}\n\n---\n\n`;
             }
 
             requestMessages.push({
@@ -191,7 +325,20 @@ Clarify Topics:
             for (const msg of newMessagesToTag) {
                 const messageId = msg.id || msg.message_id;
                 formattedNewMessages += `Message ID: ${messageId}\n`;
-                formattedNewMessages += `Full Message:\n${JSON.stringify(truncateLargeValues(msg), null, 2)}\n\n---\n\n`;
+                
+                // Handle combined function_call + output messages
+                if (msg.combined_from_function_call) {
+                    formattedNewMessages += `Message Type: function_call_with_output\n`;
+                    formattedNewMessages += `Note: This combines a function call with its output result.\n`;
+                } else {
+                    formattedNewMessages += `Message Type: ${msg.type}\n`;
+                }
+                
+                // Format the message, removing the original_function_call_id from display
+                const msgCopy = { ...msg };
+                delete msgCopy.original_function_call_id;
+                delete msgCopy.combined_from_function_call;
+                formattedNewMessages += `Full Message:\n${JSON.stringify(truncateLargeValues(msgCopy), null, 2)}\n\n---\n\n`;
             }
 
             requestMessages.push({
@@ -214,8 +361,45 @@ Clarify Topics:
         }
 
         try {
+            // Extract JSON from response content (might contain extra text)
+            let jsonContent = responseContent.trim();
+            
+            // Try to find JSON object boundaries
+            const jsonStart = jsonContent.indexOf('{');
+            const jsonEnd = jsonContent.lastIndexOf('}');
+            
+            if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+                jsonContent = jsonContent.substring(jsonStart, jsonEnd + 1);
+            } else {
+                // If no valid JSON structure found, skip processing
+                console.warn('[MetaMemory] No valid JSON structure found in response:', responseContent);
+                return {
+                    topicTags: existingTopicTags,
+                    taggedMessages: existingTaggedMessages,
+                    newTopicCount: 0,
+                    updatedTopicCount: 0,
+                    newMessageCount: 0,
+                    updatedMessageCount: 0,
+                    mergedTopics: []
+                };
+            }
+            
+            // Validate that we have a reasonable JSON structure
+            if (jsonContent.length < 2) {
+                console.warn('[MetaMemory] JSON content too short:', jsonContent);
+                return {
+                    topicTags: existingTopicTags,
+                    taggedMessages: existingTaggedMessages,
+                    newTopicCount: 0,
+                    updatedTopicCount: 0,
+                    newMessageCount: 0,
+                    updatedMessageCount: 0,
+                    mergedTopics: []
+                };
+            }
+            
             // Parse the JSON response (should be clean JSON thanks to schema)
-            const parsed = JSON.parse(responseContent);
+            const parsed = JSON.parse(jsonContent);
 
             // Create result maps
             const topicTags = new Map<string, TopicTagMetadata>(existingTopicTags);
@@ -277,13 +461,85 @@ Clarify Topics:
                 }
             }
 
+            // Process topic merges
+            let mergedTopics: Array<{
+                source_tags: string[];
+                merged_tag: string;
+                type: string;
+                description: string;
+                merge_reason: string;
+                messages_to_retag: string[];
+            }> | undefined;
+
+            if (parsed.merge_topic_tags && Array.isArray(parsed.merge_topic_tags)) {
+                mergedTopics = [];
+                
+                for (const merge of parsed.merge_topic_tags) {
+                    if (merge.source_tags && Array.isArray(merge.source_tags) && 
+                        merge.merged_tag && merge.type && merge.description && merge.merge_reason) {
+                        
+                        // Normalize all tags
+                        const normalizedSourceTags = merge.source_tags.map((tag: string) => 
+                            this.normalizeTopicTag(tag)
+                        );
+                        const normalizedMergedTag = this.normalizeTopicTag(merge.merged_tag);
+                        
+                        // Find all messages that need to be retagged
+                        const messagesToRetag: string[] = [];
+                        for (const [msgId, msgMeta] of taggedMessages) {
+                            const hasSourceTag = msgMeta.topic_tags.some(tag => 
+                                normalizedSourceTags.includes(tag)
+                            );
+                            if (hasSourceTag) {
+                                messagesToRetag.push(msgId);
+                                
+                                // Update the message tags
+                                const newTags = msgMeta.topic_tags
+                                    .filter(tag => !normalizedSourceTags.includes(tag))
+                                    .concat(normalizedMergedTag);
+                                
+                                // Remove duplicates
+                                msgMeta.topic_tags = [...new Set(newTags)];
+                                msgMeta.last_update = Date.now();
+                            }
+                        }
+                        
+                        // Add the merged topic to topicTags if not already present
+                        if (!topicTags.has(normalizedMergedTag)) {
+                            topicTags.set(normalizedMergedTag, {
+                                topic_tag: normalizedMergedTag,
+                                type: merge.type,
+                                description: merge.description,
+                                last_update: Date.now()
+                            });
+                            newTopicCount++;
+                        }
+                        
+                        // Remove the source topics from topicTags
+                        for (const sourceTag of normalizedSourceTags) {
+                            topicTags.delete(sourceTag);
+                        }
+                        
+                        mergedTopics.push({
+                            source_tags: normalizedSourceTags,
+                            merged_tag: normalizedMergedTag,
+                            type: merge.type,
+                            description: merge.description,
+                            merge_reason: merge.merge_reason,
+                            messages_to_retag: messagesToRetag
+                        });
+                    }
+                }
+            }
+
             return {
                 topicTags,
                 taggedMessages,
                 newTopicCount,
                 updatedTopicCount,
                 newMessageCount,
-                updatedMessageCount
+                updatedMessageCount,
+                mergedTopics
             };
         } catch (error) {
             console.error('[MetaMemory] Failed to parse tagger response:', error);

@@ -11,7 +11,6 @@
     "server:watch": "nodemon server.js",
     "demo": "node run-demo.js",
     "start": "node run-demo.js",
-    "postinstall": "node setup-demo-ui.js",
     "setup-demo-ui": "node setup-demo-ui.js"
   },
   "dependencies": {

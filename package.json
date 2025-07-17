@@ -61,10 +61,16 @@
     "release:minor": "./scripts/release.sh minor",
     "release:major": "./scripts/release.sh major",
     "release:quick": "./scripts/release-quick.sh",
-    "demo": "npm run build && cd demo && npm install && npm run start"
+    "demo": "npm run build && cd demo && npm install && npm run start",
+    "update": "./scripts/update-all.sh",
+    "update:all": "./scripts/update-all.sh",
+    "update:root": "./scripts/update-with-options.sh --root-only",
+    "update:demo": "./scripts/update-with-options.sh --demo-only",
+    "install:all": "./scripts/update-with-options.sh --install",
+    "ci:all": "./scripts/update-with-options.sh --ci"
   },
   "dependencies": {
-    "@just-every/ensemble": "^0.2.128",
+    "@just-every/ensemble": "^0.2.140",
     "uuid": "^11.1.0"
   },
   "peerDependencies": {

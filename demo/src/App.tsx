@@ -8,7 +8,9 @@ import {
   Conversation,
   CognitionView,
   MemoryView,
-  useTaskState
+  useTaskState,
+  Header,
+  type HeaderTab
 } from '@just-every/demo-ui'
 import TaskExamples from './components/TaskExamples'
 import TaskSettings from './components/TaskSettings'
@@ -29,9 +31,9 @@ function App() {
   const [taskStatus, setTaskStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle')
   const [, setTaskError] = useState<string | undefined>()
   const wsRef = useRef<WebSocket | null>(null)
-  
+
   const { state: taskState, processEvent, reset } = useTaskState()
-  
+
   // WebSocket connection management
   const connectWebSocket = useCallback((prompt: string, settings?: any) => {
     // Close existing connection if any
@@ -39,31 +41,78 @@ function App() {
       wsRef.current.close();
       wsRef.current = null;
     }
-    
+
     try {
       // Build URL with options
       const params = new URLSearchParams({
         prompt: prompt,
         ...(settings?.metaFrequency && { metaFrequency: settings.metaFrequency }),
-        ...(settings?.metamemoryEnabled !== undefined && { metamemoryEnabled: String(settings.metamemoryEnabled) })
+        ...(settings?.metamemoryEnabled !== undefined && { metamemoryEnabled: String(settings.metamemoryEnabled) }),
+        // Add flag to indicate if we're resuming
+        resume: String(taskState.messages.length > 0)
       });
       const wsUrl = `ws://localhost:3020/ws?${params.toString()}`;
-      
+
       const ws = new WebSocket(wsUrl);
-      
+
       ws.onopen = () => {
         console.log('WebSocket connected');
         setIsConnected(true);
         setTaskError(undefined);
+
+        // If we have existing state, send it to the server
+        if (taskState.messages.length > 0) {
+          // Create a finalState object that includes all necessary state
+          // Format as TaskLocalState
+          const finalState = {
+            messages: taskState.messages.map(msg => {
+              const message = msg.message as any;
+              return {
+                type: 'message',
+                role: message.role || 'assistant',
+                content: message.content || '',
+                id: message.id || msg.id
+              };
+            }),
+            requestCount: taskState.llmRequests.length,
+            cognition: {
+              frequency: parseInt(settings?.metaFrequency || '5'),
+              ...(taskState.cognitionData.currentState || {})
+            },
+            memory: {
+              enabled: settings?.metamemoryEnabled !== false,
+              state: taskState.memoryData.currentState,
+              processing: false
+            }
+          };
+
+          console.log('Sending resume state with memory:', {
+            hasMemoryState: !!taskState.memoryData.currentState,
+            topicCount: taskState.memoryData.currentState?.topicTags ?
+              (taskState.memoryData.currentState.topicTags instanceof Map ?
+                taskState.memoryData.currentState.topicTags.size :
+                Object.keys(taskState.memoryData.currentState.topicTags).length) : 0,
+            taggedMessageCount: taskState.memoryData.currentState?.taggedMessages ?
+              (taskState.memoryData.currentState.taggedMessages instanceof Map ?
+                taskState.memoryData.currentState.taggedMessages.size :
+                Object.keys(taskState.memoryData.currentState.taggedMessages).length) : 0
+          });
+
+          ws.send(JSON.stringify({
+            type: 'resume_state',
+            finalState: finalState
+          }));
+        }
       };
-      
+
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          
+          console.log(`onmessage ${data.type}`, data);
+
           // Process event through task state
           processEvent(data);
-          
+
           // Handle task-specific events
           switch (data.type) {
             case 'task_start':
@@ -92,20 +141,20 @@ function App() {
           console.error('Error processing WebSocket message:', error);
         }
       };
-      
+
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         setIsConnected(false);
         setTaskStatus('error');
         setTaskError('WebSocket connection error');
       };
-      
+
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         setIsConnected(false);
         wsRef.current = null;
       };
-      
+
       wsRef.current = ws;
     } catch (error) {
       console.error('Failed to connect WebSocket:', error);
@@ -113,22 +162,27 @@ function App() {
       setTaskStatus('error');
       setTaskError('Failed to connect to server');
     }
-  }, [processEvent]);
-  
+  }, [processEvent, taskState]);
+
   const runTask = useCallback((prompt: string, _taskId?: string, settings?: any) => {
-    // Reset task state
-    reset();
-    
+    // Don't reset if we have existing messages - continue the conversation
+    const hasExistingConversation = taskState.messages.length > 0;
+
+    if (!hasExistingConversation) {
+      // Only reset for brand new conversations
+      reset();
+    }
+
     // Add user message to display
     taskState.taskProcessor?.addUserMessage?.(prompt);
-    
+
     setTaskStatus('running');
     setTaskError(undefined);
-    
-    // Connect with the prompt
-    connectWebSocket(prompt, settings);
-  }, [reset, connectWebSocket, taskState.taskProcessor]);
-  
+
+    // Connect with the prompt and current settings
+    connectWebSocket(prompt, settings || taskSettings);
+  }, [reset, connectWebSocket, taskState.taskProcessor, taskState.messages, taskSettings]);
+
   const stopTask = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'stop' }));
@@ -140,7 +194,7 @@ function App() {
     setTaskStatus('completed');
     setIsConnected(false);
   }, []);
-  
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -150,7 +204,7 @@ function App() {
       }
     };
   }, []);
-  
+
 
   const handleRunTask = useCallback(() => {
     const prompt = selectedExample || customPrompt
@@ -382,115 +436,20 @@ function App() {
           padding: 0,
           overflow: 'hidden'
         }}>
-          {/* Tab Navigation */}
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            padding: '16px 20px',
-            borderBottom: '1px solid var(--border-glass)',
-            background: 'rgba(255, 255, 255, 0.02)'
-          }}>
-            <button
-              className={`nav-tab ${activeTab === 'conversation' ? 'active' : ''}`}
-              onClick={() => handleTabChange('conversation')}
-              title="💬Conversation"
-              style={{
-                border: 'none',
-                background: activeTab === 'conversation'
-                  ? 'linear-gradient(135deg, rgba(74, 158, 255, 0.2), rgba(74, 158, 255, 0.1))'
-                  : 'var(--surface-glass)',
-                color: activeTab === 'conversation' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                padding: '10px 20px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '15px',
-                fontWeight: '500',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              💬 Conversation
-            </button>
-
-            <button
-              className={`nav-tab ${activeTab === 'requests' ? 'active' : ''}`}
-              onClick={() => handleTabChange('requests')}
-              title="📊Requests"
-              style={{
-                border: 'none',
-                background: activeTab === 'requests'
-                  ? 'linear-gradient(135deg, rgba(74, 158, 255, 0.2), rgba(74, 158, 255, 0.1))'
-                  : 'var(--surface-glass)',
-                color: activeTab === 'requests' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                padding: '10px 20px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '15px',
-                fontWeight: '500',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              📋 Requests {taskState.llmRequests.length > 0 && `(${taskState.llmRequests.length})`}
-            </button>
-
-            <button
-              className={`nav-tab ${activeTab === 'memory' ? 'active' : ''}`}
-              onClick={() => handleTabChange('memory')}
-              title="🧠Memory"
-              style={{
-                border: 'none',
-                background: activeTab === 'memory'
-                  ? 'linear-gradient(135deg, rgba(74, 158, 255, 0.2), rgba(74, 158, 255, 0.1))'
-                  : 'var(--surface-glass)',
-                color: activeTab === 'memory' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                padding: '10px 20px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '15px',
-                fontWeight: '500',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              🧠 Memory
-            </button>
-
-            <button
-              className={`nav-tab ${activeTab === 'cognition' ? 'active' : ''}`}
-              onClick={() => handleTabChange('cognition')}
-              title="🔮Cognition"
-              style={{
-                border: 'none',
-                background: activeTab === 'cognition'
-                  ? 'linear-gradient(135deg, rgba(74, 158, 255, 0.2), rgba(74, 158, 255, 0.1))'
-                  : 'var(--surface-glass)',
-                color: activeTab === 'cognition' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                padding: '10px 20px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '15px',
-                fontWeight: '500',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              🔮 Cognition
-            </button>
-          </div>
+          <Header
+            tabs={[
+              { id: 'conversation', label: 'Conversation' },
+              { id: 'requests', label: 'Requests', count: taskState.llmRequests?.length || 0 },
+              { id: 'memory', label: 'Memory', count: taskState.memoryData?.stats?.totalTopics || 0 },
+              { id: 'cognition', label: 'Cognition', count: taskState.cognitionData?.stats?.totalAnalyses || 0 }
+            ] as HeaderTab[]}
+            activeTab={activeTab}
+            onTabChange={handleTabChange as (tab: string) => void}
+          />
 
           {/* Tab Content */}
           <div style={{
             flex: 1,
-            padding: '20px',
             overflow: 'auto',
             minHeight: 0
           }}>

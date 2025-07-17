@@ -1,4 +1,4 @@
-import { runTask } from '../dist/index.js';
+import { runTask, resumeTask } from '../dist/index.js';
 import { Agent, ensembleRequest, createToolFunction } from '@just-every/ensemble';
 
 export async function generateMockResponse(toolName, args, context, send = null) {
@@ -83,8 +83,9 @@ export function createDemoTools(send = null) {
         options: {
           type: 'object',
           properties: {
-            max_results: { type: 'number', description: 'Maximum number of results (default: 5)' }
-          }
+            max_results: { type: 'number', description: 'Maximum number of results (default: 5)', default: 5 }
+          },
+          optional: true
         }
       },
       undefined,
@@ -197,7 +198,20 @@ export function startDemoTask(prompt, send, options = {}) {
     try {
         const agent = createDemoAgent(send);
 
-        const taskGenerator = runTask(agent, prompt, options);
+        // Convert options to taskLocalState format
+        const taskLocalState = {
+            cognition: {
+                frequency: options.metaFrequency || 10
+            },
+            memory: {
+                enabled: options.metamemoryEnabled !== false
+            }
+        };
+
+        // Use resumeTask if we have a finalState, otherwise use runTask
+        const taskGenerator = options.isResume && options.finalState
+          ? resumeTask(agent, options.finalState, prompt)
+          : runTask(agent, prompt, taskLocalState);
 
         // Simply pipe all events directly to the client
         for await (const event of taskGenerator) {

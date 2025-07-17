@@ -66,7 +66,13 @@ vi.mock('@just-every/ensemble', () => ({
         addUsage: vi.fn()
     })),
     getModelFromClass: vi.fn().mockResolvedValue('gpt-4'),
-    waitWhilePaused: vi.fn().mockResolvedValue(undefined)
+    waitWhilePaused: vi.fn().mockResolvedValue(undefined),
+    truncateLargeValues: vi.fn().mockImplementation((obj, maxLength = 1000) => {
+        if (typeof obj === 'string') {
+            return obj.length > maxLength ? obj.substring(0, maxLength) + '...' : obj;
+        }
+        return obj;
+    })
 }));
 
 
@@ -107,12 +113,15 @@ describe('Mind API', () => {
             // Filter out metamemory events for this test
             const coreEvents = events.filter(e => e.type !== 'metamemory_event');
             
-            expect(coreEvents).toHaveLength(4);
+            expect(coreEvents).toHaveLength(5);
             expect(coreEvents[0]).toMatchObject({
+                type: 'task_start'
+            });
+            expect(coreEvents[1]).toMatchObject({
                 type: 'message_delta',
                 content: 'Processing task...'
             });
-            expect(coreEvents[1]).toMatchObject({
+            expect(coreEvents[2]).toMatchObject({
                 type: 'tool_done',
                 tool_call: {
                     function: {
@@ -120,11 +129,11 @@ describe('Mind API', () => {
                     }
                 }
             });
-            expect(coreEvents[2]).toMatchObject({
+            expect(coreEvents[3]).toMatchObject({
                 type: 'task_complete',
                 result: 'Task completed successfully'
             });
-            expect(coreEvents[3]).toMatchObject({
+            expect(coreEvents[4]).toMatchObject({
                 type: 'response_output'
             });
         });
@@ -154,8 +163,11 @@ describe('Mind API', () => {
             }
             
             // Should have yielded the error event and task_fatal_error
-            expect(events).toHaveLength(2);
+            expect(events).toHaveLength(3);
             expect(events[0]).toMatchObject({
+                type: 'task_start'
+            });
+            expect(events[1]).toMatchObject({
                 type: 'tool_done',
                 tool_call: {
                     function: {
@@ -163,7 +175,7 @@ describe('Mind API', () => {
                     }
                 }
             });
-            expect(events[1]).toMatchObject({
+            expect(events[2]).toMatchObject({
                 type: 'task_fatal_error',
                 result: 'Unable to complete task'
             });
@@ -183,9 +195,15 @@ describe('Mind API', () => {
                 events.push(event);
             }
             
-            // Should have yielded an error event
-            expect(events).toHaveLength(1);
+            // Should have yielded task_start, task_fatal_error, and error events
+            expect(events).toHaveLength(3);
             expect(events[0]).toMatchObject({
+                type: 'task_start'
+            });
+            expect(events[1]).toMatchObject({
+                type: 'task_fatal_error'
+            });
+            expect(events[2]).toMatchObject({
                 type: 'error',
                 error: expect.objectContaining({
                     message: expect.stringContaining('Network error')

@@ -12,9 +12,14 @@ import type { SerializedMetamemoryState } from '../metamemory/types/index.js';
  */
 export interface TaskEvent extends EnsembleTaskEvent {
     finalState: TaskLocalState;
+    task_id: string;
 }
 
 // Specific event types for easier handling
+export interface TaskStartEvent extends TaskEvent {
+    type: 'task_start';
+}
+
 export interface TaskCompleteEvent extends TaskEvent {
     type: 'task_complete';
 }

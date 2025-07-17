@@ -49,6 +49,9 @@ const wss = new WebSocketServer({ server });
 wss.on('connection', (ws, req) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const prompt = url.searchParams.get('prompt');
+  const isResume = url.searchParams.get('resume') === 'true';
+  const metaFrequency = url.searchParams.get('metaFrequency');
+  const metamemoryEnabled = url.searchParams.get('metamemoryEnabled') !== 'false';
 
   const { logger, disconnect } = enableRequestDemoLogger(ws, setEnsembleLogger);
 
@@ -59,13 +62,49 @@ wss.on('connection', (ws, req) => {
   }
 
   const sessionId = Math.random().toString(36).substr(2, 9);
-  console.log(`🔗 New Task demo connection: ${sessionId}`);
+  console.log(`🔗 New Task demo connection: ${sessionId} (resume: ${isResume})`);
 
   let taskController = null;
+  let pendingState = null;
 
-  taskController = startDemoTask(prompt, (data) => {
-    ws.send(JSON.stringify(data));
-  });
+  // If resuming, wait for the state before starting the task
+  if (isResume) {
+    pendingState = new Promise((resolve) => {
+      const stateHandler = (message) => {
+        try {
+          const data = JSON.parse(message.toString());
+          if (data.type === 'resume_state') {
+            resolve(data.finalState);
+            ws.removeListener('message', stateHandler);
+          }
+        } catch (error) {
+          console.error('State parse error:', error);
+        }
+      };
+      ws.on('message', stateHandler);
+    });
+  }
+
+  // Start the task (will wait for state if resuming)
+  (async () => {
+    const options = {
+      ...(metaFrequency && { metaFrequency: parseInt(metaFrequency) }),
+      ...(metamemoryEnabled !== undefined && { metamemoryEnabled })
+    };
+
+    if (isResume && pendingState) {
+      const finalState = await pendingState;
+      console.log(`📋 Resuming task with ${finalState.messages.length} messages`);
+      
+      taskController = startDemoTask(prompt, (data) => {
+        ws.send(JSON.stringify(data));
+      }, { ...options, finalState, isResume: true });
+    } else {
+      taskController = startDemoTask(prompt, (data) => {
+        ws.send(JSON.stringify(data));
+      }, options);
+    }
+  })();
 
   ws.on('message', (message) => {
     try {

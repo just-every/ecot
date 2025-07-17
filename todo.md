@@ -1,9 +1,3 @@
-Add lines for the new topics with their description. Which starts the MemoryGraph
-
-
-
-
-
 For class Metamemory in /Users/zemaj/www/just-every/task/src/metamemory/index.ts please add a checkCompact(messages).
 
 This should do the following.

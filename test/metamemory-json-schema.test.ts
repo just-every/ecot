@@ -52,7 +52,13 @@ vi.mock('@just-every/ensemble', () => ({
       };
     }
   }),
-  cloneAgent: vi.fn((agent) => ({ ...agent }))
+  cloneAgent: vi.fn((agent) => ({ ...agent })),
+  truncateLargeValues: vi.fn().mockImplementation((obj, maxLength = 1000) => {
+    if (typeof obj === 'string') {
+      return obj.length > maxLength ? obj.substring(0, maxLength) + '...' : obj;
+    }
+    return obj;
+  })
 }));
 
 describe('Metamemory JSON Schema Implementation', () => {

@@ -31,6 +31,7 @@ export type { Agent } from '@just-every/ensemble';
 
 // Export task-specific event types
 export type {
+    TaskStartEvent,
     TaskCompleteEvent,
     TaskFatalErrorEvent,
     TaskEvent,
@@ -76,6 +77,13 @@ export type {
     MessageMetadata,
     SerializedMetamemoryState
 } from './src/metamemory/types/index.js';
+
+// ============================================================================
+// Utilities
+// ============================================================================
+export {
+    approximateTokens
+} from './src/utils/index.js';
 
 // That's it! Just use runTask(agent, content) and everything else is automatic.
 

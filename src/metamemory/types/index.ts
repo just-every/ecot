@@ -25,6 +25,7 @@ export interface TopicTagMetadata {
 export interface MetamemoryState {
     topicTags: Map<string, TopicTagMetadata>;
     taggedMessages: Map<string, MessageMetadata>;
+    topicCompaction?: Map<string, TopicCompaction[]>;
     lastProcessedIndex: number;
 }
 
@@ -32,6 +33,7 @@ export interface MetamemoryState {
 export interface SerializedMetamemoryState {
     topicTags: { [key: string]: TopicTagMetadata };
     taggedMessages: { [key: string]: MessageMetadata };
+    topicCompaction?: { [key: string]: TopicCompaction[] };
     lastProcessedIndex: number;
 }
 
@@ -61,6 +63,13 @@ export interface TopicThreadStore {
 export interface MetaMemoryConfig {
     slidingWindowSize: number;
     processingThreshold: number;
+}
+
+export interface TopicCompaction {
+    compacted_messages: number; // The number of messages compacted in the summary
+    compacted_tokens: number; // The number of tokens compacted in the summary (i.e. tokens in compacted messages)
+    compact_last_id: string; // The id of the last message compacted
+    summary: string; // The compacted summary of the messages
 }
 
 export interface CompactionLevel {

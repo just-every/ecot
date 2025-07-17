@@ -8,7 +8,7 @@
 
 import { getThoughtDelay, runThoughtDelayWithController } from './thought_utils.js';
 import type { TaskLocalState } from '../types/task-state.js';
-import type { TaskCompleteEvent, TaskFatalErrorEvent, TaskEvent, MetaMemoryEvent, MetaCognitionEvent } from '../types/events.js';
+import type { TaskStartEvent, TaskCompleteEvent, TaskFatalErrorEvent, TaskEvent, MetaMemoryEvent, MetaCognitionEvent } from '../types/events.js';
 import {
     ensembleRequest,
     createToolFunction,
@@ -24,7 +24,7 @@ import { spawnMetaThought } from '../metacognition/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Type alias for all possible event types from runTask
-type TaskStreamEvent = ProviderStreamEvent | TaskCompleteEvent | TaskFatalErrorEvent | MetaMemoryEvent | MetaCognitionEvent;
+type TaskStreamEvent = ProviderStreamEvent | TaskStartEvent | TaskCompleteEvent | TaskFatalErrorEvent | MetaMemoryEvent | MetaCognitionEvent;
 
 // WeakMap to store message arrays for active tasks
 const activeTaskMessages = new WeakMap<AsyncGenerator<TaskStreamEvent>, ResponseInput>();
@@ -101,7 +101,7 @@ export function resumeTask(
     agent: Agent,
     finalState: TaskEvent['finalState'],
     newContent?: string
-): AsyncGenerator<ProviderStreamEvent | TaskCompleteEvent | TaskFatalErrorEvent | MetaMemoryEvent | MetaCognitionEvent> {
+): AsyncGenerator<ProviderStreamEvent | TaskStartEvent | TaskCompleteEvent | TaskFatalErrorEvent | MetaMemoryEvent | MetaCognitionEvent> {
     // If new content provided, add it to messages
     const messages = finalState.messages || [];
     if (newContent && messages) {
@@ -158,7 +158,7 @@ export function runTask(
     agent: Agent,
     content: string,
     taskLocalState?: TaskLocalState
-): AsyncGenerator<ProviderStreamEvent | TaskCompleteEvent | TaskFatalErrorEvent | MetaMemoryEvent | MetaCognitionEvent> {
+): AsyncGenerator<ProviderStreamEvent | TaskStartEvent | TaskCompleteEvent | TaskFatalErrorEvent | MetaMemoryEvent | MetaCognitionEvent> {
     // Basic validation
     if (!agent || typeof agent !== 'object') {
         throw new Error('Agent must be a valid Agent instance');
@@ -190,6 +190,9 @@ export function runTask(
     // Create wrapper to handle cleanup
     async function* taskGenerator() {
         const startTime = Date.now();
+        const taskId = uuidv4();
+        let taskStartEmitted = false;
+        let taskCompleted = false;
 
         // Add Task tools to the agent
         const taskTools = taskLocalState?.runIndefinitely ? [] : getTaskTools();
@@ -197,6 +200,28 @@ export function runTask(
         // Clone agent to get AgentDefinition and add Task tools
         const agentDef = cloneAgent(agent);
         agentDef.tools = [...taskTools, ...(agent.tools || [])];
+
+        // If resuming with existing messages, check if we already have system instructions
+        if (taskLocalState?.messages && taskLocalState.messages.length > 0) {
+            // Look for any system message in the history
+            const hasSystemMessage = taskLocalState.messages.some(msg => {
+                if (msg.type === 'message' && msg.role === 'system' && agent.instructions) {
+                    // Check if content is a string and contains instructions
+                    const content = msg.content;
+                    if (typeof content === 'string') {
+                        return content.includes(agent.instructions);
+                    }
+                }
+                return false;
+            });
+
+            if (hasSystemMessage) {
+                // Clear instructions from agent since they're already in the message history
+                // This prevents duplicate system messages
+                agentDef.instructions = undefined;
+                console.log('[Task] Cleared agent instructions to prevent duplicates when resuming');
+            }
+        }
 
         // Track completion state
         let isComplete = false;
@@ -226,6 +251,14 @@ export function runTask(
             metamemory = new Metamemory({
                 agent,
             });
+
+            // Restore previous state if available
+            if (taskLocalState.memory.state) {
+                metamemory.restoreState(taskLocalState.memory.state);
+                console.log('[Task] Restored metamemory state with',
+                    taskLocalState.memory.state.topicTags?.size || 0, 'topics and',
+                    taskLocalState.memory.state.taggedMessages?.size || 0, 'tagged messages');
+            }
         }
 
         // Queue for events generated asynchronously
@@ -236,6 +269,19 @@ export function runTask(
 
         try {
             //console.log(`[Task] Starting execution for agent: ${agent.name}`);
+
+            // Emit task_start event
+            if (!taskLocalState?.runIndefinitely) {
+                const taskStartEvent: TaskStartEvent = {
+                    type: 'task_start',
+                    task_id: taskId,
+                    finalState: {
+                        ...taskLocalState
+                    }
+                };
+                yield taskStartEvent;
+                taskStartEmitted = true;
+            }
 
             while (!isComplete) {
                 // Wait if ensemble is paused (before any processing)
@@ -251,6 +297,7 @@ export function runTask(
 
                 // Increment task-local request counter for meta-cognition
                 taskLocalState.requestCount++;
+                console.log(`[Task] Request count: ${taskLocalState.requestCount}, Meta frequency: ${taskLocalState.cognition.frequency}`);
 
                 // Check for any async events to yield first
                 while (asyncEventQueue.length > 0) {
@@ -258,9 +305,48 @@ export function runTask(
                     yield asyncEvent;
                 }
 
-                // Check meta-cognition trigger
+                // Check meta-cognition triggers
                 const metaFrequency = taskLocalState.cognition.frequency;
-                if (taskLocalState.requestCount % metaFrequency === 0 && !taskLocalState.cognition.processing) {
+                let shouldTriggerMetacognition = false;
+                
+                // Trigger 1: Regular frequency-based trigger
+                if (taskLocalState.requestCount > 0 && taskLocalState.requestCount % metaFrequency === 0 && !taskLocalState.cognition.processing) {
+                    console.log(`[Task] Metacognition frequency trigger: request ${taskLocalState.requestCount} is divisible by ${metaFrequency}`);
+                    shouldTriggerMetacognition = true;
+                }
+                
+                // Trigger 2: Topic change detection (using metamemory)
+                if (!shouldTriggerMetacognition && taskLocalState.memory.state && taskLocalState.requestCount > 2) {
+                    // Get recent messages to check for topic changes
+                    const recentMessages = messages.slice(-3);
+                    const recentTopics = new Set<string>();
+                    
+                    // Collect topics from recent messages
+                    for (const msg of recentMessages) {
+                        if (msg.id && taskLocalState.memory.state.taggedMessages.has(msg.id)) {
+                            const metadata = taskLocalState.memory.state.taggedMessages.get(msg.id);
+                            if (metadata) {
+                                metadata.topic_tags.forEach(tag => recentTopics.add(tag));
+                            }
+                        }
+                    }
+                    
+                    // Check if we have active topics in recent messages
+                    const activeTopics = Array.from(taskLocalState.memory.state.topicTags.entries())
+                        .filter(([_, meta]) => meta.type === 'active')
+                        .map(([tag, _]) => tag);
+                    
+                    // If no recent topics overlap with active topics, we might have switched topics
+                    const hasTopicSwitch = activeTopics.length > 0 && 
+                        activeTopics.every(topic => !recentTopics.has(topic));
+                    
+                    if (hasTopicSwitch && !taskLocalState.cognition.processing) {
+                        console.log('[Task] Detected topic switch, triggering metacognition');
+                        shouldTriggerMetacognition = true;
+                    }
+                }
+                
+                if (shouldTriggerMetacognition) {
                     //console.log(`[Task] Triggering meta-cognition after ${taskLocalState.requestCount} requests`);
 
                     // Emit metacognition start event
@@ -335,8 +421,19 @@ export function runTask(
                     pendingAsyncOps.add(cognitionOp);
                 }
 
+                // Compact messages before ensemble request if metamemory is enabled
+                let messagesToProcess = messages;
+                if (metamemory && taskLocalState.memory.enabled) {
+                    try {
+                        messagesToProcess = metamemory.compact([...messages]);
+                    } catch (error) {
+                        console.error('[Task] Error compacting messages:', error);
+                        messagesToProcess = messages; // Fall back to original messages
+                    }
+                }
+
                 // Run ensemble request and yield all events
-                for await (const event of ensembleRequest(messages, agentDef)) {
+                for await (const event of ensembleRequest(messagesToProcess, agentDef)) {
                     // Check for any async events that were queued
                     while (asyncEventQueue.length > 0) {
                         const asyncEvent = asyncEventQueue.shift()!;
@@ -353,9 +450,11 @@ export function runTask(
 
                         if (!taskLocalState?.runIndefinitely && (toolName === 'task_complete' || toolName === 'task_fatal_error')) {
                             isComplete = true;
-                            // Emit task_complete event with final state
-                            const completeEvent: TaskCompleteEvent = {
-                                type: toolName,
+                            taskCompleted = true;
+                            // Emit task_complete or task_fatal_error event with final state
+                            const completeEvent: TaskCompleteEvent | TaskFatalErrorEvent = {
+                                type: toolName as 'task_complete' | 'task_fatal_error',
+                                task_id: taskId,
                                 result: toolEvent.result?.output || '',
                                 finalState: {
                                     ...taskLocalState
@@ -385,6 +484,8 @@ export function runTask(
                                     startEventData.state = {
                                         topicTags: Object.fromEntries(taskLocalState.memory.state.topicTags),
                                         taggedMessages: Object.fromEntries(taskLocalState.memory.state.taggedMessages),
+                                        topicCompaction: taskLocalState.memory.state.topicCompaction ?
+                                            Object.fromEntries(taskLocalState.memory.state.topicCompaction) : undefined,
                                         lastProcessedIndex: taskLocalState.memory.state.lastProcessedIndex
                                     };
                                 }
@@ -410,17 +511,26 @@ export function runTask(
                                     setTimeout(() => reject(new Error('Metamemory processing timeout after 3 minutes')), MEMORY_TIMEOUT)
                                 );
 
-                                const memoryOp = Promise.race([memoryPromise, timeoutPromise]).then((result) => {
+                                const memoryOp = Promise.race([memoryPromise, timeoutPromise]).then(async (result) => {
                                     const processingTime = Math.round((Date.now() - processingStart) / 1000);
                                     if (taskLocalState?.memory) {
                                         taskLocalState.memory.state = metamemory.getState();
                                         console.log(`[Task] Metamemory background processing completed in ${processingTime}s`);
+
+                                        // Check for compaction after processing
+                                        try {
+                                            await metamemory.checkCompact([...messages]);
+                                        } catch (error) {
+                                            console.error('[Task] Error checking compaction:', error);
+                                        }
 
                                         // Create processing complete event
                                         // Convert Maps to objects for JSON serialization
                                         const stateForSerialization = {
                                             topicTags: Object.fromEntries(taskLocalState.memory.state.topicTags),
                                             taggedMessages: Object.fromEntries(taskLocalState.memory.state.taggedMessages),
+                                            topicCompaction: taskLocalState.memory.state.topicCompaction ?
+                                                Object.fromEntries(taskLocalState.memory.state.topicCompaction) : undefined,
                                             lastProcessedIndex: taskLocalState.memory.state.lastProcessedIndex
                                         };
 
@@ -488,6 +598,21 @@ export function runTask(
         } catch (error) {
             console.error('[Task] Error running agent:', error);
 
+            // If task_start was emitted but no completion event, emit task_fatal_error
+            if (taskStartEmitted && !taskCompleted && !taskLocalState?.runIndefinitely) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                const errorEvent: TaskFatalErrorEvent = {
+                    type: 'task_fatal_error',
+                    task_id: taskId,
+                    result: `Task failed with error: ${errorMessage}`,
+                    finalState: {
+                        ...taskLocalState
+                    }
+                };
+                yield errorEvent;
+                taskCompleted = true;
+            }
+
             // Yield an error event
             const errorMessage = error instanceof Error ? error.message : String(error);
             yield {
@@ -499,6 +624,19 @@ export function runTask(
             while (asyncEventQueue.length > 0) {
                 const asyncEvent = asyncEventQueue.shift()!;
                 yield asyncEvent;
+            }
+
+            // Ensure task completion event is always emitted if task_start was emitted
+            if (taskStartEmitted && !taskCompleted && !taskLocalState?.runIndefinitely) {
+                const errorEvent: TaskFatalErrorEvent = {
+                    type: 'task_fatal_error',
+                    task_id: taskId,
+                    result: 'Task ended without explicit completion',
+                    finalState: {
+                        ...taskLocalState
+                    }
+                };
+                yield errorEvent;
             }
         }
     }

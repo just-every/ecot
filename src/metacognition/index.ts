@@ -13,11 +13,11 @@ import {
     Agent,
     ensembleRequest,
     createToolFunction,
+    truncateLargeValues,
     type ToolFunction
 } from '@just-every/ensemble';
 import { VALID_FREQUENCIES } from '../utils/constants.js';
 import type { TaskLocalState } from '../types/task-state.js';
-import { truncateLargeValues } from '../utils/format.js';
 
 /**
  * Get all metacognition tools as an array of tool definitions
