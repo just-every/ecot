@@ -173,16 +173,6 @@ export function runTask(
         throw new Error('Content must be a non-empty string');
     }
 
-    if(!taskLocalState?.runIndefinitely) {
-        // Build initial messages with tool guidance
-        const toolGuidance = 'You must complete tasks by using the provided tools. When you have finished a task, you MUST call the task_complete() tool with a comprehensive result. If you cannot complete the task, you MUST call the task_fatal_error() tool with an explanation. Do not just provide a final answer without using these tools.';
-
-        // Check if agent instructions already contain task_complete guidance
-        if(!agent.instructions?.includes('task_complete')) {
-            agent.instructions = agent.instructions ? `${agent.instructions}\n\n${toolGuidance}` : toolGuidance;
-        }
-    }
-
     // Use provided messages or create new ones
     const messages: ResponseInput = taskLocalState?.messages ? [...taskLocalState.messages] : [
         {
@@ -206,6 +196,16 @@ export function runTask(
         // Clone agent to get AgentDefinition and add Task tools
         const agentDef = cloneAgent(agent);
         agentDef.tools = [...taskTools, ...(agent.tools || [])];
+
+        if(!taskLocalState?.runIndefinitely) {
+            // Build initial messages with tool guidance
+            const toolGuidance = 'You must complete tasks by using the provided tools. When you have finished a task, you MUST call the task_complete() tool with a comprehensive result. If you cannot complete the task, you MUST call the task_fatal_error() tool with an explanation. Do not just provide a final answer without using these tools.';
+
+            // Check if agent instructions already contain task_complete guidance
+            if(!agentDef.instructions?.includes('task_complete')) {
+                agentDef.instructions = agentDef.instructions ? `${agentDef.instructions}\n\n${toolGuidance}` : toolGuidance;
+            }
+        }
 
         // If resuming with existing messages, check if we already have system instructions
         if (taskLocalState?.messages && taskLocalState.messages.length > 0) {
