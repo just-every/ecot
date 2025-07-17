@@ -226,6 +226,12 @@ export function runTask(
                 // This prevents duplicate system messages
                 agentDef.instructions = undefined;
                 console.log('[Task] Cleared agent instructions to prevent duplicates when resuming');
+                console.log('[Task] Agent after clearing instructions:', {
+                    name: agentDef.name,
+                    hasTools: !!(agentDef.tools && agentDef.tools.length > 0),
+                    toolCount: agentDef.tools?.length || 0,
+                    hasInstructions: !!agentDef.instructions
+                });
             }
         }
 
@@ -234,22 +240,49 @@ export function runTask(
 
         taskLocalState = taskLocalState || {};
         taskLocalState.requestCount = taskLocalState?.requestCount || 0;
-        taskLocalState.delayAbortController = taskLocalState?.delayAbortController || new AbortController();
+        // Always create a new AbortController - it cannot be serialized/restored
+        taskLocalState.delayAbortController = new AbortController();
 
         taskLocalState.cognition = taskLocalState?.cognition || {};
         taskLocalState.cognition.frequency = taskLocalState?.cognition?.frequency || 10;
         taskLocalState.cognition.thoughtDelay = taskLocalState?.cognition?.thoughtDelay || getThoughtDelay();
-        taskLocalState.cognition.disabledModels = taskLocalState?.cognition?.disabledModels || new Set();
+        // Reconstruct Set from array if needed (Sets don't serialize properly)
+        taskLocalState.cognition.disabledModels = taskLocalState?.cognition?.disabledModels 
+            ? new Set(Array.isArray(taskLocalState.cognition.disabledModels) 
+                ? taskLocalState.cognition.disabledModels 
+                : taskLocalState.cognition.disabledModels)
+            : new Set();
         taskLocalState.cognition.modelScores = taskLocalState?.cognition?.modelScores || {};
+        taskLocalState.cognition.processing = false; // Always reset processing flag
 
         taskLocalState.memory = taskLocalState?.memory || {};
         taskLocalState.memory.enabled = taskLocalState?.memory?.enabled || true;
-        taskLocalState.memory.state = taskLocalState?.memory?.state || {
-            topicTags: new Map(),
-            taggedMessages: new Map(),
-            lastProcessedIndex: 0,
-        };
-        taskLocalState.memory.processing = taskLocalState?.memory?.processing || false;
+        
+        // Reconstruct Maps from objects if needed (Maps don't serialize properly)
+        if (taskLocalState.memory.state) {
+            const state = taskLocalState.memory.state;
+            taskLocalState.memory.state = {
+                topicTags: state.topicTags instanceof Map 
+                    ? state.topicTags 
+                    : new Map(Object.entries(state.topicTags || {})),
+                taggedMessages: state.taggedMessages instanceof Map 
+                    ? state.taggedMessages 
+                    : new Map(Object.entries(state.taggedMessages || {})),
+                lastProcessedIndex: state.lastProcessedIndex || 0,
+                topicCompaction: state.topicCompaction 
+                    ? (state.topicCompaction instanceof Map 
+                        ? state.topicCompaction 
+                        : new Map(Object.entries(state.topicCompaction)))
+                    : undefined
+            };
+        } else {
+            taskLocalState.memory.state = {
+                topicTags: new Map(),
+                taggedMessages: new Map(),
+                lastProcessedIndex: 0,
+            };
+        }
+        taskLocalState.memory.processing = false; // Always reset processing flag
 
         // Initialize metamemory if enabled
         let metamemory: Metamemory | undefined;
@@ -297,7 +330,13 @@ export function runTask(
                 if (taskLocalState.requestCount > 1) {
                     const delay = taskLocalState.cognition.thoughtDelay;
                     if (delay > 0) {
-                        await runThoughtDelayWithController(taskLocalState.delayAbortController, delay);
+                        try {
+                            console.log(`[Task] Applying thought delay of ${delay} seconds`);
+                            await runThoughtDelayWithController(taskLocalState.delayAbortController, delay);
+                        } catch (error) {
+                            console.error('[Task] Error during thought delay:', error);
+                            // Continue execution even if thought delay fails
+                        }
                     }
                 }
 
@@ -314,6 +353,17 @@ export function runTask(
                 // Check meta-cognition triggers
                 const metaFrequency = taskLocalState.cognition.frequency;
                 let shouldTriggerMetacognition = false;
+                
+                // Debug logging for metacognition
+                console.log(`[Task] Checking metacognition triggers:`, {
+                    requestCount: taskLocalState.requestCount,
+                    frequency: metaFrequency,
+                    modulo: taskLocalState.requestCount % metaFrequency,
+                    processing: taskLocalState.cognition.processing,
+                    condition1: taskLocalState.requestCount > 0,
+                    condition2: taskLocalState.requestCount % metaFrequency === 0,
+                    condition3: !taskLocalState.cognition.processing
+                });
                 
                 // Trigger 1: Regular frequency-based trigger
                 if (taskLocalState.requestCount > 0 && taskLocalState.requestCount % metaFrequency === 0 && !taskLocalState.cognition.processing) {
@@ -439,6 +489,7 @@ export function runTask(
                 }
 
                 // Run ensemble request and yield all events
+                console.log(`[Task] Starting ensemble request with ${messagesToProcess.length} messages`);
                 for await (const event of ensembleRequest(messagesToProcess, agentDef)) {
                     // Check for any async events that were queued
                     while (asyncEventQueue.length > 0) {
