@@ -69,11 +69,13 @@ wss.on('connection', (ws, req) => {
 
   // If resuming, wait for the state before starting the task
   if (isResume) {
-    pendingState = new Promise((resolve) => {
+    pendingState = new Promise((resolve, reject) => {
+      let timeout;
       const stateHandler = (message) => {
         try {
           const data = JSON.parse(message.toString());
           if (data.type === 'resume_state') {
+            clearTimeout(timeout);
             resolve(data.finalState);
             ws.removeListener('message', stateHandler);
           }
@@ -81,6 +83,14 @@ wss.on('connection', (ws, req) => {
           console.error('State parse error:', error);
         }
       };
+      
+      // Set timeout for resume state
+      timeout = setTimeout(() => {
+        console.warn(`⏰ Resume state timeout for session ${sessionId}, falling back to new task`);
+        ws.removeListener('message', stateHandler);
+        resolve(null); // Resolve with null to fallback to regular task
+      }, 5000);
+      
       ws.on('message', stateHandler);
     });
   }
@@ -94,11 +104,17 @@ wss.on('connection', (ws, req) => {
 
     if (isResume && pendingState) {
       const finalState = await pendingState;
-      console.log(`📋 Resuming task with ${finalState.messages.length} messages`);
-      
-      taskController = startDemoTask(prompt, (data) => {
-        ws.send(JSON.stringify(data));
-      }, { ...options, finalState, isResume: true });
+      if (finalState && finalState.messages && finalState.messages.length > 0) {
+        console.log(`📋 Resuming task with ${finalState.messages.length} messages`);
+        taskController = startDemoTask(prompt, (data) => {
+          ws.send(JSON.stringify(data));
+        }, { ...options, finalState, isResume: true });
+      } else {
+        console.log(`⚠️  Resume failed or no state, starting new task`);
+        taskController = startDemoTask(prompt, (data) => {
+          ws.send(JSON.stringify(data));
+        }, options);
+      }
     } else {
       taskController = startDemoTask(prompt, (data) => {
         ws.send(JSON.stringify(data));

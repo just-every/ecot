@@ -111,10 +111,16 @@ export function resumeTask(
             content: newContent,
             id: uuidv4()
         });
+        
+        // Update the finalState with the new messages
+        finalState.messages = messages;
+        
+        // Resume with the full state, using a placeholder content since we already added the message
+        return runTask(agent, 'Resume task', finalState);
     }
 
-    // Resume with the full state
-    return runTask(agent, newContent || 'Continue with the task', finalState);
+    // Resume with the full state without adding new content
+    return runTask(agent, 'Continue with the task', finalState);
 }
 
 /**
